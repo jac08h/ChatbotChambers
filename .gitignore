@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# uv
+.python-version
+
+# Node
+node_modules/
+dist/
+.pnpm-store/
+
+# Vite
+frontend/dist/
+frontend/.vite/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Planning docs
+idea.md
+domains.md
+architecture.md
+chat.txt
+
+# Local env files
+.env
+.env.local
+.env.*.local

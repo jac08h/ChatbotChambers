@@ -1,0 +1,69 @@
+# LMParlor
+
+Two chatbots talk to each other while the user watches. Browser UI, Python backend.
+
+## Project Layout
+
+```
+backend/   Python 3.13 + FastAPI, managed with uv
+frontend/  React + TypeScript + Vite, managed with pnpm
+```
+
+## How to Run
+
+**Backend** (from repo root):
+```bash
+cd backend
+export OPENROUTER_API_KEY="sk-or-..."
+uv run uvicorn lmparlor.main:app --reload --port 8001
+```
+
+**Frontend** (from repo root):
+```bash
+cd frontend
+pnpm dev   # starts on http://localhost:5173
+```
+
+## Architecture
+
+- Backend owns all conversation logic. Frontend just displays.
+- WebSockets between backend and frontend.
+- OpenRouter API via OpenAI Python SDK (`base_url="https://openrouter.ai/api/v1"`).
+- No persistence — in-memory only.
+- No streaming — complete messages appear after generation.
+- Thinking blocks from models are stripped before being shown or passed to the other chatbot.
+
+## Backend Structure
+
+```
+backend/lmparlor/
+    main.py       FastAPI app, WebSocket endpoint, GET /models
+    engine.py     Async generator conversation loop
+    openrouter.py OpenRouter API client, strips <think> tags
+    models.py     Pydantic models + hardcoded model list
+```
+
+## WebSocket Protocol
+
+Client → Server:
+- `{"type": "start", "config": {...}}`
+- `{"type": "pause"}`
+- `{"type": "resume"}`
+- `{"type": "stop"}`
+
+Server → Client:
+- `{"type": "generating", "chatbot": "a"|"b"}`
+- `{"type": "message", "data": {...}}`
+- `{"type": "done", "reason": "leave"|"stopped"|"max_turns"}`
+- `{"type": "error", "message": "..."}`
+
+## Coding Conventions
+
+- Double quotes for strings
+- Four spaces for indentation
+- Type hints on all functions/methods
+- No inline comments
+- No f-strings in logging calls
+- Breadth-first function ordering (public/main functions first)
+- Absolute imports from repo root
+- Run scripts as `python -m module.path` from repo root
