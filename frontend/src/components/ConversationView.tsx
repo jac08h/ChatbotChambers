@@ -5,11 +5,13 @@ interface ConversationViewProps {
     ws: WebSocketState;
 }
 
-const DONE_REASON_LABELS: Record<string, string> = {
-    leave: "A chatbot left the conversation.",
-    stopped: "Conversation stopped.",
-    max_turns: "Max turns reached.",
-};
+function doneLabel(reason: string): string {
+    if (reason === "leave:a") return "Guest A has left the parlor.";
+    if (reason === "leave:b") return "Guest B has left the parlor.";
+    if (reason === "stopped") return "The conversation was brought to a close.";
+    if (reason === "max_turns") return "The evening's discourse has concluded.";
+    return "The conversation has ended.";
+}
 
 export function ConversationView({ ws }: ConversationViewProps) {
     const { messages, status, generatingChatbot, doneReason, error } = ws;
@@ -22,6 +24,7 @@ export function ConversationView({ ws }: ConversationViewProps) {
     return (
         <div className="conversation-container">
             <div className="conversation-header">
+                <span className="header-title">LM Parlor</span>
                 <span className="status-badge" data-status={status}>
                     {statusLabel(status)}
                 </span>
@@ -33,10 +36,10 @@ export function ConversationView({ ws }: ConversationViewProps) {
                         <button onClick={ws.resume}>Resume</button>
                     )}
                     {(status === "running" || status === "paused") && (
-                        <button onClick={ws.stop} className="stop-btn">Stop</button>
+                        <button onClick={ws.stop} className="stop-btn">End Session</button>
                     )}
                     {(status === "done" || status === "error") && (
-                        <button onClick={ws.reset}>New Conversation</button>
+                        <button onClick={ws.reset}>New Session</button>
                     )}
                 </div>
             </div>
@@ -48,10 +51,11 @@ export function ConversationView({ ws }: ConversationViewProps) {
 
                 {generatingChatbot && (
                     <div className={`message-row chatbot-${generatingChatbot}`}>
+                        <div className="message-glyph">
+                            {generatingChatbot === "a" ? "A" : "B"}
+                        </div>
                         <div className="message-bubble generating">
-                            <span className="model-label">
-                                Chatbot {generatingChatbot.toUpperCase()} is thinking
-                            </span>
+                            <span className="model-label">composing</span>
                             <div className="typing-dots">
                                 <span /><span /><span />
                             </div>
@@ -61,7 +65,7 @@ export function ConversationView({ ws }: ConversationViewProps) {
 
                 {status === "done" && doneReason && (
                     <div className="done-banner">
-                        {DONE_REASON_LABELS[doneReason] ?? "Conversation ended."}
+                        {doneLabel(doneReason)}
                     </div>
                 )}
 
@@ -78,6 +82,9 @@ export function ConversationView({ ws }: ConversationViewProps) {
 function MessageBubble({ message }: { message: ChatMessage }) {
     return (
         <div className={`message-row chatbot-${message.chatbot}`}>
+            <div className="message-glyph">
+                {message.chatbot === "a" ? "A" : "B"}
+            </div>
             <div className="message-bubble">
                 <span className="model-label">{message.model}</span>
                 <div className="message-content">{message.content}</div>
@@ -89,9 +96,9 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 function statusLabel(status: Status): string {
     const labels: Record<Status, string> = {
         idle: "Idle",
-        running: "Running",
+        running: "In Session",
         paused: "Paused",
-        done: "Done",
+        done: "Concluded",
         error: "Error",
     };
     return labels[status];
