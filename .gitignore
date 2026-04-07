@@ -30,6 +30,9 @@ frontend/.vite/
 .DS_Store
 Thumbs.db
 
+# Logs
+logs/
+
 # Planning docs
 idea.md
 domains.md

@@ -43,6 +43,11 @@ export function useWebSocket(): WebSocketState {
     const wsRef = useRef<WebSocket | null>(null);
 
     const start = useCallback((config: SessionConfig) => {
+        wsRef.current?.close();
+        setMessages([]);
+        setGeneratingChatbot(null);
+        setDoneReason(null);
+        setError(null);
         const ws = new WebSocket("ws://localhost:8001/ws");
         wsRef.current = ws;
 
@@ -60,7 +65,10 @@ export function useWebSocket(): WebSocketState {
                 setMessages((prev) => [...prev, data.data]);
             } else if (data.type === "done") {
                 setGeneratingChatbot(null);
-                setDoneReason(data.reason);
+                const reason = data.reason === "leave" && data.chatbot
+                    ? `leave:${data.chatbot}`
+                    : data.reason;
+                setDoneReason(reason);
                 setStatus("done");
             } else if (data.type === "error") {
                 setGeneratingChatbot(null);
@@ -74,12 +82,8 @@ export function useWebSocket(): WebSocketState {
             setStatus("error");
         };
 
-        ws.onclose = () => {
-            if (status !== "done" && status !== "error") {
-                setStatus("idle");
-            }
-        };
-    }, [status]);
+        ws.onclose = () => {};
+    }, []);
 
     const pause = useCallback(() => {
         wsRef.current?.send(JSON.stringify({ type: "pause" }));

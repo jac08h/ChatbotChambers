@@ -1,8 +1,17 @@
 import asyncio
+from pathlib import Path
 from typing import AsyncGenerator, List, Literal, Tuple, Union
 
 from lmparlor.models import Message, SessionConfig
 from lmparlor.openrouter import call_openrouter
+
+PROMPTS_DIR = Path(__file__).parent / "prompts"
+
+PREAMBLE = (PROMPTS_DIR / "preamble.md").read_text().strip()
+PREAMBLE_A = (PROMPTS_DIR / "preamble_a.md").read_text().strip()
+PREAMBLE_B = (PROMPTS_DIR / "preamble_b.md").read_text().strip()
+
+SPEAKER_LABELS = {"a": "LM A", "b": "LM B"}
 
 
 class Generating:
@@ -20,12 +29,12 @@ async def run_conversation(
     turn = 0
 
     chatbots = [
-        ("a", config.chatbot_a),
-        ("b", config.chatbot_b),
+        ("a", config.chatbot_a, PREAMBLE_A),
+        ("b", config.chatbot_b, PREAMBLE_B),
     ]
 
     while turn < config.max_turns:
-        for chatbot_id, chatbot_config in chatbots:
+        for chatbot_id, chatbot_config, individual_preamble in chatbots:
             if stop_event.is_set():
                 return
 
@@ -37,7 +46,9 @@ async def run_conversation(
             yield Generating(chatbot=chatbot_id)
 
             system_prompt = _build_system_prompt(
-                config.shared_system_prompt, chatbot_config.system_prompt
+                individual_preamble,
+                config.shared_system_prompt,
+                chatbot_config.system_prompt,
             )
             messages = _build_messages(history, chatbot_id)
 
@@ -56,14 +67,16 @@ async def run_conversation(
                 turn=turn,
             )
 
-            if "/leave" in content:
+            if content.strip() == "/leave":
                 return
 
         turn += 1
 
 
-def _build_system_prompt(shared: str, individual: str) -> str:
-    parts = [p for p in [shared.strip(), individual.strip()] if p]
+def _build_system_prompt(
+    individual_preamble: str, shared: str, individual: str
+) -> str:
+    parts = [p for p in [PREAMBLE, individual_preamble, shared.strip(), individual.strip()] if p]
     return "\n\n".join(parts)
 
 
@@ -71,5 +84,6 @@ def _build_messages(history: List[Tuple[str, str]], chatbot_id: str) -> List[dic
     messages = []
     for speaker, content in history:
         role = "assistant" if speaker == chatbot_id else "user"
-        messages.append({"role": role, "content": content})
+        label = SPEAKER_LABELS[speaker]
+        messages.append({"role": role, "content": "%s: %s" % (label, content)})
     return messages

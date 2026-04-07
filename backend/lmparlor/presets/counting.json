@@ -1,0 +1,6 @@
+{
+    "name": "Counting together",
+    "shared_system_prompt": "You are playing a simple game. Take turns counting upward from 1, one number per message. Each participant says the next number and nothing else. Start from 1.",
+    "system_prompt_a": "",
+    "system_prompt_b": ""
+}

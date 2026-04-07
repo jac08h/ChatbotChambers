@@ -66,4 +66,3 @@ Server → Client:
 - No f-strings in logging calls
 - Breadth-first function ordering (public/main functions first)
 - Absolute imports from repo root
-- Run scripts as `python -m module.path` from repo root
