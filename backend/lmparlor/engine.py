@@ -2,6 +2,8 @@ import asyncio
 from pathlib import Path
 from typing import AsyncGenerator, List, Literal, Tuple, Union
 
+from lmparlor.claude_code import call_claude_code
+from lmparlor.codex_cli import call_codex
 from lmparlor.models import Message, SessionConfig
 from lmparlor.openrouter import call_openrouter
 
@@ -52,12 +54,25 @@ async def run_conversation(
             )
             messages = _build_messages(history, chatbot_id)
 
-            content = await call_openrouter(
-                model=chatbot_config.model,
-                system_prompt=system_prompt,
-                messages=messages,
-                api_key=api_key,
-            )
+            if chatbot_config.provider == "claude_code":
+                content = await call_claude_code(
+                    model=chatbot_config.model,
+                    system_prompt=system_prompt,
+                    messages=messages,
+                )
+            elif chatbot_config.provider == "codex":
+                content = await call_codex(
+                    model=chatbot_config.model,
+                    system_prompt=system_prompt,
+                    messages=messages,
+                )
+            else:
+                content = await call_openrouter(
+                    model=chatbot_config.model,
+                    system_prompt=system_prompt,
+                    messages=messages,
+                    api_key=api_key,
+                )
 
             history.append((chatbot_id, content))
             yield Message(

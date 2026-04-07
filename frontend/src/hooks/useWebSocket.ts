@@ -7,9 +7,11 @@ export interface ChatMessage {
     turn: number;
 }
 
+export type Provider = "openrouter" | "claude_code" | "codex";
+
 export interface SessionConfig {
-    chatbot_a: { model: string; system_prompt: string };
-    chatbot_b: { model: string; system_prompt: string };
+    chatbot_a: { model: string; system_prompt: string; provider: Provider };
+    chatbot_b: { model: string; system_prompt: string; provider: Provider };
     shared_system_prompt: string;
     max_turns: number;
 }

@@ -3,13 +3,14 @@ import json
 import logging
 import os
 from pathlib import Path
+import shutil
 from typing import List
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from lmparlor.engine import Generating, run_conversation
-from lmparlor.models import MODELS, SessionConfig
+from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, SessionConfig
 
 PRESETS_DIR = Path(__file__).parent / "presets"
 
@@ -33,9 +34,24 @@ def get_presets() -> List[dict]:
     return presets
 
 
+@app.get("/providers")
+def get_providers() -> dict:
+    return {
+        "openrouter": True,
+        "claude_code": shutil.which("claude") is not None,
+        "codex": shutil.which("codex") is not None,
+    }
+
+
 @app.get("/models")
-def get_models() -> List[dict]:
-    return [{"id": model_id, "name": name} for model_id, name in MODELS]
+def get_models(provider: str = "openrouter") -> List[dict]:
+    if provider == "claude_code":
+        model_list = CLAUDE_CODE_MODELS
+    elif provider == "codex":
+        model_list = CODEX_MODELS
+    else:
+        model_list = MODELS
+    return [{"id": model_id, "name": name} for model_id, name in model_list]
 
 
 @app.websocket("/ws")
@@ -48,13 +64,16 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         await ws.close()
         return
 
+    config = SessionConfig(**data["config"])
+    uses_openrouter = (
+        config.chatbot_a.provider == "openrouter"
+        or config.chatbot_b.provider == "openrouter"
+    )
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
-    if not api_key:
+    if uses_openrouter and not api_key:
         await ws.send_json({"type": "error", "message": "OPENROUTER_API_KEY not set"})
         await ws.close()
         return
-
-    config = SessionConfig(**data["config"])
     pause_event = asyncio.Event()
     pause_event.set()
     stop_event = asyncio.Event()

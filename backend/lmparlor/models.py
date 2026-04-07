@@ -14,10 +14,27 @@ MODELS: List[Tuple[str, str]] = [
     ("mistralai/mistral-large-2411", "Mistral Large"),
 ]
 
+CLAUDE_CODE_MODELS: List[Tuple[str, str]] = [
+    ("claude-sonnet-4-6", "Sonnet 4.6"),
+    ("claude-opus-4-6", "Opus 4.6"),
+    ("claude-haiku-4-5-20251001", "Haiku 4.5"),
+]
+
+CODEX_MODELS: List[Tuple[str, str]] = [
+    ("gpt-5.4", "gpt-5.4 (default)"),
+    ("gpt-5.4-mini", "gpt-5.4-mini"),
+    ("gpt-5.3-codex", "gpt-5.3-codex"),
+    ("gpt-5.2-codex", "gpt-5.2-codex"),
+    ("gpt-5.2", "gpt-5.2"),
+    ("gpt-5.1-codex-max", "gpt-5.1-codex-max"),
+    ("gpt-5.1-codex-mini", "gpt-5.1-codex-mini"),
+]
+
 
 class ChatbotConfig(BaseModel):
     model: str
     system_prompt: str
+    provider: Literal["openrouter", "claude_code", "codex"] = "openrouter"
 
 
 class SessionConfig(BaseModel):
