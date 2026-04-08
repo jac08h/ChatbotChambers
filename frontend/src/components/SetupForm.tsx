@@ -97,7 +97,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
     const availableProviders = (Object.keys(providers) as Provider[]).filter((provider) => providers[provider]);
 
-    const chamberPreview = `${nameA || DEFAULT_CHATBOT_NAMES.a} × ${nameB || DEFAULT_CHATBOT_NAMES.b}`;
+    const chatbotPairingText = `${nameA || DEFAULT_CHATBOT_NAMES.a} × ${nameB || DEFAULT_CHATBOT_NAMES.b}`;
 
     const loadPreset = (id: string) => {
         const preset = presets.find((item) => item.id === id);
@@ -138,7 +138,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                     <div className="hero-notes">
                         <div className="hero-note">
                             <span className="hero-note-label">Pairing</span>
-                            <strong>{chamberPreview}</strong>
+                            <strong>{chatbotPairingText}</strong>
                         </div>
                         <div className="hero-note">
                             <span className="hero-note-label">Focus</span>

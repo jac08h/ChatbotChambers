@@ -38,6 +38,9 @@ interface GeneratingItem {
 
 type VisibleItem = MessageItem | GeneratingItem;
 
+const MAX_ECHO_ITEMS = 4;
+const DEFAULT_GENERATING_BAR_WIDTHS = [82, 56, 64];
+
 function doneLabel(reason: string, config: SessionConfig | null): string {
     if (reason === "leave:a") {
         return `${config?.chatbot_a.name || DEFAULT_CHATBOT_NAMES.a} left the chat.`;
@@ -263,7 +266,7 @@ function EchoCard({ item, depth }: { item: VisibleItem; depth: number }) {
     const chatbot = item.type === "message" ? item.message.chatbot : item.chatbot;
     const bars = item.type === "message"
         ? buildMemoryBars(item.message.content)
-        : [82, 56, 64];
+        : DEFAULT_GENERATING_BAR_WIDTHS;
 
     return (
         <div
@@ -318,7 +321,7 @@ function buildActiveStage(
 ): { focus: VisibleItem | null; echoes: VisibleItem[] } {
     const timeline = buildTimelineItems(messages, generatingChatbot, fallbackNames);
     const focus = timeline.at(-1) ?? null;
-    const echoes = timeline.slice(Math.max(0, timeline.length - 5), -1).reverse();
+    const echoes = timeline.slice(Math.max(0, timeline.length - (MAX_ECHO_ITEMS + 1)), -1).reverse();
     return { focus, echoes };
 }
 

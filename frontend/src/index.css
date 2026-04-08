@@ -103,14 +103,20 @@ button {
 .history-sidebar-kicker,
 .eyebrow,
 label span,
+.hero-note-label,
+.setup-card-badge {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
 .history-sidebar-count,
 .status-badge,
 .controls button,
 .view-toggle button,
 .echo-card-state,
-.echo-card-label,
-.hero-note-label,
-.setup-card-badge {
+.echo-card-label {
     font-family: "IBM Plex Mono", monospace;
     font-size: 0.72rem;
     letter-spacing: 0.12em;
