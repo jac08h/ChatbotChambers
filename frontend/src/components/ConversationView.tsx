@@ -15,6 +15,23 @@ interface ConversationViewProps {
     readOnly?: boolean;
 }
 
+interface MessageItem {
+    type: "message";
+    key: string;
+    index: number;
+    message: ChatMessage;
+}
+
+interface GeneratingItem {
+    type: "generating";
+    key: string;
+    index: number;
+    chatbot: "a" | "b";
+    name: string;
+}
+
+type VisibleItem = MessageItem | GeneratingItem;
+
 function doneLabel(reason: string, config: SessionConfig | null): string {
     if (reason === "leave:a") return `${config?.chatbot_a.name || "LM A"} has left the parlor.`;
     if (reason === "leave:b") return `${config?.chatbot_b.name || "LM B"} has left the parlor.`;
@@ -43,15 +60,12 @@ export function ConversationView({
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, generatingChatbot, status]);
 
-    const chatbotNames = {
-        a: config?.chatbot_a.name || "LM A",
-        b: config?.chatbot_b.name || "LM B",
-    };
-    const generatingName = generatingChatbot
-        ? chatbotNames[generatingChatbot]
-        : "";
     const visibleMessages = useMemo(
-        () => (liveMode ? buildLiveMessages(messages, generatingChatbot) : messages),
+        () => (
+            liveMode
+                ? buildLiveMessages(messages, generatingChatbot)
+                : buildTranscriptMessages(messages)
+        ),
         [generatingChatbot, liveMode, messages],
     );
 
@@ -171,14 +185,26 @@ function GeneratingBubble({
     );
 }
 
-function buildLiveMessages(messages: ChatMessage[], generatingChatbot: "a" | "b" | null) {
+function buildTranscriptMessages(messages: ChatMessage[]): VisibleItem[] {
+    return messages.map((message, index) => ({
+        type: "message",
+        key: `${message.chatbot}-${index}`,
+        index,
+        message,
+    }));
+}
+
+function buildLiveMessages(
+    messages: ChatMessage[],
+    generatingChatbot: "a" | "b" | null,
+): VisibleItem[] {
     const latestByChatbot = new Map<"a" | "b", { index: number; message: ChatMessage }>();
 
     messages.forEach((message, index) => {
         latestByChatbot.set(message.chatbot, { index, message });
     });
 
-    const visible = Array.from(latestByChatbot.entries())
+    const visible: VisibleItem[] = Array.from(latestByChatbot.entries())
         .filter(([chatbot]) => chatbot !== generatingChatbot)
         .map(([, value]) => ({
             type: "message" as const,
