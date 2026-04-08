@@ -92,7 +92,7 @@ export default function App() {
 }
 
 function buildSessionLabel(messages: ChatMessage[], sessionId: number): string {
-    const firstMessage = messages[0]?.content.trim();
+    const firstMessage = messages[0]?.content?.trim();
     if (!firstMessage) {
         return `Session ${sessionId}`;
     }

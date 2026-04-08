@@ -80,7 +80,7 @@ export function useWebSocket(options?: UseWebSocketOptions): WebSocketState {
 
     useEffect(() => {
         onSessionArchivedRef.current = options?.onSessionArchived;
-    }, [options]);
+    }, [options?.onSessionArchived]);
 
     const start = useCallback((config: SessionConfig) => {
         wsRef.current?.close();

@@ -68,7 +68,7 @@ export function ConversationView({
     const visibleMessages = useMemo(
         () => (
             liveMode
-                ? buildLiveMessages(messages, generatingChatbot)
+                ? buildLiveMessages(messages, generatingChatbot, DEFAULT_CHATBOT_NAMES)
                 : buildTranscriptMessages(messages)
         ),
         [generatingChatbot, liveMode, messages],
@@ -202,6 +202,7 @@ function buildTranscriptMessages(messages: ChatMessage[]): VisibleItem[] {
 function buildLiveMessages(
     messages: ChatMessage[],
     generatingChatbot: "a" | "b" | null,
+    fallbackNames: Record<"a" | "b", string>,
 ): VisibleItem[] {
     const latestByChatbot = new Map<"a" | "b", { index: number; message: ChatMessage }>();
 
@@ -224,7 +225,7 @@ function buildLiveMessages(
             key: `generating-${generatingChatbot}`,
             index: messages.length,
             chatbot: generatingChatbot,
-            name: latestByChatbot.get(generatingChatbot)?.message.name || DEFAULT_CHATBOT_NAMES[generatingChatbot],
+            name: latestByChatbot.get(generatingChatbot)?.message.name || fallbackNames[generatingChatbot],
         });
     }
 
