@@ -241,7 +241,7 @@ describe("ConversationView", () => {
         expect(secondEcho).toHaveAttribute("data-depth", "2")
         expect(within(firstEcho).getByText("Bob")).toBeInTheDocument()
         expect(within(secondEcho).getByText("Alice")).toBeInTheDocument()
-        expect(container.querySelectorAll(".memory-line").length).toBeGreaterThanOrEqual(4)
+        expect(container.querySelectorAll(".memory-line")).toHaveLength(4)
     })
 
     it("active mode shows generating indicator for the current chatbot", async () => {

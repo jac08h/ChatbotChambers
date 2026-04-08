@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { DEFAULT_CHATBOT_NAMES, type Provider, type SessionConfig } from "../hooks/useWebSocket";
 
 interface Model {
@@ -95,10 +95,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         });
     }, [providerB]);
 
-    const availableProviders = useMemo(
-        () => (Object.keys(providers) as Provider[]).filter((provider) => providers[provider]),
-        [providers],
-    );
+    const availableProviders = (Object.keys(providers) as Provider[]).filter((provider) => providers[provider]);
 
     const chamberPreview = `${nameA || DEFAULT_CHATBOT_NAMES.a} × ${nameB || DEFAULT_CHATBOT_NAMES.b}`;
 
