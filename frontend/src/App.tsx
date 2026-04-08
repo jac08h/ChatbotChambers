@@ -14,6 +14,8 @@ interface Session {
     error: string | null;
 }
 
+const SESSION_LABEL_MAX_LENGTH = 40;
+
 export default function App() {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [selectedSession, setSelectedSession] = useState<number | null>(null);
@@ -95,5 +97,7 @@ function buildSessionLabel(messages: ChatMessage[], sessionId: number): string {
     if (!firstMessage) {
         return `Session ${sessionId}`;
     }
-    return firstMessage.length > 40 ? `${firstMessage.slice(0, 40)}…` : firstMessage;
+    return firstMessage.length > SESSION_LABEL_MAX_LENGTH
+        ? `${firstMessage.slice(0, SESSION_LABEL_MAX_LENGTH)}…`
+        : firstMessage;
 }

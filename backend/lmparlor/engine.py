@@ -120,9 +120,9 @@ def _build_messages(
     messages = []
     for speaker, content in history:
         if speaker == "user":
-            messages.append({"role": "user", "content": "You: %s" % content})
+            messages.append({"role": "user", "content": f"You: {content}"})
             continue
         role = "assistant" if speaker == chatbot_id else "user"
         label = labels[speaker]
-        messages.append({"role": role, "content": "%s: %s" % (label, content)})
+        messages.append({"role": role, "content": f"{label}: {content}"})
     return messages
