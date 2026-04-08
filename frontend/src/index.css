@@ -46,6 +46,99 @@ body {
     flex-direction: column;
 }
 
+.app-shell {
+    display: flex;
+    flex: 1;
+    min-height: 100svh;
+}
+
+.main-panel {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-sidebar {
+    width: 260px;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.history-sidebar-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.history-sidebar-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.history-sidebar-body {
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.history-item {
+    width: 100%;
+    background: var(--bg-warm);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 12px 14px;
+    text-align: left;
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 15px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-item:hover,
+.history-item.active {
+    border-color: var(--gold);
+    color: var(--text);
+    background: rgba(200, 150, 62, 0.08);
+}
+
+.history-item.current-session.active {
+    border-color: var(--amber);
+    background: rgba(212, 136, 42, 0.08);
+}
+
+.history-empty {
+    color: var(--text-dim);
+    font-style: italic;
+}
+
+@media (max-width: 900px) {
+    .app-shell {
+        flex-direction: column;
+    }
+
+    .history-sidebar {
+        width: 100%;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+    }
+}
+
 /* ─── Ornamental divider ────────────────────────────────────── */
 
 .ornament {
@@ -71,7 +164,7 @@ body {
 .setup-page {
     display: flex;
     flex-direction: column;
-    min-height: 100svh;
+    min-height: 100%;
 }
 
 .setup-topbar {
@@ -180,7 +273,8 @@ label {
 
 select,
 textarea,
-input[type="number"] {
+input[type="number"],
+input[type="text"] {
     background: var(--bg-warm);
     border: 1px solid var(--border);
     border-radius: 2px;
@@ -341,6 +435,12 @@ input:focus {
     color: var(--gold-light);
 }
 
+.controls .active-toggle {
+    border-color: var(--gold);
+    background: rgba(200, 150, 62, 0.1);
+    color: var(--gold-light);
+}
+
 .controls .stop-btn {
     border-color: rgba(158, 53, 53, 0.4);
     color: var(--crimson-light);
@@ -376,9 +476,14 @@ input:focus {
 
 .message-row {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 10px;
     animation: appear 0.3s ease-out;
+    justify-content: flex-start;
+}
+
+.message-row.live-message {
+    animation: live-message-in 0.25s ease-out;
 }
 
 @keyframes appear {
@@ -386,12 +491,9 @@ input:focus {
     to   { opacity: 1; transform: translateY(0); }
 }
 
-.message-row.chatbot-a {
-    justify-content: flex-start;
-}
-
-.message-row.chatbot-b {
-    justify-content: flex-end;
+@keyframes live-message-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .message-glyph {
@@ -412,7 +514,6 @@ input:focus {
     background: linear-gradient(135deg, var(--gold-dim), rgba(200, 150, 62, 0.25));
     border: 1px solid rgba(200, 150, 62, 0.35);
     color: var(--gold-light);
-    order: -1;
 }
 
 .message-row.chatbot-b .message-glyph {
@@ -440,11 +541,19 @@ input:focus {
 .message-row.chatbot-b .message-bubble {
     background: var(--surface-2);
     border: 1px solid #2e2018;
-    border-right: 2px solid var(--crimson);
-    border-radius: 4px 0 0 4px;
+    border-left: 2px solid var(--crimson);
+    border-radius: 0 4px 4px 0;
     text-align: left;
 }
 
+.message-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sender-label,
 .model-label {
     font-family: 'DM Mono', monospace;
     font-size: 10px;
@@ -453,8 +562,27 @@ input:focus {
     text-transform: uppercase;
 }
 
+.sender-label {
+    color: var(--text-muted);
+}
+
 .message-row.chatbot-a .model-label { color: var(--gold); }
 .message-row.chatbot-b .model-label { color: var(--crimson-light); }
+.thinking-block {
+    background: rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 10px;
+}
+
+.thinking-block summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+}
 
 .message-content {
     white-space: pre-wrap;
@@ -469,6 +597,7 @@ input:focus {
 
 .message-bubble.generating {
     opacity: 0.75;
+    animation: live-message-fade 0.2s ease-out;
 }
 
 .typing-dots {
@@ -487,13 +616,17 @@ input:focus {
 
 .message-row.chatbot-a .typing-dots span { background: var(--gold); }
 .message-row.chatbot-b .typing-dots span { background: var(--crimson-light); }
-
 .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
 .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes flicker {
     0%, 80%, 100% { opacity: 0.2; transform: scale(0.7); }
     40%           { opacity: 1;   transform: scale(1); }
+}
+
+@keyframes live-message-fade {
+    from { opacity: 0; }
+    to { opacity: 0.75; }
 }
 
 /* ─── Banners ───────────────────────────────────────────────── */
@@ -526,4 +659,14 @@ input:focus {
     font-style: normal;
     font-family: 'DM Mono', monospace;
     font-size: 13px;
+}
+
+@media (max-width: 700px) {
+    .conversation-header {
+        flex-wrap: wrap;
+    }
+
+    .message-bubble {
+        max-width: 100%;
+    }
 }
