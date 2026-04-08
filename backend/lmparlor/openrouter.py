@@ -3,7 +3,7 @@ import logging
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 from openai import AsyncOpenAI
 
@@ -17,7 +17,7 @@ async def call_openrouter(
     system_prompt: str,
     messages: List[dict],
     api_key: str,
-) -> str:
+) -> Tuple[str, str]:
     client = AsyncOpenAI(
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
@@ -28,8 +28,11 @@ async def call_openrouter(
         model=model,
         messages=all_messages,
     )
-    content = response.choices[0].message.content or ""
-    return re.sub(r"<think>[\s\S]*?</think>", "", content).strip()
+    raw_content = response.choices[0].message.content or ""
+    thinking_match = re.search(r"<think>([\s\S]*?)</think>", raw_content)
+    thinking = thinking_match.group(1).strip() if thinking_match else ""
+    content = re.sub(r"<think>[\s\S]*?</think>", "", raw_content).strip()
+    return content, thinking
 
 
 def _log_prompt(model: str, messages: List[dict]) -> None:

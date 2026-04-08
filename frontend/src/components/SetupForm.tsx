@@ -47,6 +47,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [modelsB, setModelsB] = useState<Model[]>([]);
     const [modelA, setModelA] = useState("");
     const [modelB, setModelB] = useState("");
+    const [nameA, setNameA] = useState("LM A");
+    const [nameB, setNameB] = useState("LM B");
     const [sharedPrompt, setSharedPrompt] = useState("");
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");
@@ -102,8 +104,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onStart({
-            chatbot_a: { model: modelA, system_prompt: promptA, provider: providerA },
-            chatbot_b: { model: modelB, system_prompt: promptB, provider: providerB },
+            chatbot_a: { name: nameA, model: modelA, system_prompt: promptA, provider: providerA },
+            chatbot_b: { name: nameB, model: modelB, system_prompt: promptB, provider: providerB },
             shared_system_prompt: sharedPrompt,
             max_turns: maxTurns,
         });
@@ -146,6 +148,13 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                     <div className="chatbot-configs">
                         <div className="chatbot-config side-a">
                             <h3>Guest A</h3>
+                            <label>Name</label>
+                            <input
+                                type="text"
+                                value={nameA}
+                                onChange={(e) => setNameA(e.target.value)}
+                                placeholder="LM A"
+                            />
                             <label>Provider</label>
                             <select
                                 value={providerA}
@@ -172,6 +181,13 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
                         <div className="chatbot-config side-b">
                             <h3>Guest B</h3>
+                            <label>Name</label>
+                            <input
+                                type="text"
+                                value={nameB}
+                                onChange={(e) => setNameB(e.target.value)}
+                                placeholder="LM B"
+                            />
                             <label>Provider</label>
                             <select
                                 value={providerB}

@@ -1,17 +1,26 @@
 import { useCallback, useRef, useState } from "react";
 
 export interface ChatMessage {
-    chatbot: "a" | "b";
+    chatbot: "a" | "b" | "user";
+    name: string;
     model: string;
     content: string;
     turn: number;
+    thinking: string;
 }
 
 export type Provider = "openrouter" | "claude_code" | "codex";
 
+export interface ChatbotConfig {
+    name: string;
+    model: string;
+    system_prompt: string;
+    provider: Provider;
+}
+
 export interface SessionConfig {
-    chatbot_a: { model: string; system_prompt: string; provider: Provider };
-    chatbot_b: { model: string; system_prompt: string; provider: Provider };
+    chatbot_a: ChatbotConfig;
+    chatbot_b: ChatbotConfig;
     shared_system_prompt: string;
     max_turns: number;
 }
@@ -29,9 +38,12 @@ export interface WebSocketState {
     generatingChatbot: "a" | "b" | null;
     doneReason: string | null;
     error: string | null;
+    config: SessionConfig | null;
+    sessionId: number;
     start: (config: SessionConfig) => void;
     pause: () => void;
     resume: () => void;
+    sendUserMessage: (content: string) => void;
     stop: () => void;
     reset: () => void;
 }
@@ -42,14 +54,20 @@ export function useWebSocket(): WebSocketState {
     const [generatingChatbot, setGeneratingChatbot] = useState<"a" | "b" | null>(null);
     const [doneReason, setDoneReason] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [config, setConfig] = useState<SessionConfig | null>(null);
+    const [sessionId, setSessionId] = useState(0);
     const wsRef = useRef<WebSocket | null>(null);
+    const nextSessionIdRef = useRef(0);
 
     const start = useCallback((config: SessionConfig) => {
         wsRef.current?.close();
+        nextSessionIdRef.current += 1;
         setMessages([]);
         setGeneratingChatbot(null);
         setDoneReason(null);
         setError(null);
+        setConfig(config);
+        setSessionId(nextSessionIdRef.current);
         const ws = new WebSocket("ws://localhost:8001/ws");
         wsRef.current = ws;
 
@@ -101,6 +119,10 @@ export function useWebSocket(): WebSocketState {
         wsRef.current?.send(JSON.stringify({ type: "stop" }));
     }, []);
 
+    const sendUserMessage = useCallback((content: string) => {
+        wsRef.current?.send(JSON.stringify({ type: "user_message", content }));
+    }, []);
+
     const reset = useCallback(() => {
         wsRef.current?.close();
         wsRef.current = null;
@@ -109,7 +131,22 @@ export function useWebSocket(): WebSocketState {
         setGeneratingChatbot(null);
         setDoneReason(null);
         setError(null);
+        setConfig(null);
     }, []);
 
-    return { messages, status, generatingChatbot, doneReason, error, start, pause, resume, stop, reset };
+    return {
+        messages,
+        status,
+        generatingChatbot,
+        doneReason,
+        error,
+        config,
+        sessionId,
+        start,
+        pause,
+        resume,
+        sendUserMessage,
+        stop,
+        reset,
+    };
 }

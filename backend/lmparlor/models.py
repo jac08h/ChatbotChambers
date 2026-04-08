@@ -32,6 +32,7 @@ CODEX_MODELS: List[Tuple[str, str]] = [
 
 
 class ChatbotConfig(BaseModel):
+    name: str
     model: str
     system_prompt: str
     provider: Literal["openrouter", "claude_code", "codex"] = "openrouter"
@@ -45,7 +46,9 @@ class SessionConfig(BaseModel):
 
 
 class Message(BaseModel):
-    chatbot: Literal["a", "b"]
+    chatbot: Literal["a", "b", "user"]
+    name: str
     model: str
     content: str
     turn: int
+    thinking: str = ""
