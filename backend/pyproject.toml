@@ -13,4 +13,9 @@ dependencies = [
 dev-dependencies = [
     "pytest>=8.0",
     "pytest-asyncio>=0.25",
+    "httpx>=0.28",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = ["integration: integration tests (deselect with '-m not integration')"]
