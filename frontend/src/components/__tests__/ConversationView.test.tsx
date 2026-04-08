@@ -43,7 +43,7 @@ describe("ConversationView", () => {
         expect(screen.getByText("Hi there")).toBeInTheDocument()
     })
 
-    it("shows generating indicator in live mode when generatingChatbot is set", async () => {
+    it("shows generating indicator in active mode when generatingChatbot is set", async () => {
         render(
             <ConversationView
                 {...defaultProps}
@@ -51,7 +51,7 @@ describe("ConversationView", () => {
                 generatingChatbot="a"
             />
         )
-        await userEvent.click(screen.getByRole("button", { name: "Live Conversation" }))
+        await userEvent.click(screen.getByRole("button", { name: "Active mode" }))
         expect(screen.getByText("composing")).toBeInTheDocument()
     })
 
@@ -74,7 +74,7 @@ describe("ConversationView", () => {
                 doneReason="max_turns"
             />
         )
-        expect(screen.getByText("The evening's discourse has concluded.")).toBeInTheDocument()
+        expect(screen.getByText("Reached the turn limit.")).toBeInTheDocument()
     })
 
     it("done banner includes chatbot name for leave:a reason", () => {
@@ -85,7 +85,7 @@ describe("ConversationView", () => {
                 doneReason="leave:a"
             />
         )
-        expect(screen.getByText("Alice has left the parlor.")).toBeInTheDocument()
+        expect(screen.getByText("Alice left the chat.")).toBeInTheDocument()
     })
 
     it("done banner includes chatbot name for leave:b reason", () => {
@@ -96,7 +96,7 @@ describe("ConversationView", () => {
                 doneReason="leave:b"
             />
         )
-        expect(screen.getByText("Bob has left the parlor.")).toBeInTheDocument()
+        expect(screen.getByText("Bob left the chat.")).toBeInTheDocument()
     })
 
     it("shows error banner when status is error", () => {
@@ -132,7 +132,7 @@ describe("ConversationView", () => {
         expect(screen.getByRole("button", { name: "Resume" })).toBeInTheDocument()
     })
 
-    it("shows End Session button when running and not readOnly", () => {
+    it("shows Stop button when running and not readOnly", () => {
         render(
             <ConversationView
                 {...defaultProps}
@@ -140,10 +140,10 @@ describe("ConversationView", () => {
                 onStop={vi.fn()}
             />
         )
-        expect(screen.getByRole("button", { name: "End Session" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument()
     })
 
-    it("hides Pause/Stop buttons in readOnly mode", () => {
+    it("hides Pause and Stop buttons in readOnly mode", () => {
         render(
             <ConversationView
                 {...defaultProps}
@@ -154,10 +154,10 @@ describe("ConversationView", () => {
             />
         )
         expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument()
-        expect(screen.queryByRole("button", { name: "End Session" })).not.toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Stop" })).not.toBeInTheDocument()
     })
 
-    it("shows New Session button when done and not readOnly", () => {
+    it("shows New chat button when done and not readOnly", () => {
         render(
             <ConversationView
                 {...defaultProps}
@@ -166,7 +166,7 @@ describe("ConversationView", () => {
                 onReset={vi.fn()}
             />
         )
-        expect(screen.getByRole("button", { name: "New Session" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "New chat" })).toBeInTheDocument()
     })
 
     it("calls onPause when Pause button clicked", async () => {
@@ -211,20 +211,20 @@ describe("ConversationView", () => {
         expect(screen.getByText("Second from A")).toBeInTheDocument()
     })
 
-    it("live mode shows only latest message per chatbot", async () => {
+    it("active mode keeps only the latest message readable", async () => {
         const messages = [
             makeMessage("a", "First from A", 0),
             makeMessage("b", "First from B", 0),
             makeMessage("a", "Second from A", 1),
         ]
         render(<ConversationView {...defaultProps} messages={messages} />)
-        await userEvent.click(screen.getByRole("button", { name: "Live Conversation" }))
+        await userEvent.click(screen.getByRole("button", { name: "Active mode" }))
         expect(screen.queryByText("First from A")).not.toBeInTheDocument()
+        expect(screen.queryByText("First from B")).not.toBeInTheDocument()
         expect(screen.getByText("Second from A")).toBeInTheDocument()
-        expect(screen.getByText("First from B")).toBeInTheDocument()
     })
 
-    it("live mode shows generating indicator for currently generating chatbot", async () => {
+    it("active mode shows generating indicator for the current chatbot", async () => {
         const messages = [makeMessage("a", "Hello", 0)]
         render(
             <ConversationView
@@ -234,8 +234,8 @@ describe("ConversationView", () => {
                 generatingChatbot="b"
             />
         )
-        await userEvent.click(screen.getByRole("button", { name: "Live Conversation" }))
+        await userEvent.click(screen.getByRole("button", { name: "Active mode" }))
         expect(screen.getByText("composing")).toBeInTheDocument()
-        expect(screen.getByText("Hello")).toBeInTheDocument()
+        expect(screen.queryByText("Hello")).not.toBeInTheDocument()
     })
 })

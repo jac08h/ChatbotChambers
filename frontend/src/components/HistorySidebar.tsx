@@ -18,7 +18,11 @@ export function HistorySidebar({
     return (
         <aside className="history-sidebar">
             <div className="history-sidebar-header">
-                <span className="history-sidebar-title">History</span>
+                <span className="history-sidebar-kicker">Archive</span>
+                <div className="history-sidebar-title-row">
+                    <span className="history-sidebar-title">Sessions</span>
+                    <span className="history-sidebar-count">{sessions.length}</span>
+                </div>
             </div>
 
             <div className="history-sidebar-body">
@@ -28,12 +32,12 @@ export function HistorySidebar({
                         onClick={onSelectCurrent}
                         type="button"
                     >
-                        Current Session
+                        Current chat
                     </button>
                 )}
 
                 {sessions.length === 0 ? (
-                    <div className="history-empty">No completed sessions yet.</div>
+                    <div className="history-empty">No saved conversations yet.</div>
                 ) : (
                     <div className="history-list">
                         {sessions.map((session) => (
