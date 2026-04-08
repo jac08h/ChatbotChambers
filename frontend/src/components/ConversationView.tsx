@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ChatMessage, SessionConfig, Status } from "../hooks/useWebSocket";
+import {
+    DEFAULT_CHATBOT_NAMES,
+    type ChatMessage,
+    type SessionConfig,
+    type Status,
+} from "../hooks/useWebSocket";
 
 interface ConversationViewProps {
     messages: ChatMessage[];
@@ -33,8 +38,8 @@ interface GeneratingItem {
 type VisibleItem = MessageItem | GeneratingItem;
 
 function doneLabel(reason: string, config: SessionConfig | null): string {
-    if (reason === "leave:a") return `${config?.chatbot_a.name || "LM A"} has left the parlor.`;
-    if (reason === "leave:b") return `${config?.chatbot_b.name || "LM B"} has left the parlor.`;
+    if (reason === "leave:a") return `${config?.chatbot_a.name || DEFAULT_CHATBOT_NAMES.a} has left the parlor.`;
+    if (reason === "leave:b") return `${config?.chatbot_b.name || DEFAULT_CHATBOT_NAMES.b} has left the parlor.`;
     if (reason === "stopped") return "The conversation was brought to a close.";
     if (reason === "max_turns") return "The evening's discourse has concluded.";
     return "The conversation has ended.";
@@ -219,7 +224,7 @@ function buildLiveMessages(
             key: `generating-${generatingChatbot}`,
             index: messages.length,
             chatbot: generatingChatbot,
-            name: latestByChatbot.get(generatingChatbot)?.message.name || `LM ${generatingChatbot.toUpperCase()}`,
+            name: latestByChatbot.get(generatingChatbot)?.message.name || DEFAULT_CHATBOT_NAMES[generatingChatbot],
         });
     }
 

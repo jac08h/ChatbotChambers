@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Provider, SessionConfig } from "../hooks/useWebSocket";
+import { DEFAULT_CHATBOT_NAMES, type Provider, type SessionConfig } from "../hooks/useWebSocket";
 
 interface Model {
     id: string;
@@ -47,8 +47,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [modelsB, setModelsB] = useState<Model[]>([]);
     const [modelA, setModelA] = useState("");
     const [modelB, setModelB] = useState("");
-    const [nameA, setNameA] = useState("LM A");
-    const [nameB, setNameB] = useState("LM B");
+    const [nameA, setNameA] = useState<string>(DEFAULT_CHATBOT_NAMES.a);
+    const [nameB, setNameB] = useState<string>(DEFAULT_CHATBOT_NAMES.b);
     const [sharedPrompt, setSharedPrompt] = useState("");
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");

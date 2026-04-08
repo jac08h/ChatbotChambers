@@ -11,6 +11,11 @@ export interface ChatMessage {
 
 export type Provider = "openrouter" | "claude_code" | "codex";
 
+export const DEFAULT_CHATBOT_NAMES = {
+    a: "LM A",
+    b: "LM B",
+} as const;
+
 export interface ChatbotConfig {
     name: string;
     model: string;
@@ -68,7 +73,6 @@ export function useWebSocket(options?: UseWebSocketOptions): WebSocketState {
     const [config, setConfig] = useState<SessionConfig | null>(null);
     const [sessionId, setSessionId] = useState(0);
     const wsRef = useRef<WebSocket | null>(null);
-    const nextSessionIdRef = useRef(0);
     const messagesRef = useRef<ChatMessage[]>([]);
     const configRef = useRef<SessionConfig | null>(null);
     const sessionIdRef = useRef(0);
@@ -80,16 +84,15 @@ export function useWebSocket(options?: UseWebSocketOptions): WebSocketState {
 
     const start = useCallback((config: SessionConfig) => {
         wsRef.current?.close();
-        nextSessionIdRef.current += 1;
+        sessionIdRef.current += 1;
         messagesRef.current = [];
         configRef.current = config;
-        sessionIdRef.current = nextSessionIdRef.current;
         setMessages([]);
         setGeneratingChatbot(null);
         setDoneReason(null);
         setError(null);
         setConfig(config);
-        setSessionId(nextSessionIdRef.current);
+        setSessionId(sessionIdRef.current);
         const ws = new WebSocket("ws://localhost:8001/ws");
         wsRef.current = ws;
 
