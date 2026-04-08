@@ -12,6 +12,7 @@ PROMPTS_DIR = Path(__file__).parent / "prompts"
 PREAMBLE = (PROMPTS_DIR / "preamble.md").read_text().strip()
 PREAMBLE_A = (PROMPTS_DIR / "preamble_a.md").read_text().strip()
 PREAMBLE_B = (PROMPTS_DIR / "preamble_b.md").read_text().strip()
+USER_LABEL = "You"
 
 
 class Generating:
@@ -50,7 +51,7 @@ async def run_conversation(
                 history.append(("user", user_content))
                 yield Message(
                     chatbot="user",
-                    name="You",
+                    name=USER_LABEL,
                     model="",
                     content=user_content,
                     turn=turn,
@@ -120,7 +121,7 @@ def _build_messages(
     messages = []
     for speaker, content in history:
         if speaker == "user":
-            messages.append({"role": "user", "content": f"You: {content}"})
+            messages.append({"role": "user", "content": f"{USER_LABEL}: {content}"})
             continue
         role = "assistant" if speaker == chatbot_id else "user"
         label = labels[speaker]
