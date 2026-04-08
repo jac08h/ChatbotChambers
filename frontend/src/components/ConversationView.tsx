@@ -45,8 +45,12 @@ export function ConversationView({
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, generatingChatbot, status]);
 
+    const chatbotNames = {
+        a: config?.chatbot_a.name || "LM A",
+        b: config?.chatbot_b.name || "LM B",
+    };
     const generatingName = generatingChatbot
-        ? config?.[`chatbot_${generatingChatbot}`].name || generatingChatbot.toUpperCase()
+        ? chatbotNames[generatingChatbot]
         : "";
 
     const handleUserMessageSubmit = (event: React.FormEvent) => {

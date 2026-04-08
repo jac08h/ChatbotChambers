@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ConversationView } from "./components/ConversationView";
 import { HistorySidebar } from "./components/HistorySidebar";
 import { SetupForm } from "./components/SetupForm";
-import type { ChatMessage, SessionConfig } from "./hooks/useWebSocket";
+import type { ArchivedSession, ChatMessage, SessionConfig } from "./hooks/useWebSocket";
 import { useWebSocket } from "./hooks/useWebSocket";
 
 interface Session {
@@ -15,32 +15,24 @@ interface Session {
 }
 
 export default function App() {
-    const ws = useWebSocket();
     const [sessions, setSessions] = useState<Session[]>([]);
     const [selectedSession, setSelectedSession] = useState<number | null>(null);
     const archivedSessionIdsRef = useRef<Set<number>>(new Set());
-
-    useEffect(() => {
-        if (
-            (ws.status === "done" || ws.status === "error")
-            && ws.config
-            && ws.sessionId > 0
-            && !archivedSessionIdsRef.current.has(ws.sessionId)
-        ) {
-            archivedSessionIdsRef.current.add(ws.sessionId);
+    const ws = useWebSocket({
+        onSessionArchived: (session: ArchivedSession) => {
+            if (archivedSessionIdsRef.current.has(session.id)) {
+                return;
+            }
+            archivedSessionIdsRef.current.add(session.id);
             setSessions((prev) => [
                 {
-                    id: ws.sessionId,
-                    label: buildSessionLabel(ws.messages, ws.sessionId),
-                    messages: ws.messages,
-                    config: ws.config,
-                    doneReason: ws.doneReason,
-                    error: ws.error,
+                    ...session,
+                    label: buildSessionLabel(session.messages, session.id),
                 },
                 ...prev,
             ]);
-        }
-    }, [ws.config, ws.doneReason, ws.error, ws.messages, ws.sessionId, ws.status]);
+        },
+    });
 
     const selectedHistorySession = sessions.find((session) => session.id === selectedSession) || null;
     const showHistorySession = selectedHistorySession && (ws.status === "idle" || ws.status === "done" || ws.status === "error");
