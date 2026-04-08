@@ -46,7 +46,7 @@ class SessionConfig(BaseModel):
 
 
 class Message(BaseModel):
-    chatbot: Literal["a", "b", "user"]
+    chatbot: Literal["a", "b"]
     name: str
     model: str
     content: str

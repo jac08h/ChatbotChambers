@@ -55,7 +55,7 @@ export default function App() {
                 sessions={sessions}
                 selectedSession={selectedSession}
                 showCurrent={ws.status !== "idle"}
-                currentActive={ws.status === "running" || ws.status === "paused"}
+                currentActive={selectedSession === null && ws.status !== "idle"}
                 onSelectCurrent={() => setSelectedSession(null)}
                 onSelectSession={setSelectedSession}
             />
@@ -84,7 +84,6 @@ export default function App() {
                         onResume={ws.resume}
                         onStop={ws.stop}
                         onReset={handleReset}
-                        onSendUserMessage={ws.sendUserMessage}
                     />
                 )}
             </div>

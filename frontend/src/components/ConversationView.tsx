@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, SessionConfig, Status } from "../hooks/useWebSocket";
 
 interface ConversationViewProps {
@@ -12,7 +12,6 @@ interface ConversationViewProps {
     onResume?: () => void;
     onStop?: () => void;
     onReset?: () => void;
-    onSendUserMessage?: (content: string) => void;
     readOnly?: boolean;
 }
 
@@ -35,11 +34,10 @@ export function ConversationView({
     onResume,
     onStop,
     onReset,
-    onSendUserMessage,
     readOnly = false,
 }: ConversationViewProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
-    const [userMessage, setUserMessage] = useState("");
+    const [liveMode, setLiveMode] = useState(false);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,16 +50,10 @@ export function ConversationView({
     const generatingName = generatingChatbot
         ? chatbotNames[generatingChatbot]
         : "";
-
-    const handleUserMessageSubmit = (event: React.FormEvent) => {
-        event.preventDefault();
-        const content = userMessage.trim();
-        if (!content || !onSendUserMessage) {
-            return;
-        }
-        onSendUserMessage(content);
-        setUserMessage("");
-    };
+    const visibleMessages = useMemo(
+        () => (liveMode ? buildLiveMessages(messages, generatingChatbot) : messages),
+        [generatingChatbot, liveMode, messages],
+    );
 
     return (
         <div className="conversation-container">
@@ -71,6 +63,13 @@ export function ConversationView({
                     {statusLabel(status)}
                 </span>
                 <div className="controls">
+                    <button
+                        className={liveMode ? "active-toggle" : undefined}
+                        onClick={() => setLiveMode((current) => !current)}
+                        type="button"
+                    >
+                        {liveMode ? "Full Transcript" : "Live Conversation"}
+                    </button>
                     {!readOnly && status === "running" && onPause && (
                         <button onClick={onPause}>Pause</button>
                     )}
@@ -87,42 +86,22 @@ export function ConversationView({
             </div>
 
             <div className="messages">
-                {messages.map((msg, i) => (
-                    <MessageBubble key={i} message={msg} />
+                {visibleMessages.map((item) => (
+                    item.type === "message" ? (
+                        <MessageBubble
+                            key={item.key}
+                            message={item.message}
+                            liveMode={liveMode}
+                        />
+                    ) : (
+                        <GeneratingBubble
+                            key={item.key}
+                            chatbot={item.chatbot}
+                            name={item.name}
+                            liveMode={liveMode}
+                        />
+                    )
                 ))}
-
-                {generatingChatbot && (
-                    <div className={`message-row chatbot-${generatingChatbot}`}>
-                        <div className="message-glyph">{glyphForName(generatingName)}</div>
-                        <div className="message-bubble generating">
-                            <div className="message-meta">
-                                <span className="sender-label">{generatingName}</span>
-                                <span className="model-label">composing</span>
-                            </div>
-                            <div className="typing-dots">
-                                <span /><span /><span />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {!readOnly && status === "paused" && onSendUserMessage && (
-                    <form className="user-message-composer" onSubmit={handleUserMessageSubmit}>
-                        <label htmlFor="user-message-input">Join the conversation</label>
-                        <div className="user-message-controls">
-                            <input
-                                id="user-message-input"
-                                type="text"
-                                value={userMessage}
-                                onChange={(event) => setUserMessage(event.target.value)}
-                                placeholder="Add a message to the conversation"
-                            />
-                            <button type="submit" disabled={!userMessage.trim()}>
-                                Send
-                            </button>
-                        </div>
-                    </form>
-                )}
 
                 {status === "done" && doneReason && (
                     <div className="done-banner">
@@ -140,9 +119,15 @@ export function ConversationView({
     );
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({
+    message,
+    liveMode,
+}: {
+    message: ChatMessage;
+    liveMode: boolean;
+}) {
     return (
-        <div className={`message-row chatbot-${message.chatbot}`}>
+        <div className={`message-row chatbot-${message.chatbot}${liveMode ? " live-message" : ""}`}>
             <div className="message-glyph">{glyphForName(message.name)}</div>
             <div className="message-bubble">
                 <div className="message-meta">
@@ -159,6 +144,60 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             </div>
         </div>
     );
+}
+
+function GeneratingBubble({
+    chatbot,
+    name,
+    liveMode,
+}: {
+    chatbot: "a" | "b";
+    name: string;
+    liveMode: boolean;
+}) {
+    return (
+        <div className={`message-row chatbot-${chatbot}${liveMode ? " live-message" : ""}`}>
+            <div className="message-glyph">{glyphForName(name)}</div>
+            <div className="message-bubble generating">
+                <div className="message-meta">
+                    <span className="sender-label">{name}</span>
+                    <span className="model-label">composing</span>
+                </div>
+                <div className="typing-dots">
+                    <span /><span /><span />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function buildLiveMessages(messages: ChatMessage[], generatingChatbot: "a" | "b" | null) {
+    const latestByChatbot = new Map<"a" | "b", { index: number; message: ChatMessage }>();
+
+    messages.forEach((message, index) => {
+        latestByChatbot.set(message.chatbot, { index, message });
+    });
+
+    const visible = Array.from(latestByChatbot.entries())
+        .filter(([chatbot]) => chatbot !== generatingChatbot)
+        .map(([, value]) => ({
+            type: "message" as const,
+            key: `${value.message.chatbot}-${value.index}`,
+            index: value.index,
+            message: value.message,
+        }));
+
+    if (generatingChatbot) {
+        visible.push({
+            type: "generating" as const,
+            key: `generating-${generatingChatbot}`,
+            index: messages.length,
+            chatbot: generatingChatbot,
+            name: latestByChatbot.get(generatingChatbot)?.message.name || `LM ${generatingChatbot.toUpperCase()}`,
+        });
+    }
+
+    return visible.sort((a, b) => a.index - b.index);
 }
 
 function glyphForName(name: string): string {

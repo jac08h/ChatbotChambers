@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface ChatMessage {
-    chatbot: "a" | "b" | "user";
+    chatbot: "a" | "b";
     name: string;
     model: string;
     content: string;
@@ -43,7 +43,6 @@ export interface WebSocketState {
     start: (config: SessionConfig) => void;
     pause: () => void;
     resume: () => void;
-    sendUserMessage: (content: string) => void;
     stop: () => void;
     reset: () => void;
 }
@@ -170,10 +169,6 @@ export function useWebSocket(options?: UseWebSocketOptions): WebSocketState {
         wsRef.current?.send(JSON.stringify({ type: "stop" }));
     }, []);
 
-    const sendUserMessage = useCallback((content: string) => {
-        wsRef.current?.send(JSON.stringify({ type: "user_message", content }));
-    }, []);
-
     const reset = useCallback(() => {
         wsRef.current?.close();
         wsRef.current = null;
@@ -198,7 +193,6 @@ export function useWebSocket(options?: UseWebSocketOptions): WebSocketState {
         start,
         pause,
         resume,
-        sendUserMessage,
         stop,
         reset,
     };

@@ -12,7 +12,6 @@ PROMPTS_DIR = Path(__file__).parent / "prompts"
 PREAMBLE = (PROMPTS_DIR / "preamble.md").read_text().strip()
 PREAMBLE_A = (PROMPTS_DIR / "preamble_a.md").read_text().strip()
 PREAMBLE_B = (PROMPTS_DIR / "preamble_b.md").read_text().strip()
-USER_LABEL = "You"
 
 
 class Generating:
@@ -25,7 +24,6 @@ async def run_conversation(
     api_key: str,
     pause_event: asyncio.Event,
     stop_event: asyncio.Event,
-    user_message_queue: asyncio.Queue[str],
 ) -> AsyncGenerator[Union[Generating, Message], None]:
     history: List[Tuple[str, str]] = []
     turn = 0
@@ -42,21 +40,6 @@ async def run_conversation(
                 return
 
             await pause_event.wait()
-
-            while True:
-                try:
-                    user_content = user_message_queue.get_nowait()
-                except asyncio.QueueEmpty:
-                    break
-                history.append(("user", user_content))
-                yield Message(
-                    chatbot="user",
-                    name=USER_LABEL,
-                    model="",
-                    content=user_content,
-                    turn=turn,
-                    thinking="",
-                )
 
             if stop_event.is_set():
                 return
@@ -120,9 +103,6 @@ def _build_messages(
 ) -> List[dict]:
     messages = []
     for speaker, content in history:
-        if speaker == "user":
-            messages.append({"role": "user", "content": f"{USER_LABEL}: {content}"})
-            continue
         role = "assistant" if speaker == chatbot_id else "user"
         label = labels[speaker]
         messages.append({"role": role, "content": f"{label}: {content}"})

@@ -435,6 +435,12 @@ input:focus {
     color: var(--gold-light);
 }
 
+.controls .active-toggle {
+    border-color: var(--gold);
+    background: rgba(200, 150, 62, 0.1);
+    color: var(--gold-light);
+}
+
 .controls .stop-btn {
     border-color: rgba(158, 53, 53, 0.4);
     color: var(--crimson-light);
@@ -476,9 +482,18 @@ input:focus {
     justify-content: flex-start;
 }
 
+.message-row.live-message {
+    animation: live-message-in 0.25s ease-out;
+}
+
 @keyframes appear {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes live-message-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .message-glyph {
@@ -597,6 +612,7 @@ input:focus {
 
 .message-bubble.generating {
     opacity: 0.75;
+    animation: live-message-fade 0.2s ease-out;
 }
 
 .typing-dots {
@@ -615,14 +631,17 @@ input:focus {
 
 .message-row.chatbot-a .typing-dots span { background: var(--gold); }
 .message-row.chatbot-b .typing-dots span { background: var(--crimson-light); }
-.message-row.chatbot-user .typing-dots span { background: #84d6ca; }
-
 .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
 .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes flicker {
     0%, 80%, 100% { opacity: 0.2; transform: scale(0.7); }
     40%           { opacity: 1;   transform: scale(1); }
+}
+
+@keyframes live-message-fade {
+    from { opacity: 0; }
+    to { opacity: 0.75; }
 }
 
 /* ─── Banners ───────────────────────────────────────────────── */
@@ -657,42 +676,6 @@ input:focus {
     font-size: 13px;
 }
 
-.user-message-composer {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 14px 18px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-}
-
-.user-message-controls {
-    display: flex;
-    gap: 10px;
-}
-
-.user-message-controls button {
-    background: transparent;
-    border: 1px solid var(--border-light);
-    color: var(--text-muted);
-    padding: 0 16px;
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    cursor: pointer;
-}
-
-.user-message-controls button:hover:not(:disabled) {
-    border-color: var(--gold);
-    color: var(--gold-light);
-}
-
-.user-message-controls button:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
-
 @media (max-width: 700px) {
     .conversation-header {
         flex-wrap: wrap;
@@ -700,9 +683,5 @@ input:focus {
 
     .message-bubble {
         max-width: 100%;
-    }
-
-    .user-message-controls {
-        flex-direction: column;
     }
 }

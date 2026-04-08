@@ -77,13 +77,12 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     pause_event = asyncio.Event()
     pause_event.set()
     stop_event = asyncio.Event()
-    user_message_queue: asyncio.Queue[str] = asyncio.Queue()
 
     engine_task = asyncio.create_task(
-        _run_engine(ws, config, api_key, pause_event, stop_event, user_message_queue)
+        _run_engine(ws, config, api_key, pause_event, stop_event)
     )
     listener_task = asyncio.create_task(
-        _run_listener(ws, pause_event, stop_event, user_message_queue)
+        _run_listener(ws, pause_event, stop_event)
     )
 
     done, pending = await asyncio.wait(
@@ -105,13 +104,10 @@ async def _run_engine(
     api_key: str,
     pause_event: asyncio.Event,
     stop_event: asyncio.Event,
-    user_message_queue: asyncio.Queue[str],
 ) -> None:
     try:
         last_message = None
-        async for event in run_conversation(
-            config, api_key, pause_event, stop_event, user_message_queue
-        ):
+        async for event in run_conversation(config, api_key, pause_event, stop_event):
             if isinstance(event, Generating):
                 await ws.send_json({"type": "generating", "chatbot": event.chatbot})
             else:
@@ -138,7 +134,6 @@ async def _run_listener(
     ws: WebSocket,
     pause_event: asyncio.Event,
     stop_event: asyncio.Event,
-    user_message_queue: asyncio.Queue[str],
 ) -> None:
     try:
         while True:
@@ -152,10 +147,6 @@ async def _run_listener(
                 stop_event.set()
                 pause_event.set()
                 return
-            elif msg_type == "user_message":
-                content = data.get("content", "").strip()
-                if content:
-                    await user_message_queue.put(content)
     except WebSocketDisconnect:
         stop_event.set()
         pause_event.set()
