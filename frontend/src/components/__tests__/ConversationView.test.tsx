@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { ConversationView } from "../ConversationView"
+import { buildMemoryBars } from "../conversationMemory"
 import type { ChatMessage, SessionConfig } from "../../hooks/useWebSocket"
 
 const sampleConfig: SessionConfig = {
@@ -224,6 +225,25 @@ describe("ConversationView", () => {
         expect(screen.getByText("Second from A")).toBeInTheDocument()
     })
 
+    it("active mode renders older turns as echo cards with depth", async () => {
+        const messages = [
+            makeMessage("a", "First from A", 0),
+            makeMessage("b", "A much longer line from B so the memory bars vary a bit", 0),
+            makeMessage("a", "Second from A", 1),
+        ]
+        const { container } = render(<ConversationView {...defaultProps} messages={messages} />)
+        await userEvent.click(screen.getByRole("button", { name: "Active mode" }))
+
+        const firstEcho = screen.getByTestId("echo-card-1")
+        const secondEcho = screen.getByTestId("echo-card-2")
+
+        expect(firstEcho).toHaveAttribute("data-depth", "1")
+        expect(secondEcho).toHaveAttribute("data-depth", "2")
+        expect(within(firstEcho).getByText("Bob")).toBeInTheDocument()
+        expect(within(secondEcho).getByText("Alice")).toBeInTheDocument()
+        expect(container.querySelectorAll(".memory-line").length).toBeGreaterThanOrEqual(4)
+    })
+
     it("active mode shows generating indicator for the current chatbot", async () => {
         const messages = [makeMessage("a", "Hello", 0)]
         render(
@@ -237,5 +257,19 @@ describe("ConversationView", () => {
         await userEvent.click(screen.getByRole("button", { name: "Active mode" }))
         expect(screen.getByText("composing")).toBeInTheDocument()
         expect(screen.queryByText("Hello")).not.toBeInTheDocument()
+    })
+})
+
+describe("buildMemoryBars", () => {
+    it("returns stable widths for empty content", () => {
+        expect(buildMemoryBars("")).toEqual([66, 48])
+    })
+
+    it("returns at least two bars for short content", () => {
+        expect(buildMemoryBars("short")).toEqual([55, 37])
+    })
+
+    it("adds more bars for longer content", () => {
+        expect(buildMemoryBars("This sentence is intentionally long enough to produce more than two memory bars in the echo stack.")).toEqual([44, 46, 46])
     })
 })
