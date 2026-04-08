@@ -28,19 +28,21 @@ pnpm dev   # starts on http://localhost:5173
 
 - Backend owns all conversation logic. Frontend just displays.
 - WebSockets between backend and frontend.
-- OpenRouter API via OpenAI Python SDK (`base_url="https://openrouter.ai/api/v1"`).
+- Three LLM providers: `openrouter` (via OpenAI SDK), `claude_code` (CLI subprocess), `codex` (CLI subprocess).
 - No persistence — in-memory only.
 - No streaming — complete messages appear after generation.
-- Thinking blocks from models are stripped before being shown or passed to the other chatbot.
+- Thinking blocks (`<think>` tags) are stripped from OpenRouter responses before being shown or passed to the other chatbot.
 
 ## Backend Structure
 
 ```
 backend/lmparlor/
-    main.py       FastAPI app, WebSocket endpoint, GET /models
-    engine.py     Async generator conversation loop
-    openrouter.py OpenRouter API client, strips <think> tags
-    models.py     Pydantic models + hardcoded model list
+    main.py        FastAPI app, WebSocket endpoint, GET /models, GET /providers, GET /presets
+    engine.py      Async generator conversation loop
+    openrouter.py  OpenRouter API client, strips <think> tags
+    claude_code.py Claude CLI subprocess client
+    codex_cli.py   Codex CLI subprocess client
+    models.py      Pydantic models + hardcoded model lists
 ```
 
 ## WebSocket Protocol
@@ -54,8 +56,22 @@ Client → Server:
 Server → Client:
 - `{"type": "generating", "chatbot": "a"|"b"}`
 - `{"type": "message", "data": {...}}`
-- `{"type": "done", "reason": "leave"|"stopped"|"max_turns"}`
+- `{"type": "done", "reason": "leave", "chatbot": "a"|"b"}`
+- `{"type": "done", "reason": "stopped"|"max_turns"}`
 - `{"type": "error", "message": "..."}`
+
+## How to Test
+
+**Backend** (from `backend/`):
+```bash
+uv run pytest tests/                          # all tests
+uv run pytest tests/ -m "not integration"    # unit tests only
+```
+
+**Frontend** (from `frontend/`):
+```bash
+pnpm test
+```
 
 ## Coding Conventions
 
