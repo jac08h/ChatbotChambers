@@ -5,6 +5,7 @@ import {
     type SessionConfig,
     type Status,
 } from "../hooks/useWebSocket";
+import { buildMemoryBars } from "./conversationMemory";
 
 interface ConversationViewProps {
     messages: ChatMessage[];
@@ -37,12 +38,23 @@ interface GeneratingItem {
 
 type VisibleItem = MessageItem | GeneratingItem;
 
+const MAX_ECHO_ITEMS = 4;
+const DEFAULT_GENERATING_BAR_WIDTHS = [82, 56, 64];
+
 function doneLabel(reason: string, config: SessionConfig | null): string {
-    if (reason === "leave:a") return `${config?.chatbot_a.name || DEFAULT_CHATBOT_NAMES.a} has left the parlor.`;
-    if (reason === "leave:b") return `${config?.chatbot_b.name || DEFAULT_CHATBOT_NAMES.b} has left the parlor.`;
-    if (reason === "stopped") return "The conversation was brought to a close.";
-    if (reason === "max_turns") return "The evening's discourse has concluded.";
-    return "The conversation has ended.";
+    if (reason === "leave:a") {
+        return `${config?.chatbot_a.name || DEFAULT_CHATBOT_NAMES.a} left the chat.`;
+    }
+    if (reason === "leave:b") {
+        return `${config?.chatbot_b.name || DEFAULT_CHATBOT_NAMES.b} left the chat.`;
+    }
+    if (reason === "stopped") {
+        return "Conversation stopped.";
+    }
+    if (reason === "max_turns") {
+        return "Reached the turn limit.";
+    }
+    return "Conversation ended.";
 }
 
 export function ConversationView({
@@ -62,91 +74,146 @@ export function ConversationView({
     const [liveMode, setLiveMode] = useState(false);
 
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, generatingChatbot, status]);
+        bottomRef.current?.scrollIntoView({ behavior: liveMode ? "auto" : "smooth" });
+    }, [liveMode, messages, generatingChatbot, status]);
 
-    const visibleMessages = useMemo(
-        () => (
-            liveMode
-                ? buildLiveMessages(messages, generatingChatbot, DEFAULT_CHATBOT_NAMES)
-                : buildTranscriptMessages(messages)
-        ),
-        [generatingChatbot, liveMode, messages],
+    const transcriptItems = useMemo(
+        () => buildTimelineItems(messages, generatingChatbot, DEFAULT_CHATBOT_NAMES).filter((item) => item.type === "message"),
+        [generatingChatbot, messages],
     );
+
+    const activeStage = useMemo(
+        () => buildActiveStage(messages, generatingChatbot, DEFAULT_CHATBOT_NAMES),
+        [generatingChatbot, messages],
+    );
+
+    const chamberTitle = config
+        ? `${config.chatbot_a.name} × ${config.chatbot_b.name}`
+        : "Two chatbots, one room";
 
     return (
         <div className="conversation-container">
             <div className="conversation-header">
-                <span className="header-title">LM Parlor</span>
-                <span className="status-badge" data-status={status}>
-                    {statusLabel(status)}
-                </span>
-                <div className="controls">
-                    <button
-                        className={liveMode ? "active-toggle" : undefined}
-                        onClick={() => setLiveMode((current) => !current)}
-                        type="button"
-                    >
-                        {liveMode ? "Full Transcript" : "Live Conversation"}
-                    </button>
-                    {!readOnly && status === "running" && onPause && (
-                        <button onClick={onPause}>Pause</button>
-                    )}
-                    {!readOnly && status === "paused" && onResume && (
-                        <button onClick={onResume}>Resume</button>
-                    )}
-                    {!readOnly && (status === "running" || status === "paused") && onStop && (
-                        <button onClick={onStop} className="stop-btn">End Session</button>
-                    )}
-                    {!readOnly && (status === "done" || status === "error") && onReset && (
-                        <button onClick={onReset}>New Session</button>
-                    )}
+                <div className="conversation-brand">
+                    <span className="header-title">ChatbotChambers</span>
+                    <span className="conversation-title">{chamberTitle}</span>
+                </div>
+                <div className="conversation-toolbar">
+                    <span className="status-badge" data-status={status}>
+                        {statusLabel(status)}
+                    </span>
+                    <div className="view-toggle" role="tablist" aria-label="Conversation view mode">
+                        <button
+                            className={!liveMode ? "active-toggle" : undefined}
+                            onClick={() => setLiveMode(false)}
+                            type="button"
+                        >
+                            Transcript
+                        </button>
+                        <button
+                            className={liveMode ? "active-toggle" : undefined}
+                            onClick={() => setLiveMode(true)}
+                            type="button"
+                        >
+                            Active mode
+                        </button>
+                    </div>
+                    <div className="controls">
+                        {!readOnly && status === "running" && onPause && (
+                            <button onClick={onPause} type="button">Pause</button>
+                        )}
+                        {!readOnly && status === "paused" && onResume && (
+                            <button onClick={onResume} type="button">Resume</button>
+                        )}
+                        {!readOnly && (status === "running" || status === "paused") && onStop && (
+                            <button onClick={onStop} className="stop-btn" type="button">Stop</button>
+                        )}
+                        {!readOnly && (status === "done" || status === "error") && onReset && (
+                            <button onClick={onReset} type="button">New chat</button>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className="messages">
-                {visibleMessages.map((item) => (
-                    item.type === "message" ? (
-                        <MessageBubble
-                            key={item.key}
-                            message={item.message}
-                            liveMode={liveMode}
-                        />
-                    ) : (
-                        <GeneratingBubble
-                            key={item.key}
-                            chatbot={item.chatbot}
-                            name={item.name}
-                            liveMode={liveMode}
-                        />
-                    )
-                ))}
-
-                {status === "done" && doneReason && (
-                    <div className="done-banner">
-                        {doneLabel(doneReason, config)}
+            {liveMode ? (
+                <div className="active-stage">
+                    <div className="active-stage-copy">
+                        <div>
+                            <p className="eyebrow">Active mode</p>
+                            <h2>The newest turn stays readable. Everything older becomes an echo.</h2>
+                        </div>
+                        <p className="active-stage-summary">
+                            This keeps the room focused without losing the feeling of conversation building up behind it.
+                        </p>
                     </div>
-                )}
 
-                {status === "error" && error && (
-                    <div className="error-banner">{error}</div>
-                )}
+                    <div className="active-stack" data-echo-count={activeStage.echoes.length}>
+                        {activeStage.echoes.map((item, index) => (
+                            <EchoCard key={item.key} item={item} depth={index + 1} />
+                        ))}
+                        {activeStage.focus ? (
+                            activeStage.focus.type === "message" ? (
+                                <MessageBubble message={activeStage.focus.message} variant="focus" />
+                            ) : (
+                                <GeneratingBubble
+                                    chatbot={activeStage.focus.chatbot}
+                                    name={activeStage.focus.name}
+                                    variant="focus"
+                                />
+                            )
+                        ) : (
+                            <div className="empty-stage">
+                                <span className="empty-stage-mark">◦</span>
+                                <p>No messages yet.</p>
+                                <span>Start a chat and the latest turn will lock into view here.</span>
+                            </div>
+                        )}
+                    </div>
 
-                <div ref={bottomRef} />
-            </div>
+                    {status === "done" && doneReason && (
+                        <div className="done-banner">{doneLabel(doneReason, config)}</div>
+                    )}
+
+                    {status === "error" && error && (
+                        <div className="error-banner">{error}</div>
+                    )}
+
+                    <div ref={bottomRef} />
+                </div>
+            ) : (
+                <div className="messages">
+                    {transcriptItems.map((item) => (
+                        <MessageBubble key={item.key} message={item.message} />
+                    ))}
+
+                    {status === "done" && doneReason && (
+                        <div className="done-banner">{doneLabel(doneReason, config)}</div>
+                    )}
+
+                    {status === "error" && error && (
+                        <div className="error-banner">{error}</div>
+                    )}
+
+                    <div ref={bottomRef} />
+                </div>
+            )}
         </div>
     );
 }
 
 function MessageBubble({
     message,
-    liveMode,
+    variant = "transcript",
 }: {
     message: ChatMessage;
-    liveMode: boolean;
+    variant?: "transcript" | "focus";
 }) {
+    const rowClassName = variant === "focus"
+        ? `focus-message chatbot-${message.chatbot}`
+        : `message-row chatbot-${message.chatbot}`;
+
     return (
-        <div className={`message-row chatbot-${message.chatbot}${liveMode ? " live-message" : ""}`}>
+        <div className={rowClassName}>
             <div className="message-glyph">{glyphForName(message.name)}</div>
             <div className="message-bubble">
                 <div className="message-meta">
@@ -168,14 +235,18 @@ function MessageBubble({
 function GeneratingBubble({
     chatbot,
     name,
-    liveMode,
+    variant = "transcript",
 }: {
     chatbot: "a" | "b";
     name: string;
-    liveMode: boolean;
+    variant?: "transcript" | "focus";
 }) {
+    const rowClassName = variant === "focus"
+        ? `focus-message chatbot-${chatbot}`
+        : `message-row chatbot-${chatbot}`;
+
     return (
-        <div className={`message-row chatbot-${chatbot}${liveMode ? " live-message" : ""}`}>
+        <div className={rowClassName}>
             <div className="message-glyph">{glyphForName(name)}</div>
             <div className="message-bubble generating">
                 <div className="message-meta">
@@ -190,46 +261,68 @@ function GeneratingBubble({
     );
 }
 
-function buildTranscriptMessages(messages: ChatMessage[]): VisibleItem[] {
-    return messages.map((message, index) => ({
+function EchoCard({ item, depth }: { item: VisibleItem; depth: number }) {
+    const name = item.type === "message" ? item.message.name : item.name;
+    const chatbot = item.type === "message" ? item.message.chatbot : item.chatbot;
+    const bars = item.type === "message"
+        ? buildMemoryBars(item.message.content)
+        : DEFAULT_GENERATING_BAR_WIDTHS;
+
+    return (
+        <div
+            className={`echo-card chatbot-${chatbot}`}
+            data-depth={depth}
+            data-testid={`echo-card-${depth}`}
+            style={{ "--echo-depth": depth } as React.CSSProperties}
+        >
+            <div className="echo-card-header">
+                <span className="echo-card-label">{name}</span>
+                <span className="echo-card-state">echo</span>
+            </div>
+            <div className="memory-lines" aria-hidden="true">
+                {bars.map((width, index) => (
+                    <span key={`${item.key}-${index}`} className="memory-line" style={{ width: `${width}%` }} />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function buildTimelineItems(
+    messages: ChatMessage[],
+    generatingChatbot: "a" | "b" | null,
+    fallbackNames: Record<"a" | "b", string>,
+): VisibleItem[] {
+    const items: VisibleItem[] = messages.map((message, index) => ({
         type: "message",
         key: `${message.chatbot}-${index}`,
         index,
         message,
     }));
-}
-
-function buildLiveMessages(
-    messages: ChatMessage[],
-    generatingChatbot: "a" | "b" | null,
-    fallbackNames: Record<"a" | "b", string>,
-): VisibleItem[] {
-    const latestByChatbot = new Map<"a" | "b", { index: number; message: ChatMessage }>();
-
-    messages.forEach((message, index) => {
-        latestByChatbot.set(message.chatbot, { index, message });
-    });
-
-    const visible: VisibleItem[] = Array.from(latestByChatbot.entries())
-        .filter(([chatbot]) => chatbot !== generatingChatbot)
-        .map(([, value]) => ({
-            type: "message" as const,
-            key: `${value.message.chatbot}-${value.index}`,
-            index: value.index,
-            message: value.message,
-        }));
 
     if (generatingChatbot) {
-        visible.push({
-            type: "generating" as const,
+        const latestMessage = [...messages].reverse().find((message) => message.chatbot === generatingChatbot);
+        items.push({
+            type: "generating",
             key: `generating-${generatingChatbot}`,
             index: messages.length,
             chatbot: generatingChatbot,
-            name: latestByChatbot.get(generatingChatbot)?.message.name || fallbackNames[generatingChatbot],
+            name: latestMessage?.name || fallbackNames[generatingChatbot],
         });
     }
 
-    return visible.sort((a, b) => a.index - b.index);
+    return items;
+}
+
+function buildActiveStage(
+    messages: ChatMessage[],
+    generatingChatbot: "a" | "b" | null,
+    fallbackNames: Record<"a" | "b", string>,
+): { focus: VisibleItem | null; echoes: VisibleItem[] } {
+    const timeline = buildTimelineItems(messages, generatingChatbot, fallbackNames);
+    const focus = timeline.at(-1) ?? null;
+    const echoes = timeline.slice(Math.max(0, timeline.length - (MAX_ECHO_ITEMS + 1)), -1).reverse();
+    return { focus, echoes };
 }
 
 function glyphForName(name: string): string {
@@ -238,10 +331,10 @@ function glyphForName(name: string): string {
 
 function statusLabel(status: Status): string {
     const labels: Record<Status, string> = {
-        idle: "Idle",
-        running: "In Session",
+        idle: "Ready",
+        running: "Running",
         paused: "Paused",
-        done: "Concluded",
+        done: "Done",
         error: "Error",
     };
     return labels[status];

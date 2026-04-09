@@ -80,29 +80,37 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     useEffect(() => {
         fetchModels(providerA).then((data) => {
             setModelsA(data);
-            if (data.length > 0) setModelA(data[0].id);
+            if (data.length > 0) {
+                setModelA(data[0].id);
+            }
         });
     }, [providerA]);
 
     useEffect(() => {
         fetchModels(providerB).then((data) => {
             setModelsB(data);
-            if (data.length > 0) setModelB(data[0].id);
+            if (data.length > 0) {
+                setModelB(data[0].id);
+            }
         });
     }, [providerB]);
 
-    const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
+    const availableProviders = (Object.keys(providers) as Provider[]).filter((provider) => providers[provider]);
+
+    const chatbotPairingText = `${nameA || DEFAULT_CHATBOT_NAMES.a} × ${nameB || DEFAULT_CHATBOT_NAMES.b}`;
 
     const loadPreset = (id: string) => {
-        const preset = presets.find((p) => p.id === id);
-        if (!preset) return;
+        const preset = presets.find((item) => item.id === id);
+        if (!preset) {
+            return;
+        }
         setSharedPrompt(preset.shared_system_prompt);
         setPromptA(preset.system_prompt_a);
         setPromptB(preset.system_prompt_b);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (event: React.FormEvent) => {
+        event.preventDefault();
         onStart({
             chatbot_a: { name: nameA, model: modelA, system_prompt: promptA, provider: providerA },
             chatbot_b: { name: nameB, model: modelB, system_prompt: promptB, provider: providerB },
@@ -113,122 +121,178 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
     return (
         <div className="setup-page">
-            <div className="setup-topbar">
-                <span className="header-title">LM Parlor</span>
-            </div>
-            <div className="setup-container">
-                {error && <div className="error-banner">{error}</div>}
-
-                <form onSubmit={handleSubmit} className="setup-form">
-                    {presets.length > 0 && (
-                        <div className="form-section form-row">
-                            <label>Scenario</label>
-                            <select
-                                defaultValue=""
-                                onChange={(e) => loadPreset(e.target.value)}
-                            >
-                                <option value="" disabled>— select —</option>
-                                {presets.map((p) => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
+            <div className="setup-shell">
+                <section className="setup-hero">
+                    <div className="brand-lockup">
+                        <span className="brand-chip">ChatbotChambers</span>
+                        <span className="brand-caption">Dark, focused conversations between two models.</span>
+                    </div>
+                    <div className="hero-copy">
+                        <p className="eyebrow">Quiet by default</p>
+                        <h1>Start a conversation that feels like it belongs in its own room.</h1>
+                        <p className="hero-summary">
+                            Set the shared context, shape each chatbot, and let the chamber take over.
+                            Active mode keeps the newest turn sharp while older ones drift into memory.
+                        </p>
+                    </div>
+                    <div className="hero-notes">
+                        <div className="hero-note">
+                            <span className="hero-note-label">Pairing</span>
+                            <strong>{chatbotPairingText}</strong>
                         </div>
-                    )}
+                        <div className="hero-note">
+                            <span className="hero-note-label">Focus</span>
+                            <strong>Transcript + active mode</strong>
+                        </div>
+                        <div className="hero-note">
+                            <span className="hero-note-label">Tone</span>
+                            <strong>Minimal, dark, immersive</strong>
+                        </div>
+                    </div>
+                </section>
 
-                    <div className="form-section">
-                        <label>Scene</label>
-                        <textarea
-                            value={sharedPrompt}
-                            onChange={(e) => setSharedPrompt(e.target.value)}
-                            placeholder="Context both voices share. Sets the stage."
-                            rows={4}
-                        />
+                <section className="setup-card">
+                    <div className="setup-card-header">
+                        <div>
+                            <p className="eyebrow">Setup</p>
+                            <h2>Configure the chamber</h2>
+                        </div>
+                        <span className="setup-card-badge">Ready when you are</span>
                     </div>
 
-                    <div className="chatbot-configs">
-                        <div className="chatbot-config side-a">
-                            <h3>Guest A</h3>
-                            <label>Name</label>
-                            <input
-                                type="text"
-                                value={nameA}
-                                onChange={(e) => setNameA(e.target.value)}
-                                placeholder="LM A"
-                            />
-                            <label>Provider</label>
-                            <select
-                                value={providerA}
-                                onChange={(e) => setProviderA(e.target.value as Provider)}
-                            >
-                                {availableProviders.map((p) => (
-                                    <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
-                                ))}
-                            </select>
-                            <label>Model</label>
-                            <select value={modelA} onChange={(e) => setModelA(e.target.value)}>
-                                {modelsA.map((m) => (
-                                    <option key={m.id} value={m.id}>{m.name}</option>
-                                ))}
-                            </select>
-                            <label>Role</label>
+                    {error && <div className="error-banner">{error}</div>}
+
+                    <form onSubmit={handleSubmit} className="setup-form">
+                        {presets.length > 0 && (
+                            <label className="field field-inline">
+                                <span>Preset</span>
+                                <select defaultValue="" onChange={(event) => loadPreset(event.target.value)}>
+                                    <option value="" disabled>Choose one</option>
+                                    {presets.map((preset) => (
+                                        <option key={preset.id} value={preset.id}>{preset.name}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        )}
+
+                        <label className="field">
+                            <span>Shared prompt</span>
                             <textarea
-                                value={promptA}
-                                onChange={(e) => setPromptA(e.target.value)}
-                                placeholder="Character or persona for Guest A"
-                                rows={3}
+                                value={sharedPrompt}
+                                onChange={(event) => setSharedPrompt(event.target.value)}
+                                placeholder="What should both chatbots know before they begin?"
+                                rows={5}
                             />
+                        </label>
+
+                        <div className="chatbot-configs">
+                            <section className="chatbot-config side-a">
+                                <div className="chatbot-config-header">
+                                    <p className="eyebrow">Left side</p>
+                                    <h3>Chatbot A</h3>
+                                </div>
+                                <label className="field">
+                                    <span>Name</span>
+                                    <input
+                                        type="text"
+                                        value={nameA}
+                                        onChange={(event) => setNameA(event.target.value)}
+                                        placeholder="Name this chatbot"
+                                    />
+                                </label>
+                                <label className="field">
+                                    <span>Provider</span>
+                                    <select
+                                        value={providerA}
+                                        onChange={(event) => setProviderA(event.target.value as Provider)}
+                                    >
+                                        {availableProviders.map((provider) => (
+                                            <option key={provider} value={provider}>{PROVIDER_LABELS[provider]}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="field">
+                                    <span>Model</span>
+                                    <select value={modelA} onChange={(event) => setModelA(event.target.value)}>
+                                        {modelsA.map((model) => (
+                                            <option key={model.id} value={model.id}>{model.name}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="field">
+                                    <span>Instructions</span>
+                                    <textarea
+                                        value={promptA}
+                                        onChange={(event) => setPromptA(event.target.value)}
+                                        placeholder="How should Chatbot A behave?"
+                                        rows={4}
+                                    />
+                                </label>
+                            </section>
+
+                            <section className="chatbot-config side-b">
+                                <div className="chatbot-config-header">
+                                    <p className="eyebrow">Right side</p>
+                                    <h3>Chatbot B</h3>
+                                </div>
+                                <label className="field">
+                                    <span>Name</span>
+                                    <input
+                                        type="text"
+                                        value={nameB}
+                                        onChange={(event) => setNameB(event.target.value)}
+                                        placeholder="Name this chatbot"
+                                    />
+                                </label>
+                                <label className="field">
+                                    <span>Provider</span>
+                                    <select
+                                        value={providerB}
+                                        onChange={(event) => setProviderB(event.target.value as Provider)}
+                                    >
+                                        {availableProviders.map((provider) => (
+                                            <option key={provider} value={provider}>{PROVIDER_LABELS[provider]}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="field">
+                                    <span>Model</span>
+                                    <select value={modelB} onChange={(event) => setModelB(event.target.value)}>
+                                        {modelsB.map((model) => (
+                                            <option key={model.id} value={model.id}>{model.name}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="field">
+                                    <span>Instructions</span>
+                                    <textarea
+                                        value={promptB}
+                                        onChange={(event) => setPromptB(event.target.value)}
+                                        placeholder="How should Chatbot B behave?"
+                                        rows={4}
+                                    />
+                                </label>
+                            </section>
                         </div>
 
-                        <div className="chatbot-config side-b">
-                            <h3>Guest B</h3>
-                            <label>Name</label>
+                        <label className="field field-inline turns-field">
+                            <span>Max turns</span>
                             <input
-                                type="text"
-                                value={nameB}
-                                onChange={(e) => setNameB(e.target.value)}
-                                placeholder="LM B"
+                                type="number"
+                                value={maxTurns}
+                                onChange={(event) => setMaxTurns(Number(event.target.value))}
+                                min={1}
+                                max={200}
                             />
-                            <label>Provider</label>
-                            <select
-                                value={providerB}
-                                onChange={(e) => setProviderB(e.target.value as Provider)}
-                            >
-                                {availableProviders.map((p) => (
-                                    <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
-                                ))}
-                            </select>
-                            <label>Model</label>
-                            <select value={modelB} onChange={(e) => setModelB(e.target.value)}>
-                                {modelsB.map((m) => (
-                                    <option key={m.id} value={m.id}>{m.name}</option>
-                                ))}
-                            </select>
-                            <label>Role</label>
-                            <textarea
-                                value={promptB}
-                                onChange={(e) => setPromptB(e.target.value)}
-                                placeholder="Character or persona for Guest B"
-                                rows={3}
-                            />
+                        </label>
+
+                        <div className="setup-actions">
+                            <button type="submit" className="start-btn" disabled={!modelA || !modelB}>
+                                Start
+                            </button>
                         </div>
-                    </div>
-
-                    <div className="form-section form-row">
-                        <label>Turns</label>
-                        <input
-                            type="number"
-                            value={maxTurns}
-                            onChange={(e) => setMaxTurns(Number(e.target.value))}
-                            min={1}
-                            max={200}
-                            style={{ width: "80px" }}
-                        />
-                    </div>
-
-                    <button type="submit" className="start-btn" disabled={!modelA || !modelB}>
-                        Convene
-                    </button>
-                </form>
+                    </form>
+                </section>
             </div>
         </div>
     );

@@ -15,7 +15,7 @@ const defaultProps = {
 describe("HistorySidebar", () => {
     it("shows empty state message when no sessions", () => {
         render(<HistorySidebar {...defaultProps} />)
-        expect(screen.getByText("No completed sessions yet.")).toBeInTheDocument()
+        expect(screen.getByText("No saved conversations yet.")).toBeInTheDocument()
     })
 
     it("renders session labels", () => {
@@ -56,24 +56,24 @@ describe("HistorySidebar", () => {
         expect(onSelect).toHaveBeenCalledWith(42)
     })
 
-    it("shows Current Session button when showCurrent is true", () => {
+    it("shows Current chat button when showCurrent is true", () => {
         render(<HistorySidebar {...defaultProps} showCurrent />)
-        expect(screen.getByRole("button", { name: "Current Session" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Current chat" })).toBeInTheDocument()
     })
 
-    it("hides Current Session button when showCurrent is false", () => {
+    it("hides Current chat button when showCurrent is false", () => {
         render(<HistorySidebar {...defaultProps} showCurrent={false} />)
-        expect(screen.queryByRole("button", { name: "Current Session" })).not.toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Current chat" })).not.toBeInTheDocument()
     })
 
-    it("calls onSelectCurrent when Current Session button clicked", async () => {
+    it("calls onSelectCurrent when Current chat button clicked", async () => {
         const onSelectCurrent = vi.fn()
         render(<HistorySidebar {...defaultProps} showCurrent onSelectCurrent={onSelectCurrent} />)
-        await userEvent.click(screen.getByRole("button", { name: "Current Session" }))
+        await userEvent.click(screen.getByRole("button", { name: "Current chat" }))
         expect(onSelectCurrent).toHaveBeenCalledOnce()
     })
 
-    it("Current Session button is active when selectedSession is null and currentActive", () => {
+    it("Current chat button is active when selectedSession is null and currentActive", () => {
         render(
             <HistorySidebar
                 {...defaultProps}
@@ -82,7 +82,7 @@ describe("HistorySidebar", () => {
                 selectedSession={null}
             />
         )
-        const btn = screen.getByRole("button", { name: "Current Session" })
+        const btn = screen.getByRole("button", { name: "Current chat" })
         expect(btn).toHaveClass("active")
     })
 })

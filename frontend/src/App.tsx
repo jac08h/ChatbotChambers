@@ -94,7 +94,7 @@ export default function App() {
 function buildSessionLabel(messages: ChatMessage[], sessionId: number): string {
     const firstMessage = messages[0]?.content?.trim();
     if (!firstMessage) {
-        return `Session ${sessionId}`;
+        return `Conversation ${sessionId}`;
     }
     return firstMessage.length > SESSION_LABEL_MAX_LENGTH
         ? `${firstMessage.slice(0, SESSION_LABEL_MAX_LENGTH)}…`
