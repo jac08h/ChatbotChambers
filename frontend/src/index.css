@@ -746,7 +746,7 @@ input:focus {
 .active-stage {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1rem;
     position: relative;
     overflow: hidden;
 }
@@ -790,6 +790,7 @@ input:focus {
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: linear-gradient(180deg, rgba(18, 23, 30, 0.98), rgba(13, 17, 23, 0.94));
     box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+    animation: focus-enter 360ms ease both;
 }
 
 .focus-message .message-bubble {
@@ -815,6 +816,7 @@ input:focus {
     filter: blur(calc(var(--echo-depth) * 0.65px));
     mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.92), transparent);
     backdrop-filter: blur(12px);
+    animation: echo-fade-in 400ms ease both;
 }
 
 .echo-card.chatbot-a {
@@ -913,6 +915,30 @@ input:focus {
     40% {
         opacity: 1;
         transform: scale(1);
+    }
+}
+
+@keyframes echo-fade-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(0) scale(0.98);
+        filter: blur(4px);
+    }
+    to {
+        opacity: calc(0.48 - (var(--echo-depth) * 0.08));
+        transform: translateX(-50%) translateY(calc(var(--offset) * -1)) scale(calc(1 - (var(--echo-depth) * 0.025)));
+        filter: blur(calc(var(--echo-depth) * 0.65px));
+    }
+}
+
+@keyframes focus-enter {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
     }
 }
 

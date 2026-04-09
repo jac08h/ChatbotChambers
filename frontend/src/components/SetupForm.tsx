@@ -123,16 +123,10 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         <div className="setup-page">
             <div className="setup-shell">
                 <section className="setup-hero">
-                    <div className="brand-lockup">
-                        <span className="brand-chip">ChatbotChambers</span>
-                        <span className="brand-caption">Dark, focused conversations between two models.</span>
-                    </div>
                     <div className="hero-copy">
-                        <p className="eyebrow">Quiet by default</p>
-                        <h1>Start a conversation that feels like it belongs in its own room.</h1>
+                        <h1>LMParlor</h1>
                         <p className="hero-summary">
-                            Set the shared context, shape each chatbot, and let the chamber take over.
-                            Active mode keeps the newest turn sharp while older ones drift into memory.
+                            Two chatbots, one shared conversation. Configure each side and let them talk.
                         </p>
                     </div>
                     <div className="hero-notes">
@@ -140,24 +134,14 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             <span className="hero-note-label">Pairing</span>
                             <strong>{chatbotPairingText}</strong>
                         </div>
-                        <div className="hero-note">
-                            <span className="hero-note-label">Focus</span>
-                            <strong>Transcript + active mode</strong>
-                        </div>
-                        <div className="hero-note">
-                            <span className="hero-note-label">Tone</span>
-                            <strong>Minimal, dark, immersive</strong>
-                        </div>
                     </div>
                 </section>
 
                 <section className="setup-card">
                     <div className="setup-card-header">
                         <div>
-                            <p className="eyebrow">Setup</p>
-                            <h2>Configure the chamber</h2>
+                            <h2>Configure</h2>
                         </div>
-                        <span className="setup-card-badge">Ready when you are</span>
                     </div>
 
                     {error && <div className="error-banner">{error}</div>}
@@ -188,7 +172,6 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                         <div className="chatbot-configs">
                             <section className="chatbot-config side-a">
                                 <div className="chatbot-config-header">
-                                    <p className="eyebrow">Left side</p>
                                     <h3>Chatbot A</h3>
                                 </div>
                                 <label className="field">
@@ -232,7 +215,6 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
                             <section className="chatbot-config side-b">
                                 <div className="chatbot-config-header">
-                                    <p className="eyebrow">Right side</p>
                                     <h3>Chatbot B</h3>
                                 </div>
                                 <label className="field">

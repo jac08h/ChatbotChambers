@@ -71,7 +71,7 @@ export function ConversationView({
     readOnly = false,
 }: ConversationViewProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
-    const [liveMode, setLiveMode] = useState(false);
+    const [liveMode, setLiveMode] = useState(true);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: liveMode ? "auto" : "smooth" });
@@ -95,7 +95,7 @@ export function ConversationView({
         <div className="conversation-container">
             <div className="conversation-header">
                 <div className="conversation-brand">
-                    <span className="header-title">ChatbotChambers</span>
+                    <span className="header-title">LMParlor</span>
                     <span className="conversation-title">{chamberTitle}</span>
                 </div>
                 <div className="conversation-toolbar">
@@ -137,16 +137,6 @@ export function ConversationView({
 
             {liveMode ? (
                 <div className="active-stage">
-                    <div className="active-stage-copy">
-                        <div>
-                            <p className="eyebrow">Active mode</p>
-                            <h2>The newest turn stays readable. Everything older becomes an echo.</h2>
-                        </div>
-                        <p className="active-stage-summary">
-                            This keeps the room focused without losing the feeling of conversation building up behind it.
-                        </p>
-                    </div>
-
                     <div className="active-stack" data-echo-count={activeStage.echoes.length}>
                         {activeStage.echoes.map((item, index) => (
                             <EchoCard key={item.key} item={item} depth={index + 1} />
@@ -164,8 +154,7 @@ export function ConversationView({
                         ) : (
                             <div className="empty-stage">
                                 <span className="empty-stage-mark">◦</span>
-                                <p>No messages yet.</p>
-                                <span>Start a chat and the latest turn will lock into view here.</span>
+                                <p>No messages yet</p>
                             </div>
                         )}
                     </div>
@@ -277,7 +266,6 @@ function EchoCard({ item, depth }: { item: VisibleItem; depth: number }) {
         >
             <div className="echo-card-header">
                 <span className="echo-card-label">{name}</span>
-                <span className="echo-card-state">echo</span>
             </div>
             <div className="memory-lines" aria-hidden="true">
                 {bars.map((width, index) => (

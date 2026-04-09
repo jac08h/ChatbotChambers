@@ -33,18 +33,19 @@ const defaultProps = {
 }
 
 describe("ConversationView", () => {
-    it("renders message bubbles for each message", () => {
+    it("renders message bubbles for each message in transcript mode", async () => {
         render(
             <ConversationView
                 {...defaultProps}
                 messages={[makeMessage("a", "Hello"), makeMessage("b", "Hi there")]}
             />
         )
+        await userEvent.click(screen.getByRole("button", { name: "Transcript" }))
         expect(screen.getByText("Hello")).toBeInTheDocument()
         expect(screen.getByText("Hi there")).toBeInTheDocument()
     })
 
-    it("shows generating indicator in active mode when generatingChatbot is set", async () => {
+    it("shows generating indicator in active mode when generatingChatbot is set", () => {
         render(
             <ConversationView
                 {...defaultProps}
@@ -52,11 +53,10 @@ describe("ConversationView", () => {
                 generatingChatbot="a"
             />
         )
-        await userEvent.click(screen.getByRole("button", { name: "Active mode" }))
         expect(screen.getByText("composing")).toBeInTheDocument()
     })
 
-    it("does not show generating indicator in transcript mode", () => {
+    it("does not show generating indicator in transcript mode", async () => {
         render(
             <ConversationView
                 {...defaultProps}
@@ -64,6 +64,7 @@ describe("ConversationView", () => {
                 generatingChatbot="a"
             />
         )
+        await userEvent.click(screen.getByRole("button", { name: "Transcript" }))
         expect(screen.queryByText("composing")).not.toBeInTheDocument()
     })
 
@@ -200,39 +201,38 @@ describe("ConversationView", () => {
         expect(screen.getByText("My reasoning")).toBeInTheDocument()
     })
 
-    it("transcript mode shows all messages", () => {
+    it("transcript mode shows all messages", async () => {
         const messages = [
             makeMessage("a", "First from A", 0),
             makeMessage("b", "First from B", 0),
             makeMessage("a", "Second from A", 1),
         ]
         render(<ConversationView {...defaultProps} messages={messages} />)
+        await userEvent.click(screen.getByRole("button", { name: "Transcript" }))
         expect(screen.getByText("First from A")).toBeInTheDocument()
         expect(screen.getByText("First from B")).toBeInTheDocument()
         expect(screen.getByText("Second from A")).toBeInTheDocument()
     })
 
-    it("active mode keeps only the latest message readable", async () => {
+    it("active mode keeps only the latest message readable", () => {
         const messages = [
             makeMessage("a", "First from A", 0),
             makeMessage("b", "First from B", 0),
             makeMessage("a", "Second from A", 1),
         ]
         render(<ConversationView {...defaultProps} messages={messages} />)
-        await userEvent.click(screen.getByRole("button", { name: "Active mode" }))
         expect(screen.queryByText("First from A")).not.toBeInTheDocument()
         expect(screen.queryByText("First from B")).not.toBeInTheDocument()
         expect(screen.getByText("Second from A")).toBeInTheDocument()
     })
 
-    it("active mode renders older turns as echo cards with depth", async () => {
+    it("active mode renders older turns as echo cards with depth", () => {
         const messages = [
             makeMessage("a", "First from A", 0),
             makeMessage("b", "A much longer line from B so the memory bars vary a bit", 0),
             makeMessage("a", "Second from A", 1),
         ]
         const { container } = render(<ConversationView {...defaultProps} messages={messages} />)
-        await userEvent.click(screen.getByRole("button", { name: "Active mode" }))
 
         const firstEcho = screen.getByTestId("echo-card-1")
         const secondEcho = screen.getByTestId("echo-card-2")
@@ -245,7 +245,7 @@ describe("ConversationView", () => {
         expect(container.querySelectorAll(".memory-line")).toHaveLength(expectedLineCount)
     })
 
-    it("active mode shows generating indicator for the current chatbot", async () => {
+    it("active mode shows generating indicator for the current chatbot", () => {
         const messages = [makeMessage("a", "Hello", 0)]
         render(
             <ConversationView
@@ -255,7 +255,6 @@ describe("ConversationView", () => {
                 generatingChatbot="b"
             />
         )
-        await userEvent.click(screen.getByRole("button", { name: "Active mode" }))
         expect(screen.getByText("composing")).toBeInTheDocument()
         expect(screen.queryByText("Hello")).not.toBeInTheDocument()
     })
