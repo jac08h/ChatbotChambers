@@ -119,15 +119,16 @@ describe("ConversationView", () => {
         expect(screen.getByRole("button", { name: "Resume" })).toBeInTheDocument()
     })
 
-    it("shows Stop button when running", () => {
+    it("shows New conversation button when done", () => {
         render(
             <ConversationView
                 {...defaultProps}
-                status="running"
-                onStop={vi.fn()}
+                status="done"
+                doneReason="max_turns"
+                onNewConversation={vi.fn()}
             />
         )
-        expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "New conversation" })).toBeInTheDocument()
     })
 
     it("calls onPause when Pause button clicked", async () => {
@@ -180,6 +181,6 @@ describe("ConversationView", () => {
             />
         )
         expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument()
-        expect(screen.queryByRole("button", { name: "Stop" })).not.toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "New conversation" })).not.toBeInTheDocument()
     })
 })

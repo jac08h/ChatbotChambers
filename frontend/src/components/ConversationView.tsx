@@ -15,7 +15,7 @@ interface ConversationViewProps {
     config: SessionConfig | null;
     onPause?: () => void;
     onResume?: () => void;
-    onStop?: () => void;
+    onNewConversation?: () => void;
 }
 
 function doneLabel(reason: string, config: SessionConfig | null): string {
@@ -43,7 +43,7 @@ export function ConversationView({
     config,
     onPause,
     onResume,
-    onStop,
+    onNewConversation,
 }: ConversationViewProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -51,7 +51,11 @@ export function ConversationView({
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, generatingChatbot, status]);
 
-    const showControls = (status === "running" || status === "paused") && (onPause || onResume || onStop);
+    const showControls = Boolean(
+        (status === "running" && onPause)
+        || (status === "paused" && onResume)
+        || (status === "done" && onNewConversation)
+    );
 
     return (
         <div className="conversation-container">
@@ -86,8 +90,8 @@ export function ConversationView({
                     {status === "paused" && onResume && (
                         <button className="control-btn" onClick={onResume} type="button">Resume</button>
                     )}
-                    {onStop && (
-                        <button className="control-btn control-btn-stop" onClick={onStop} type="button">Stop</button>
+                    {status === "done" && onNewConversation && (
+                        <button className="control-btn" onClick={onNewConversation} type="button">New conversation</button>
                     )}
                 </div>
             )}

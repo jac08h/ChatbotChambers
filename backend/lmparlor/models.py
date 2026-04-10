@@ -44,6 +44,12 @@ class SessionConfig(BaseModel):
     shared_system_prompt: str
 
 
+class Settings(BaseModel):
+    chatbot_a: ChatbotConfig
+    chatbot_b: ChatbotConfig
+    shared_system_prompt: str
+
+
 class Message(BaseModel):
     chatbot: Literal["a", "b"]
     name: str

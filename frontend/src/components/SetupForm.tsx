@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DEFAULT_CHATBOT_NAMES, type Provider, type SessionConfig } from "../hooks/useWebSocket";
+import { loadSettings, saveSettings } from "../settings";
 
 interface Model {
     id: string;
@@ -40,6 +41,7 @@ async function fetchModels(provider: Provider): Promise<Model[]> {
 export function SetupForm({ onStart, error }: SetupFormProps) {
     const [providers, setProviders] = useState<Providers>({ openrouter: true, claude_code: false, codex: false });
     const [presets, setPresets] = useState<Preset[]>([]);
+    const [settingsLoaded, setSettingsLoaded] = useState(false);
 
     const [providerA, setProviderA] = useState<Provider>("openrouter");
     const [providerB, setProviderB] = useState<Provider>("openrouter");
@@ -52,6 +54,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [sharedPrompt, setSharedPrompt] = useState("");
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");
+    const preferredModelARef = useRef<string | null>(null);
+    const preferredModelBRef = useRef<string | null>(null);
 
     useEffect(() => {
         fetch("http://localhost:8001/providers")
@@ -64,35 +68,62 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             .then((data: Preset[]) => setPresets(data))
             .catch(() => {});
 
-        fetchModels("openrouter").then((data) => {
-            setModelsA(data);
-            setModelsB(data);
-            if (data.length > 0) {
-                const flashLite = data.find((m) => m.id === "google/gemini-3.1-flash-lite-preview");
-                const defaultModel = flashLite ? flashLite.id : data[0].id;
-                setModelA(defaultModel);
-                setModelB(defaultModel);
-            }
-        });
+        loadSettings()
+            .then((settings) => {
+                if (settings.chatbot_a) {
+                    setNameA(settings.chatbot_a.name);
+                    setProviderA(settings.chatbot_a.provider);
+                    setPromptA(settings.chatbot_a.system_prompt);
+                    preferredModelARef.current = settings.chatbot_a.model;
+                }
+                if (settings.chatbot_b) {
+                    setNameB(settings.chatbot_b.name);
+                    setProviderB(settings.chatbot_b.provider);
+                    setPromptB(settings.chatbot_b.system_prompt);
+                    preferredModelBRef.current = settings.chatbot_b.model;
+                }
+                if (settings.shared_system_prompt) {
+                    setSharedPrompt(settings.shared_system_prompt);
+                }
+            })
+            .finally(() => setSettingsLoaded(true));
     }, []);
 
     useEffect(() => {
+        if (!settingsLoaded) {
+            return;
+        }
+        let ignore = false;
         fetchModels(providerA).then((data) => {
-            setModelsA(data);
-            if (data.length > 0) {
-                setModelA(data[0].id);
+            if (ignore) {
+                return;
             }
+            setModelsA(data);
+            setModelA(resolveModelSelection(data, preferredModelARef.current));
+            preferredModelARef.current = null;
         });
-    }, [providerA]);
+        return () => {
+            ignore = true;
+        };
+    }, [providerA, settingsLoaded]);
 
     useEffect(() => {
+        if (!settingsLoaded) {
+            return;
+        }
+        let ignore = false;
         fetchModels(providerB).then((data) => {
-            setModelsB(data);
-            if (data.length > 0) {
-                setModelB(data[0].id);
+            if (ignore) {
+                return;
             }
+            setModelsB(data);
+            setModelB(resolveModelSelection(data, preferredModelBRef.current));
+            preferredModelBRef.current = null;
         });
-    }, [providerB]);
+        return () => {
+            ignore = true;
+        };
+    }, [providerB, settingsLoaded]);
 
     const availableProviders = (Object.keys(providers) as Provider[]).filter((provider) => providers[provider]);
 
@@ -106,13 +137,17 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         setPromptB(preset.system_prompt_b);
     };
 
-    const handleSubmit = (event: React.FormEvent) => {
+    const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        onStart({
+        const config = {
             chatbot_a: { name: nameA, model: modelA, system_prompt: promptA, provider: providerA },
             chatbot_b: { name: nameB, model: modelB, system_prompt: promptB, provider: providerB },
             shared_system_prompt: sharedPrompt,
-        });
+        };
+        try {
+            await saveSettings(config);
+        } catch {}
+        onStart(config);
     };
 
     return (
@@ -240,4 +275,15 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             </div>
         </div>
     );
+}
+
+function resolveModelSelection(models: Model[], preferredModel: string | null): string {
+    if (models.length === 0) {
+        return "";
+    }
+    if (preferredModel && models.some((model) => model.id === preferredModel)) {
+        return preferredModel;
+    }
+    const flashLite = models.find((model) => model.id === "google/gemini-3.1-flash-lite-preview");
+    return flashLite ? flashLite.id : models[0].id;
 }

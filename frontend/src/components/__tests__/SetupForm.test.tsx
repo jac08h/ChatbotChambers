@@ -9,6 +9,11 @@ const mockModels = [
 ]
 
 const mockProviders = { openrouter: true, claude_code: false, codex: false }
+const mockSettings = {
+    chatbot_a: { name: "Saved A", model: "model-2", system_prompt: "Saved prompt A", provider: "openrouter" },
+    chatbot_b: { name: "Saved B", model: "model-2", system_prompt: "Saved prompt B", provider: "openrouter" },
+    shared_system_prompt: "Saved shared prompt",
+}
 
 const mockPresets = [
     {
@@ -21,7 +26,13 @@ const mockPresets = [
 ]
 
 beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn((url: string) => {
+    vi.stubGlobal("fetch", vi.fn((url: string, options?: RequestInit) => {
+        if (url.includes("/settings") && options?.method === "POST") {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+        }
+        if (url.includes("/settings")) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(mockSettings) })
+        }
         if (url.includes("/providers")) {
             return Promise.resolve({ json: () => Promise.resolve(mockProviders) })
         }
@@ -77,6 +88,15 @@ describe("SetupForm", () => {
         expect(config).toHaveProperty("shared_system_prompt")
         expect(config.chatbot_a.model).toBeTruthy()
         expect(config.chatbot_b.model).toBeTruthy()
+    })
+
+    it("loads saved settings and pre-fills form fields on mount", async () => {
+        render(<SetupForm onStart={vi.fn()} error={null} />)
+        await waitFor(() => expect(screen.getByDisplayValue("Saved A")).toBeInTheDocument())
+        expect(screen.getByDisplayValue("Saved B")).toBeInTheDocument()
+        expect(screen.getByDisplayValue("Saved shared prompt")).toBeInTheDocument()
+        expect(screen.getByDisplayValue("Saved prompt A")).toBeInTheDocument()
+        expect(screen.getByDisplayValue("Saved prompt B")).toBeInTheDocument()
     })
 
     it("shows error banner when error prop is set", async () => {

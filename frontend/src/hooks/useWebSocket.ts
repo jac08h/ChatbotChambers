@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 export interface ChatMessage {
     chatbot: "a" | "b";
@@ -56,7 +56,6 @@ export interface WebSocketState {
     start: (config: SessionConfig) => void;
     pause: () => void;
     resume: () => void;
-    stop: () => void;
     reset: () => void;
 }
 
@@ -161,10 +160,6 @@ export function useWebSocket(): WebSocketState {
         setStatus("running");
     }, []);
 
-    const stop = useCallback(() => {
-        wsRef.current?.send(JSON.stringify({ type: "stop" }));
-    }, []);
-
     const reset = useCallback(() => {
         wsRef.current?.close();
         wsRef.current = null;
@@ -189,7 +184,6 @@ export function useWebSocket(): WebSocketState {
         start,
         pause,
         resume,
-        stop,
         reset,
     };
 }

@@ -1,3 +1,4 @@
+import json
 import shutil
 from unittest.mock import patch
 
@@ -97,3 +98,46 @@ async def test_get_presets_each_has_id():
         response = await client.get("/presets")
     for preset in response.json():
         assert "id" in preset
+
+
+async def test_get_settings_returns_empty_object_when_missing(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """GET /settings returns {} when the settings file does not exist."""
+    settings_path = tmp_path / ".cache" / "settings.json"
+    monkeypatch.setattr("lmparlor.main.SETTINGS_PATH", settings_path)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/settings")
+    assert response.status_code == 200
+    assert response.json() == {}
+
+
+async def test_post_settings_writes_file_and_get_returns_saved_settings(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+):
+    """POST /settings persists settings and GET /settings returns them."""
+    settings_path = tmp_path / ".cache" / "settings.json"
+    monkeypatch.setattr("lmparlor.main.SETTINGS_PATH", settings_path)
+    payload = {
+        "chatbot_a": {
+            "name": "Alice",
+            "model": "model-a",
+            "system_prompt": "Prompt A",
+            "provider": "openrouter",
+        },
+        "chatbot_b": {
+            "name": "Bob",
+            "model": "model-b",
+            "system_prompt": "Prompt B",
+            "provider": "codex",
+        },
+        "shared_system_prompt": "Shared prompt",
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        post_response = await client.post("/settings", json=payload)
+        get_response = await client.get("/settings")
+
+    assert post_response.status_code == 200
+    assert get_response.status_code == 200
+    assert settings_path.exists()
+    assert json.loads(settings_path.read_text()) == payload
+    assert get_response.json() == payload

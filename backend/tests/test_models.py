@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from lmparlor.models import ChatbotConfig, Message, SessionConfig
+from lmparlor.models import ChatbotConfig, Message, SessionConfig, Settings
 
 
 def test_chatbot_config_valid_providers():
@@ -58,3 +58,12 @@ def test_message_invalid_chatbot():
     """Message rejects chatbot values other than 'a' or 'b'."""
     with pytest.raises(ValidationError):
         Message(chatbot="c", name="C", model="m", content="hi", turn=0)
+
+
+def test_settings_accepts_session_shape():
+    """Settings accepts the same fields as the setup form payload."""
+    a = ChatbotConfig(name="A", model="m1", system_prompt="sa")
+    b = ChatbotConfig(name="B", model="m2", system_prompt="sb", provider="codex")
+    settings = Settings(chatbot_a=a, chatbot_b=b, shared_system_prompt="shared")
+    assert settings.chatbot_a.name == "A"
+    assert settings.chatbot_b.provider == "codex"

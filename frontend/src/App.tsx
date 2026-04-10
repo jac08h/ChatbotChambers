@@ -27,7 +27,7 @@ export default function App() {
     };
 
     const isLive = ws.status === "running" || ws.status === "paused";
-    const showConversation = isLive || viewingSession;
+    const showConversation = isLive || ws.status === "done" || ws.status === "error" || Boolean(viewingSession);
 
     return (
         <div className="app-shell">
@@ -49,7 +49,7 @@ export default function App() {
                         config={viewingSession ? viewingSession.config : ws.config}
                         onPause={viewingSession ? undefined : ws.pause}
                         onResume={viewingSession ? undefined : ws.resume}
-                        onStop={viewingSession ? undefined : ws.stop}
+                        onNewConversation={handleNewChat}
                     />
                 ) : (
                     <SetupForm onStart={handleStart} error={ws.error} />
