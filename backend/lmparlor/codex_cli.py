@@ -11,7 +11,12 @@ async def call_codex(model: str, system_prompt: str, messages: List[dict]) -> st
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    stdout, _ = await process.communicate(input=prompt.encode())
+    try:
+        stdout, _ = await process.communicate(input=prompt.encode())
+    except asyncio.CancelledError:
+        process.kill()
+        await process.wait()
+        raise
     lines = [line for line in stdout.decode().splitlines() if line.strip()]
     return lines[-1] if lines else ""
 

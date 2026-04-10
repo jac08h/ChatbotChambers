@@ -120,6 +120,11 @@ async def _run_engine(
             await ws.send_json({"type": "done", "reason": "leave", "chatbot": last_message.chatbot})
         else:
             await ws.send_json({"type": "done", "reason": "max_turns"})
+    except asyncio.CancelledError:
+        try:
+            await ws.send_json({"type": "done", "reason": "stopped"})
+        except Exception:
+            pass
     except WebSocketDisconnect:
         stop_event.set()
     except Exception as e:

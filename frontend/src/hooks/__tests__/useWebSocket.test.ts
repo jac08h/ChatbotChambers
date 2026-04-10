@@ -6,7 +6,6 @@ const sampleConfig: SessionConfig = {
     chatbot_a: { name: "A", model: "model-a", system_prompt: "sys a", provider: "openrouter" },
     chatbot_b: { name: "B", model: "model-b", system_prompt: "sys b", provider: "openrouter" },
     shared_system_prompt: "shared",
-    max_turns: 5,
 }
 
 class MockWebSocket {
@@ -184,23 +183,28 @@ describe("useWebSocket", () => {
         expect(MockWebSocket.instances[0].close).toHaveBeenCalled()
     })
 
-    it("done event triggers onSessionArchived callback", () => {
-        const onArchived = vi.fn()
-        const { result } = renderHook(() => useWebSocket({ onSessionArchived: onArchived }))
+    it("done event archives session to history", () => {
+        const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
+        act(() => {
+            MockWebSocket.instances[0].receive({
+                type: "message",
+                data: { chatbot: "a", name: "A", model: "m", content: "Hello world", turn: 0, thinking: "" },
+            })
+        })
         act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "max_turns" }) })
-        expect(onArchived).toHaveBeenCalledOnce()
-        expect(onArchived.mock.calls[0][0].doneReason).toBe("max_turns")
+        expect(result.current.history).toHaveLength(1)
+        expect(result.current.history[0].doneReason).toBe("max_turns")
+        expect(result.current.history[0].messages).toHaveLength(1)
     })
 
-    it("error event triggers onSessionArchived callback", () => {
-        const onArchived = vi.fn()
-        const { result } = renderHook(() => useWebSocket({ onSessionArchived: onArchived }))
+    it("error event archives session to history", () => {
+        const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
         act(() => { MockWebSocket.instances[0].receive({ type: "error", message: "oops" }) })
-        expect(onArchived).toHaveBeenCalledOnce()
-        expect(onArchived.mock.calls[0][0].error).toBe("oops")
+        expect(result.current.history).toHaveLength(1)
+        expect(result.current.history[0].error).toBe("oops")
     })
 })

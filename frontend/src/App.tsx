@@ -1,102 +1,60 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { ConversationView } from "./components/ConversationView";
-import { HistorySidebar } from "./components/HistorySidebar";
 import { SetupForm } from "./components/SetupForm";
-import type { ArchivedSession, ChatMessage, SessionConfig } from "./hooks/useWebSocket";
+import { Sidebar } from "./components/Sidebar";
+import type { ArchivedSession, SessionConfig } from "./hooks/useWebSocket";
 import { useWebSocket } from "./hooks/useWebSocket";
 
-interface Session {
-    id: number;
-    label: string;
-    messages: ChatMessage[];
-    config: SessionConfig;
-    doneReason: string | null;
-    error: string | null;
-}
-
-const SESSION_LABEL_MAX_LENGTH = 40;
-
 export default function App() {
-    const [sessions, setSessions] = useState<Session[]>([]);
-    const [selectedSession, setSelectedSession] = useState<number | null>(null);
-    const archivedSessionIdsRef = useRef<Set<number>>(new Set());
-    const ws = useWebSocket({
-        onSessionArchived: (session: ArchivedSession) => {
-            if (archivedSessionIdsRef.current.has(session.id)) {
-                return;
-            }
-            archivedSessionIdsRef.current.add(session.id);
-            setSessions((prev) => [
-                {
-                    ...session,
-                    label: buildSessionLabel(session.messages, session.id),
-                },
-                ...prev,
-            ]);
-        },
-    });
-
-    const selectedHistorySession = sessions.find((session) => session.id === selectedSession) || null;
-    const showHistorySession = selectedHistorySession && (ws.status === "idle" || ws.status === "done" || ws.status === "error");
+    const ws = useWebSocket();
+    const [viewingSession, setViewingSession] = useState<ArchivedSession | null>(null);
 
     const handleStart = (config: SessionConfig) => {
-        setSelectedSession(null);
+        setViewingSession(null);
         ws.start(config);
     };
 
-    const handleReset = () => {
-        setSelectedSession(null);
+    const handleNewChat = () => {
+        setViewingSession(null);
         ws.reset();
     };
 
+    const handleSelectSession = (session: ArchivedSession) => {
+        if (ws.status === "running" || ws.status === "paused") {
+            return;
+        }
+        setViewingSession(session);
+    };
+
+    const isLive = ws.status === "running" || ws.status === "paused";
+    const showConversation = isLive || viewingSession;
+
     return (
         <div className="app-shell">
-            <HistorySidebar
-                sessions={sessions}
-                selectedSession={selectedSession}
-                showCurrent={ws.status !== "idle"}
-                currentActive={selectedSession === null && ws.status !== "idle"}
-                onSelectCurrent={() => setSelectedSession(null)}
-                onSelectSession={setSelectedSession}
+            <Sidebar
+                history={ws.history}
+                onNewChat={handleNewChat}
+                onSelectSession={handleSelectSession}
+                selectedSessionId={viewingSession?.id ?? null}
+                isLive={isLive}
             />
             <div className="main-panel">
-                {showHistorySession ? (
+                {showConversation ? (
                     <ConversationView
-                        messages={selectedHistorySession.messages}
-                        status={selectedHistorySession.error ? "error" : "done"}
-                        generatingChatbot={null}
-                        doneReason={selectedHistorySession.doneReason}
-                        error={selectedHistorySession.error}
-                        config={selectedHistorySession.config}
-                        readOnly
+                        messages={viewingSession ? viewingSession.messages : ws.messages}
+                        status={viewingSession ? (viewingSession.error ? "error" : "done") : ws.status}
+                        generatingChatbot={viewingSession ? null : ws.generatingChatbot}
+                        doneReason={viewingSession ? viewingSession.doneReason : ws.doneReason}
+                        error={viewingSession ? viewingSession.error : ws.error}
+                        config={viewingSession ? viewingSession.config : ws.config}
+                        onPause={viewingSession ? undefined : ws.pause}
+                        onResume={viewingSession ? undefined : ws.resume}
+                        onStop={viewingSession ? undefined : ws.stop}
                     />
-                ) : ws.status === "idle" ? (
-                    <SetupForm onStart={handleStart} error={ws.error} />
                 ) : (
-                    <ConversationView
-                        messages={ws.messages}
-                        status={ws.status}
-                        generatingChatbot={ws.generatingChatbot}
-                        doneReason={ws.doneReason}
-                        error={ws.error}
-                        config={ws.config}
-                        onPause={ws.pause}
-                        onResume={ws.resume}
-                        onStop={ws.stop}
-                        onReset={handleReset}
-                    />
+                    <SetupForm onStart={handleStart} error={ws.error} />
                 )}
             </div>
         </div>
     );
-}
-
-function buildSessionLabel(messages: ChatMessage[], sessionId: number): string {
-    const firstMessage = messages[0]?.content?.trim();
-    if (!firstMessage) {
-        return `Conversation ${sessionId}`;
-    }
-    return firstMessage.length > SESSION_LABEL_MAX_LENGTH
-        ? `${firstMessage.slice(0, SESSION_LABEL_MAX_LENGTH)}…`
-        : firstMessage;
 }

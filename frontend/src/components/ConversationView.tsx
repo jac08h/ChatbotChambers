@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
     DEFAULT_CHATBOT_NAMES,
     type ChatMessage,
     type SessionConfig,
     type Status,
 } from "../hooks/useWebSocket";
-import { buildMemoryBars } from "./conversationMemory";
 
 interface ConversationViewProps {
     messages: ChatMessage[];
@@ -17,29 +16,7 @@ interface ConversationViewProps {
     onPause?: () => void;
     onResume?: () => void;
     onStop?: () => void;
-    onReset?: () => void;
-    readOnly?: boolean;
 }
-
-interface MessageItem {
-    type: "message";
-    key: string;
-    index: number;
-    message: ChatMessage;
-}
-
-interface GeneratingItem {
-    type: "generating";
-    key: string;
-    index: number;
-    chatbot: "a" | "b";
-    name: string;
-}
-
-type VisibleItem = MessageItem | GeneratingItem;
-
-const MAX_ECHO_ITEMS = 4;
-const DEFAULT_GENERATING_BAR_WIDTHS = [82, 56, 64];
 
 function doneLabel(reason: string, config: SessionConfig | null): string {
     if (reason === "leave:a") {
@@ -67,143 +44,61 @@ export function ConversationView({
     onPause,
     onResume,
     onStop,
-    onReset,
-    readOnly = false,
 }: ConversationViewProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
-    const [liveMode, setLiveMode] = useState(true);
 
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: liveMode ? "auto" : "smooth" });
-    }, [liveMode, messages, generatingChatbot, status]);
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages, generatingChatbot, status]);
 
-    const transcriptItems = useMemo(
-        () => buildTimelineItems(messages, generatingChatbot, DEFAULT_CHATBOT_NAMES).filter((item) => item.type === "message"),
-        [generatingChatbot, messages],
-    );
-
-    const activeStage = useMemo(
-        () => buildActiveStage(messages, generatingChatbot, DEFAULT_CHATBOT_NAMES),
-        [generatingChatbot, messages],
-    );
-
-    const chamberTitle = config
-        ? `${config.chatbot_a.name} × ${config.chatbot_b.name}`
-        : "Two chatbots, one room";
+    const showControls = (status === "running" || status === "paused") && (onPause || onResume || onStop);
 
     return (
         <div className="conversation-container">
-            <div className="conversation-header">
-                <div className="conversation-brand">
-                    <span className="header-title">LMParlor</span>
-                    <span className="conversation-title">{chamberTitle}</span>
-                </div>
-                <div className="conversation-toolbar">
-                    <span className="status-badge" data-status={status}>
-                        {statusLabel(status)}
-                    </span>
-                    <div className="view-toggle" role="tablist" aria-label="Conversation view mode">
-                        <button
-                            className={!liveMode ? "active-toggle" : undefined}
-                            onClick={() => setLiveMode(false)}
-                            type="button"
-                        >
-                            Transcript
-                        </button>
-                        <button
-                            className={liveMode ? "active-toggle" : undefined}
-                            onClick={() => setLiveMode(true)}
-                            type="button"
-                        >
-                            Active mode
-                        </button>
-                    </div>
-                    <div className="controls">
-                        {!readOnly && status === "running" && onPause && (
-                            <button onClick={onPause} type="button">Pause</button>
-                        )}
-                        {!readOnly && status === "paused" && onResume && (
-                            <button onClick={onResume} type="button">Resume</button>
-                        )}
-                        {!readOnly && (status === "running" || status === "paused") && onStop && (
-                            <button onClick={onStop} className="stop-btn" type="button">Stop</button>
-                        )}
-                        {!readOnly && (status === "done" || status === "error") && onReset && (
-                            <button onClick={onReset} type="button">New chat</button>
-                        )}
-                    </div>
-                </div>
+            <div className="messages">
+                {messages.map((message, index) => (
+                    <MessageBubble key={`${message.chatbot}-${index}`} message={message} />
+                ))}
+
+                {generatingChatbot && (
+                    <GeneratingBubble
+                        chatbot={generatingChatbot}
+                        name={getGeneratingName(messages, generatingChatbot)}
+                    />
+                )}
+
+                {status === "done" && doneReason && (
+                    <div className="done-banner">{doneLabel(doneReason, config)}</div>
+                )}
+
+                {status === "error" && error && (
+                    <div className="error-banner">{error}</div>
+                )}
+
+                <div ref={bottomRef} />
             </div>
 
-            {liveMode ? (
-                <div className="active-stage">
-                    <div className="active-stack" data-echo-count={activeStage.echoes.length}>
-                        {activeStage.echoes.map((item, index) => (
-                            <EchoCard key={item.key} item={item} depth={index + 1} />
-                        ))}
-                        {activeStage.focus ? (
-                            activeStage.focus.type === "message" ? (
-                                <MessageBubble message={activeStage.focus.message} variant="focus" />
-                            ) : (
-                                <GeneratingBubble
-                                    chatbot={activeStage.focus.chatbot}
-                                    name={activeStage.focus.name}
-                                    variant="focus"
-                                />
-                            )
-                        ) : (
-                            <div className="empty-stage">
-                                <span className="empty-stage-mark">◦</span>
-                                <p>No messages yet</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {status === "done" && doneReason && (
-                        <div className="done-banner">{doneLabel(doneReason, config)}</div>
+            {showControls && (
+                <div className="floating-controls">
+                    {status === "running" && onPause && (
+                        <button className="control-btn" onClick={onPause} type="button">Pause</button>
                     )}
-
-                    {status === "error" && error && (
-                        <div className="error-banner">{error}</div>
+                    {status === "paused" && onResume && (
+                        <button className="control-btn" onClick={onResume} type="button">Resume</button>
                     )}
-
-                    <div ref={bottomRef} />
-                </div>
-            ) : (
-                <div className="messages">
-                    {transcriptItems.map((item) => (
-                        <MessageBubble key={item.key} message={item.message} />
-                    ))}
-
-                    {status === "done" && doneReason && (
-                        <div className="done-banner">{doneLabel(doneReason, config)}</div>
+                    {onStop && (
+                        <button className="control-btn control-btn-stop" onClick={onStop} type="button">Stop</button>
                     )}
-
-                    {status === "error" && error && (
-                        <div className="error-banner">{error}</div>
-                    )}
-
-                    <div ref={bottomRef} />
                 </div>
             )}
         </div>
     );
 }
 
-function MessageBubble({
-    message,
-    variant = "transcript",
-}: {
-    message: ChatMessage;
-    variant?: "transcript" | "focus";
-}) {
-    const rowClassName = variant === "focus"
-        ? `focus-message chatbot-${message.chatbot}`
-        : `message-row chatbot-${message.chatbot}`;
-
+function MessageBubble({ message }: { message: ChatMessage }) {
     return (
-        <div className={rowClassName}>
-            <div className="message-glyph">{glyphForName(message.name)}</div>
+        <div className={`message-row chatbot-${message.chatbot}`}>
+            <div className="message-glyph">{message.name.trim().charAt(0).toUpperCase() || "?"}</div>
             <div className="message-bubble">
                 <div className="message-meta">
                     <span className="sender-label">{message.name}</span>
@@ -221,22 +116,10 @@ function MessageBubble({
     );
 }
 
-function GeneratingBubble({
-    chatbot,
-    name,
-    variant = "transcript",
-}: {
-    chatbot: "a" | "b";
-    name: string;
-    variant?: "transcript" | "focus";
-}) {
-    const rowClassName = variant === "focus"
-        ? `focus-message chatbot-${chatbot}`
-        : `message-row chatbot-${chatbot}`;
-
+function GeneratingBubble({ chatbot, name }: { chatbot: "a" | "b"; name: string }) {
     return (
-        <div className={rowClassName}>
-            <div className="message-glyph">{glyphForName(name)}</div>
+        <div className={`message-row chatbot-${chatbot}`}>
+            <div className="message-glyph">{name.trim().charAt(0).toUpperCase() || "?"}</div>
             <div className="message-bubble generating">
                 <div className="message-meta">
                     <span className="sender-label">{name}</span>
@@ -250,80 +133,7 @@ function GeneratingBubble({
     );
 }
 
-function EchoCard({ item, depth }: { item: VisibleItem; depth: number }) {
-    const name = item.type === "message" ? item.message.name : item.name;
-    const chatbot = item.type === "message" ? item.message.chatbot : item.chatbot;
-    const bars = item.type === "message"
-        ? buildMemoryBars(item.message.content)
-        : DEFAULT_GENERATING_BAR_WIDTHS;
-
-    return (
-        <div
-            className={`echo-card chatbot-${chatbot}`}
-            data-depth={depth}
-            data-testid={`echo-card-${depth}`}
-            style={{ "--echo-depth": depth } as React.CSSProperties}
-        >
-            <div className="echo-card-header">
-                <span className="echo-card-label">{name}</span>
-            </div>
-            <div className="memory-lines" aria-hidden="true">
-                {bars.map((width, index) => (
-                    <span key={`${item.key}-${index}`} className="memory-line" style={{ width: `${width}%` }} />
-                ))}
-            </div>
-        </div>
-    );
-}
-
-function buildTimelineItems(
-    messages: ChatMessage[],
-    generatingChatbot: "a" | "b" | null,
-    fallbackNames: Record<"a" | "b", string>,
-): VisibleItem[] {
-    const items: VisibleItem[] = messages.map((message, index) => ({
-        type: "message",
-        key: `${message.chatbot}-${index}`,
-        index,
-        message,
-    }));
-
-    if (generatingChatbot) {
-        const latestMessage = [...messages].reverse().find((message) => message.chatbot === generatingChatbot);
-        items.push({
-            type: "generating",
-            key: `generating-${generatingChatbot}`,
-            index: messages.length,
-            chatbot: generatingChatbot,
-            name: latestMessage?.name || fallbackNames[generatingChatbot],
-        });
-    }
-
-    return items;
-}
-
-function buildActiveStage(
-    messages: ChatMessage[],
-    generatingChatbot: "a" | "b" | null,
-    fallbackNames: Record<"a" | "b", string>,
-): { focus: VisibleItem | null; echoes: VisibleItem[] } {
-    const timeline = buildTimelineItems(messages, generatingChatbot, fallbackNames);
-    const focus = timeline.at(-1) ?? null;
-    const echoes = timeline.slice(Math.max(0, timeline.length - (MAX_ECHO_ITEMS + 1)), -1).reverse();
-    return { focus, echoes };
-}
-
-function glyphForName(name: string): string {
-    return name.trim().charAt(0).toUpperCase() || "?";
-}
-
-function statusLabel(status: Status): string {
-    const labels: Record<Status, string> = {
-        idle: "Ready",
-        running: "Running",
-        paused: "Paused",
-        done: "Done",
-        error: "Error",
-    };
-    return labels[status];
+function getGeneratingName(messages: ChatMessage[], chatbot: "a" | "b"): string {
+    const latest = [...messages].reverse().find((m) => m.chatbot === chatbot);
+    return latest?.name || DEFAULT_CHATBOT_NAMES[chatbot];
 }

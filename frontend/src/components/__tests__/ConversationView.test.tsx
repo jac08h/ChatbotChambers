@@ -1,15 +1,13 @@
-import { render, screen, within } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { ConversationView } from "../ConversationView"
-import { buildMemoryBars } from "../conversationMemory"
 import type { ChatMessage, SessionConfig } from "../../hooks/useWebSocket"
 
 const sampleConfig: SessionConfig = {
     chatbot_a: { name: "Alice", model: "model-a", system_prompt: "", provider: "openrouter" },
     chatbot_b: { name: "Bob", model: "model-b", system_prompt: "", provider: "openrouter" },
     shared_system_prompt: "",
-    max_turns: 10,
 }
 
 function makeMessage(chatbot: "a" | "b", content: string, turn = 0): ChatMessage {
@@ -33,19 +31,18 @@ const defaultProps = {
 }
 
 describe("ConversationView", () => {
-    it("renders message bubbles for each message in transcript mode", async () => {
+    it("renders message bubbles for each message", () => {
         render(
             <ConversationView
                 {...defaultProps}
                 messages={[makeMessage("a", "Hello"), makeMessage("b", "Hi there")]}
             />
         )
-        await userEvent.click(screen.getByRole("button", { name: "Transcript" }))
         expect(screen.getByText("Hello")).toBeInTheDocument()
         expect(screen.getByText("Hi there")).toBeInTheDocument()
     })
 
-    it("shows generating indicator in active mode when generatingChatbot is set", () => {
+    it("shows generating indicator when generatingChatbot is set", () => {
         render(
             <ConversationView
                 {...defaultProps}
@@ -54,18 +51,6 @@ describe("ConversationView", () => {
             />
         )
         expect(screen.getByText("composing")).toBeInTheDocument()
-    })
-
-    it("does not show generating indicator in transcript mode", async () => {
-        render(
-            <ConversationView
-                {...defaultProps}
-                status="running"
-                generatingChatbot="a"
-            />
-        )
-        await userEvent.click(screen.getByRole("button", { name: "Transcript" }))
-        expect(screen.queryByText("composing")).not.toBeInTheDocument()
     })
 
     it("shows done banner when status is done", () => {
@@ -112,7 +97,7 @@ describe("ConversationView", () => {
         expect(screen.getByText("Connection failed")).toBeInTheDocument()
     })
 
-    it("shows Pause button when running and not readOnly", () => {
+    it("shows Pause button when running", () => {
         render(
             <ConversationView
                 {...defaultProps}
@@ -123,7 +108,7 @@ describe("ConversationView", () => {
         expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
     })
 
-    it("shows Resume button when paused and not readOnly", () => {
+    it("shows Resume button when paused", () => {
         render(
             <ConversationView
                 {...defaultProps}
@@ -134,7 +119,7 @@ describe("ConversationView", () => {
         expect(screen.getByRole("button", { name: "Resume" })).toBeInTheDocument()
     })
 
-    it("shows Stop button when running and not readOnly", () => {
+    it("shows Stop button when running", () => {
         render(
             <ConversationView
                 {...defaultProps}
@@ -143,32 +128,6 @@ describe("ConversationView", () => {
             />
         )
         expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument()
-    })
-
-    it("hides Pause and Stop buttons in readOnly mode", () => {
-        render(
-            <ConversationView
-                {...defaultProps}
-                status="running"
-                onPause={vi.fn()}
-                onStop={vi.fn()}
-                readOnly
-            />
-        )
-        expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument()
-        expect(screen.queryByRole("button", { name: "Stop" })).not.toBeInTheDocument()
-    })
-
-    it("shows New chat button when done and not readOnly", () => {
-        render(
-            <ConversationView
-                {...defaultProps}
-                status="done"
-                doneReason="max_turns"
-                onReset={vi.fn()}
-            />
-        )
-        expect(screen.getByRole("button", { name: "New chat" })).toBeInTheDocument()
     })
 
     it("calls onPause when Pause button clicked", async () => {
@@ -201,75 +160,26 @@ describe("ConversationView", () => {
         expect(screen.getByText("My reasoning")).toBeInTheDocument()
     })
 
-    it("transcript mode shows all messages", async () => {
+    it("shows all messages", () => {
         const messages = [
             makeMessage("a", "First from A", 0),
             makeMessage("b", "First from B", 0),
             makeMessage("a", "Second from A", 1),
         ]
         render(<ConversationView {...defaultProps} messages={messages} />)
-        await userEvent.click(screen.getByRole("button", { name: "Transcript" }))
         expect(screen.getByText("First from A")).toBeInTheDocument()
         expect(screen.getByText("First from B")).toBeInTheDocument()
         expect(screen.getByText("Second from A")).toBeInTheDocument()
     })
 
-    it("active mode keeps only the latest message readable", () => {
-        const messages = [
-            makeMessage("a", "First from A", 0),
-            makeMessage("b", "First from B", 0),
-            makeMessage("a", "Second from A", 1),
-        ]
-        render(<ConversationView {...defaultProps} messages={messages} />)
-        expect(screen.queryByText("First from A")).not.toBeInTheDocument()
-        expect(screen.queryByText("First from B")).not.toBeInTheDocument()
-        expect(screen.getByText("Second from A")).toBeInTheDocument()
-    })
-
-    it("active mode renders older turns as echo cards with depth", () => {
-        const messages = [
-            makeMessage("a", "First from A", 0),
-            makeMessage("b", "A much longer line from B so the memory bars vary a bit", 0),
-            makeMessage("a", "Second from A", 1),
-        ]
-        const { container } = render(<ConversationView {...defaultProps} messages={messages} />)
-
-        const firstEcho = screen.getByTestId("echo-card-1")
-        const secondEcho = screen.getByTestId("echo-card-2")
-
-        expect(firstEcho).toHaveAttribute("data-depth", "1")
-        expect(secondEcho).toHaveAttribute("data-depth", "2")
-        expect(within(firstEcho).getByText("Bob")).toBeInTheDocument()
-        expect(within(secondEcho).getByText("Alice")).toBeInTheDocument()
-        const expectedLineCount = buildMemoryBars(messages[0].content).length + buildMemoryBars(messages[1].content).length
-        expect(container.querySelectorAll(".memory-line")).toHaveLength(expectedLineCount)
-    })
-
-    it("active mode shows generating indicator for the current chatbot", () => {
-        const messages = [makeMessage("a", "Hello", 0)]
+    it("does not show controls when no callbacks provided", () => {
         render(
             <ConversationView
                 {...defaultProps}
-                messages={messages}
                 status="running"
-                generatingChatbot="b"
             />
         )
-        expect(screen.getByText("composing")).toBeInTheDocument()
-        expect(screen.queryByText("Hello")).not.toBeInTheDocument()
-    })
-})
-
-describe("buildMemoryBars", () => {
-    it("returns stable widths for empty content", () => {
-        expect(buildMemoryBars("")).toEqual([66, 48])
-    })
-
-    it("returns at least two bars for short content", () => {
-        expect(buildMemoryBars("short")).toEqual([55, 37])
-    })
-
-    it("adds more bars for longer content", () => {
-        expect(buildMemoryBars("This sentence is intentionally long enough to produce more than two memory bars in the echo stack.")).toEqual([44, 46, 46])
+        expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Stop" })).not.toBeInTheDocument()
     })
 })
