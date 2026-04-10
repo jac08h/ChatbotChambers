@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap");
-
 *, *::before, *::after {
     box-sizing: border-box;
 }
@@ -27,8 +25,10 @@
     --radius: 18px;
     --radius-lg: 28px;
     --sidebar-width: 280px;
+    --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Baskerville, Georgia, serif;
+    --font-body: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
     color: var(--text);
-    font-family: "Manrope", sans-serif;
+    font-family: var(--font-body);
     font-size: 15px;
     line-height: 1.7;
 }
@@ -149,7 +149,7 @@ label span {
 
 .sidebar-title {
     margin: 0;
-    font-family: "Cormorant Garamond", serif;
+    font-family: var(--font-display);
     font-size: 2rem;
     line-height: 0.95;
     font-weight: 600;
@@ -304,7 +304,7 @@ label span {
 
 .setup-title {
     margin: 0;
-    font-family: "Cormorant Garamond", serif;
+    font-family: var(--font-display);
     font-size: clamp(3.2rem, 8vw, 4.8rem);
     line-height: 0.9;
     font-weight: 600;
@@ -375,7 +375,7 @@ label span {
 
 .chatbot-config-header h3 {
     margin: 0;
-    font-family: "Cormorant Garamond", serif;
+    font-family: var(--font-display);
     font-size: 1.55rem;
     font-weight: 600;
     color: var(--text);
@@ -498,7 +498,7 @@ input::placeholder {
 
 .conversation-title {
     margin: 0;
-    font-family: "Cormorant Garamond", serif;
+    font-family: var(--font-display);
     font-size: clamp(2.1rem, 5vw, 3rem);
     font-weight: 600;
     line-height: 1;
@@ -519,7 +519,7 @@ input::placeholder {
     display: grid;
     place-items: center;
     flex-shrink: 0;
-    font-family: "Cormorant Garamond", serif;
+    font-family: var(--font-display);
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--text);
@@ -573,7 +573,7 @@ input::placeholder {
 }
 
 .sender-label {
-    font-family: "Cormorant Garamond", serif;
+    font-family: var(--font-display);
     font-size: 1.2rem;
     font-weight: 600;
     color: var(--text);
