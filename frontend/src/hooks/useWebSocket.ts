@@ -27,7 +27,6 @@ export interface SessionConfig {
     chatbot_a: ChatbotConfig;
     chatbot_b: ChatbotConfig;
     shared_system_prompt: string;
-    max_turns: number;
 }
 
 export type Status =
@@ -37,6 +36,15 @@ export type Status =
     | "done"
     | "error";
 
+export interface ArchivedSession {
+    id: number;
+    label: string;
+    messages: ChatMessage[];
+    config: SessionConfig;
+    doneReason: string | null;
+    error: string | null;
+}
+
 export interface WebSocketState {
     messages: ChatMessage[];
     status: Status;
@@ -44,7 +52,7 @@ export interface WebSocketState {
     doneReason: string | null;
     error: string | null;
     config: SessionConfig | null;
-    sessionId: number;
+    history: ArchivedSession[];
     start: (config: SessionConfig) => void;
     pause: () => void;
     resume: () => void;
@@ -52,52 +60,61 @@ export interface WebSocketState {
     reset: () => void;
 }
 
-export interface ArchivedSession {
-    id: number;
-    messages: ChatMessage[];
-    config: SessionConfig;
-    doneReason: string | null;
-    error: string | null;
+const LABEL_MAX_LENGTH = 40;
+
+function buildLabel(messages: ChatMessage[], id: number): string {
+    const first = messages[0]?.content?.trim();
+    if (!first) {
+        return `Conversation ${id}`;
+    }
+    return first.length > LABEL_MAX_LENGTH
+        ? `${first.slice(0, LABEL_MAX_LENGTH)}...`
+        : first;
 }
 
-interface UseWebSocketOptions {
-    onSessionArchived?: (session: ArchivedSession) => void;
-}
-
-export function useWebSocket(options?: UseWebSocketOptions): WebSocketState {
+export function useWebSocket(): WebSocketState {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [status, setStatus] = useState<Status>("idle");
     const [generatingChatbot, setGeneratingChatbot] = useState<"a" | "b" | null>(null);
     const [doneReason, setDoneReason] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [config, setConfig] = useState<SessionConfig | null>(null);
-    const [sessionId, setSessionId] = useState(0);
+    const [history, setHistory] = useState<ArchivedSession[]>([]);
     const wsRef = useRef<WebSocket | null>(null);
     const messagesRef = useRef<ChatMessage[]>([]);
     const configRef = useRef<SessionConfig | null>(null);
-    const sessionIdRef = useRef(0);
-    const onSessionArchivedRef = useRef(options?.onSessionArchived);
+    const nextIdRef = useRef(1);
 
-    useEffect(() => {
-        onSessionArchivedRef.current = options?.onSessionArchived;
-    }, [options?.onSessionArchived]);
+    const archive = useCallback((doneReason: string | null, error: string | null) => {
+        if (!configRef.current) {
+            return;
+        }
+        const id = nextIdRef.current++;
+        const session: ArchivedSession = {
+            id,
+            label: buildLabel(messagesRef.current, id),
+            messages: messagesRef.current,
+            config: configRef.current,
+            doneReason,
+            error,
+        };
+        setHistory((prev) => [session, ...prev]);
+    }, []);
 
-    const start = useCallback((config: SessionConfig) => {
+    const start = useCallback((newConfig: SessionConfig) => {
         wsRef.current?.close();
-        sessionIdRef.current += 1;
         messagesRef.current = [];
-        configRef.current = config;
+        configRef.current = newConfig;
         setMessages([]);
         setGeneratingChatbot(null);
         setDoneReason(null);
         setError(null);
-        setConfig(config);
-        setSessionId(sessionIdRef.current);
+        setConfig(newConfig);
         const ws = new WebSocket("ws://localhost:8001/ws");
         wsRef.current = ws;
 
         ws.onopen = () => {
-            ws.send(JSON.stringify({ type: "start", config }));
+            ws.send(JSON.stringify({ type: "start", config: newConfig }));
             setStatus("running");
         };
 
@@ -116,47 +133,23 @@ export function useWebSocket(options?: UseWebSocketOptions): WebSocketState {
                     : data.reason;
                 setDoneReason(reason);
                 setStatus("done");
-                if (configRef.current) {
-                    onSessionArchivedRef.current?.({
-                        id: sessionIdRef.current,
-                        messages: messagesRef.current,
-                        config: configRef.current,
-                        doneReason: reason,
-                        error: null,
-                    });
-                }
+                archive(reason, null);
             } else if (data.type === "error") {
                 setGeneratingChatbot(null);
                 setError(data.message);
                 setStatus("error");
-                if (configRef.current) {
-                    onSessionArchivedRef.current?.({
-                        id: sessionIdRef.current,
-                        messages: messagesRef.current,
-                        config: configRef.current,
-                        doneReason: null,
-                        error: data.message,
-                    });
-                }
+                archive(null, data.message);
             }
         };
 
         ws.onerror = () => {
             setError("WebSocket connection error");
             setStatus("error");
-            if (configRef.current) {
-                onSessionArchivedRef.current?.({
-                    id: sessionIdRef.current,
-                    messages: messagesRef.current,
-                    config: configRef.current,
-                    doneReason: null,
-                    error: "WebSocket connection error",
-                });
-            }
+            archive(null, "WebSocket connection error");
         };
 
         ws.onclose = () => {};
-    }, []);
+    }, [archive]);
 
     const pause = useCallback(() => {
         wsRef.current?.send(JSON.stringify({ type: "pause" }));
@@ -192,7 +185,7 @@ export function useWebSocket(options?: UseWebSocketOptions): WebSocketState {
         doneReason,
         error,
         config,
-        sessionId,
+        history,
         start,
         pause,
         resume,

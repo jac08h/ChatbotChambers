@@ -14,7 +14,12 @@ async def call_claude_code(model: str, system_prompt: str, messages: List[dict])
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    stdout, _ = await process.communicate()
+    try:
+        stdout, _ = await process.communicate()
+    except asyncio.CancelledError:
+        process.kill()
+        await process.wait()
+        raise
     return stdout.decode().strip()
 
 
