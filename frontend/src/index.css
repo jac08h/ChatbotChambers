@@ -284,7 +284,7 @@ input::placeholder {
     border-radius: 999px;
     border: 1px solid var(--accent);
     background: var(--accent);
-    color: #141210;
+    color: var(--bg);
     font-weight: 600;
     cursor: pointer;
     transition: box-shadow 200ms ease, opacity 150ms ease;
