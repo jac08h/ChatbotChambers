@@ -118,7 +118,10 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     return (
         <div className="setup-page">
             <div className="setup-landing">
-                <h1 className="setup-title">LMParlor</h1>
+                <div className="setup-header">
+                    <h1 className="setup-title">ChatbotChambers</h1>
+                    <p className="setup-subtitle">A place for conversations.</p>
+                </div>
 
                 {error && <div className="error-banner">{error}</div>}
 
