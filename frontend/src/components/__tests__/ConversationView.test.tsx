@@ -50,7 +50,7 @@ describe("ConversationView", () => {
                 generatingChatbot="a"
             />
         )
-        expect(screen.getByText("composing")).toBeInTheDocument()
+        expect(screen.getByText("gathering thoughts")).toBeInTheDocument()
     })
 
     it("shows done banner when status is done", () => {
@@ -61,7 +61,7 @@ describe("ConversationView", () => {
                 doneReason="max_turns"
             />
         )
-        expect(screen.getByText("Reached the turn limit.")).toBeInTheDocument()
+        expect(screen.getByText("The chamber reached its turn limit.")).toBeInTheDocument()
     })
 
     it("done banner includes chatbot name for leave:a reason", () => {
@@ -72,7 +72,7 @@ describe("ConversationView", () => {
                 doneReason="leave:a"
             />
         )
-        expect(screen.getByText("Alice left the chat.")).toBeInTheDocument()
+        expect(screen.getByText("Alice stepped out of the chamber.")).toBeInTheDocument()
     })
 
     it("done banner includes chatbot name for leave:b reason", () => {
@@ -83,7 +83,7 @@ describe("ConversationView", () => {
                 doneReason="leave:b"
             />
         )
-        expect(screen.getByText("Bob left the chat.")).toBeInTheDocument()
+        expect(screen.getByText("Bob stepped out of the chamber.")).toBeInTheDocument()
     })
 
     it("shows error banner when status is error", () => {
@@ -156,7 +156,7 @@ describe("ConversationView", () => {
     it("shows thinking block when message has thinking", () => {
         const message: ChatMessage = { ...makeMessage("a", "Answer"), thinking: "My reasoning" }
         render(<ConversationView {...defaultProps} messages={[message]} />)
-        expect(screen.getByText("Thinking")).toBeInTheDocument()
+        expect(screen.getByText("Private notes")).toBeInTheDocument()
         expect(screen.getByText("My reasoning")).toBeInTheDocument()
     })
 

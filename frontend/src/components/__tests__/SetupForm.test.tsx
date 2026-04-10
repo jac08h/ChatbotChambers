@@ -42,7 +42,7 @@ afterEach(() => {
 describe("SetupForm", () => {
     it("renders the form with Start button", async () => {
         render(<SetupForm onStart={vi.fn()} error={null} />)
-        await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).toBeInTheDocument())
+        await waitFor(() => expect(screen.getByRole("button", { name: "Begin the conversation" })).toBeInTheDocument())
     })
 
     it("fetches and displays models on mount", async () => {
@@ -68,8 +68,8 @@ describe("SetupForm", () => {
     it("submit calls onStart with correct SessionConfig shape", async () => {
         const onStart = vi.fn()
         render(<SetupForm onStart={onStart} error={null} />)
-        await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).not.toBeDisabled())
-        await userEvent.click(screen.getByRole("button", { name: "Start conversation" }))
+        await waitFor(() => expect(screen.getByRole("button", { name: "Begin the conversation" })).not.toBeDisabled())
+        await userEvent.click(screen.getByRole("button", { name: "Begin the conversation" }))
         expect(onStart).toHaveBeenCalledOnce()
         const config = onStart.mock.calls[0][0]
         expect(config).toHaveProperty("chatbot_a")
@@ -87,6 +87,6 @@ describe("SetupForm", () => {
     it("Start button is disabled when no models loaded", async () => {
         vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ json: () => Promise.resolve([]) })))
         render(<SetupForm onStart={vi.fn()} error={null} />)
-        await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).toBeDisabled())
+        await waitFor(() => expect(screen.getByRole("button", { name: "Begin the conversation" })).toBeDisabled())
     })
 })

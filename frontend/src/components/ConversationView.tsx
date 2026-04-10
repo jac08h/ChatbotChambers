@@ -20,18 +20,18 @@ interface ConversationViewProps {
 
 function doneLabel(reason: string, config: SessionConfig | null): string {
     if (reason === "leave:a") {
-        return `${config?.chatbot_a.name || DEFAULT_CHATBOT_NAMES.a} left the chat.`;
+        return `${config?.chatbot_a.name || DEFAULT_CHATBOT_NAMES.a} stepped out of the chamber.`;
     }
     if (reason === "leave:b") {
-        return `${config?.chatbot_b.name || DEFAULT_CHATBOT_NAMES.b} left the chat.`;
+        return `${config?.chatbot_b.name || DEFAULT_CHATBOT_NAMES.b} stepped out of the chamber.`;
     }
     if (reason === "stopped") {
-        return "Conversation stopped.";
+        return "The chamber fell quiet.";
     }
     if (reason === "max_turns") {
-        return "Reached the turn limit.";
+        return "The chamber reached its turn limit.";
     }
-    return "Conversation ended.";
+    return "The conversation has ended.";
 }
 
 export function ConversationView({
@@ -56,6 +56,15 @@ export function ConversationView({
     return (
         <div className="conversation-container">
             <div className="messages">
+                {config && (
+                    <div className="conversation-intro">
+                        <p className="conversation-kicker">Tonight&apos;s chamber</p>
+                        <h2 className="conversation-title">
+                            {config.chatbot_a.name} &amp; {config.chatbot_b.name}
+                        </h2>
+                    </div>
+                )}
+
                 {messages.map((message, index) => (
                     <MessageBubble key={`${message.chatbot}-${index}`} message={message} />
                 ))}
@@ -106,7 +115,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
                 </div>
                 {message.thinking && (
                     <details className="thinking-block">
-                        <summary>Thinking</summary>
+                        <summary>Private notes</summary>
                         <div className="message-content">{message.thinking}</div>
                     </details>
                 )}
@@ -123,7 +132,7 @@ function GeneratingBubble({ chatbot, name }: { chatbot: "a" | "b"; name: string 
             <div className="message-bubble generating">
                 <div className="message-meta">
                     <span className="sender-label">{name}</span>
-                    <span className="model-label">composing</span>
+                    <span className="model-label">gathering thoughts</span>
                 </div>
                 <div className="typing-dots">
                     <span /><span /><span />

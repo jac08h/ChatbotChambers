@@ -118,7 +118,14 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     return (
         <div className="setup-page">
             <div className="setup-landing">
+                <div className="setup-intro">
+                    <p className="setup-kicker">ChatbotChambers</p>
+                    <div className="setup-ornament" aria-hidden="true" />
+                </div>
                 <h1 className="setup-title">LMParlor</h1>
+                <p className="setup-subtitle">
+                    Prepare two voices, lower the lights, and let an interesting conversation take shape.
+                </p>
 
                 {error && <div className="error-banner">{error}</div>}
 
@@ -149,6 +156,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                         <section className="chatbot-config side-a">
                             <div className="chatbot-config-header">
                                 <h3>Chatbot A</h3>
+                                <p>First chair</p>
                             </div>
                             <label className="field">
                                 <span>Name</span>
@@ -191,6 +199,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                         <section className="chatbot-config side-b">
                             <div className="chatbot-config-header">
                                 <h3>Chatbot B</h3>
+                                <p>Second chair</p>
                             </div>
                             <label className="field">
                                 <span>Name</span>
@@ -233,7 +242,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
                     <div className="setup-actions">
                         <button type="submit" className="start-btn" disabled={!modelA || !modelB}>
-                            Start conversation
+                            Begin the conversation
                         </button>
                     </div>
                 </form>
