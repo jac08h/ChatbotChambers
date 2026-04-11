@@ -10,9 +10,10 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from lmparlor.engine import Generating, run_conversation
-from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, SessionConfig
+from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, SessionConfig, Settings
 
 PRESETS_DIR = Path(__file__).parent / "presets"
+SETTINGS_PATH = Path(".cache/settings.json")
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,20 @@ def get_models(provider: str = "openrouter") -> List[dict]:
     else:
         model_list = MODELS
     return [{"id": model_id, "name": name} for model_id, name in model_list]
+
+
+@app.get("/settings")
+def get_settings() -> dict:
+    if not SETTINGS_PATH.exists():
+        return {}
+    return json.loads(SETTINGS_PATH.read_text())
+
+
+@app.post("/settings")
+def save_settings(settings: Settings) -> dict:
+    SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SETTINGS_PATH.write_text(json.dumps(settings.model_dump()))
+    return settings.model_dump()
 
 
 @app.websocket("/ws")

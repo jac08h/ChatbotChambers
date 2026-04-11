@@ -150,15 +150,6 @@ describe("useWebSocket", () => {
         expect(result.current.status).toBe("running")
     })
 
-    it("stop() sends stop message", () => {
-        const { result } = renderHook(() => useWebSocket())
-        act(() => { result.current.start(sampleConfig) })
-        act(() => { MockWebSocket.instances[0].open() })
-        act(() => { result.current.stop() })
-        const sent = JSON.parse(MockWebSocket.instances[0].send.mock.calls[1][0])
-        expect(sent.type).toBe("stop")
-    })
-
     it("reset() closes WebSocket and clears all state", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })

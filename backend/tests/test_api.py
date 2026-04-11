@@ -1,5 +1,5 @@
+import json
 import shutil
-from unittest.mock import patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -97,3 +97,70 @@ async def test_get_presets_each_has_id():
         response = await client.get("/presets")
     for preset in response.json():
         assert "id" in preset
+
+
+async def test_get_settings_returns_empty_object_when_missing(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """GET /settings returns an empty object when no file has been saved yet."""
+    monkeypatch.setattr("lmparlor.main.SETTINGS_PATH", tmp_path / ".cache" / "settings.json")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/settings")
+    assert response.status_code == 200
+    assert response.json() == {}
+
+
+async def test_post_settings_writes_file_and_returns_body(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """POST /settings persists the body to .cache/settings.json."""
+    settings_path = tmp_path / ".cache" / "settings.json"
+    monkeypatch.setattr("lmparlor.main.SETTINGS_PATH", settings_path)
+    payload = {
+        "chatbot_a": {
+            "name": "Alpha",
+            "model": "model-a",
+            "system_prompt": "Prompt A",
+            "provider": "openrouter",
+        },
+        "chatbot_b": {
+            "name": "Beta",
+            "model": "model-b",
+            "system_prompt": "Prompt B",
+            "provider": "codex",
+        },
+        "shared_system_prompt": "Shared prompt",
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/settings", json=payload)
+
+    assert response.status_code == 200
+    assert response.json() == payload
+    assert settings_path.exists()
+    assert json.loads(settings_path.read_text()) == payload
+
+
+async def test_get_settings_returns_saved_settings(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """GET /settings returns the saved settings payload."""
+    settings_path = tmp_path / ".cache" / "settings.json"
+    monkeypatch.setattr("lmparlor.main.SETTINGS_PATH", settings_path)
+    payload = {
+        "chatbot_a": {
+            "name": "Alpha",
+            "model": "model-a",
+            "system_prompt": "Prompt A",
+            "provider": "openrouter",
+        },
+        "chatbot_b": {
+            "name": "Beta",
+            "model": "model-b",
+            "system_prompt": "Prompt B",
+            "provider": "claude_code",
+        },
+        "shared_system_prompt": "Shared prompt",
+    }
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(json.dumps(payload))
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/settings")
+
+    assert response.status_code == 200
+    assert response.json() == payload

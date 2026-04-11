@@ -42,6 +42,13 @@ class SessionConfig(BaseModel):
     chatbot_a: ChatbotConfig
     chatbot_b: ChatbotConfig
     shared_system_prompt: str
+    max_turns: int = 50
+
+
+class Settings(BaseModel):
+    chatbot_a: ChatbotConfig
+    chatbot_b: ChatbotConfig
+    shared_system_prompt: str
 
 
 class Message(BaseModel):

@@ -8,35 +8,52 @@ import { useWebSocket } from "./hooks/useWebSocket";
 export default function App() {
     const ws = useWebSocket();
     const [viewingSession, setViewingSession] = useState<ArchivedSession | null>(null);
+    const [showSetup, setShowSetup] = useState(true);
 
     const handleStart = (config: SessionConfig) => {
         setViewingSession(null);
+        setShowSetup(false);
         ws.start(config);
     };
 
     const handleNewChat = () => {
+        if (ws.status === "running") {
+            ws.pause();
+        } else if (ws.status === "done" || ws.status === "error") {
+            ws.reset();
+        }
         setViewingSession(null);
-        ws.reset();
+        setShowSetup(true);
+    };
+
+    const handleSelectCurrentConversation = () => {
+        setViewingSession(null);
+        setShowSetup(false);
     };
 
     const handleSelectSession = (session: ArchivedSession) => {
-        if (ws.status === "running" || ws.status === "paused") {
+        if (ws.status === "running") {
             return;
         }
         setViewingSession(session);
+        setShowSetup(false);
     };
 
-    const isLive = ws.status === "running" || ws.status === "paused";
-    const showConversation = isLive || viewingSession;
+    const hasConversationState = ws.config !== null;
+    const hasCurrentConversation = ws.status === "running" || ws.status === "paused";
+    const showCurrentConversation = !showSetup && !viewingSession && hasConversationState;
+    const showConversation = Boolean(viewingSession) || showCurrentConversation;
 
     return (
         <div className="app-shell">
             <Sidebar
                 history={ws.history}
                 onNewChat={handleNewChat}
+                onSelectCurrentConversation={handleSelectCurrentConversation}
                 onSelectSession={handleSelectSession}
                 selectedSessionId={viewingSession?.id ?? null}
-                isLive={isLive}
+                hasCurrentConversation={hasCurrentConversation}
+                isCurrentConversationSelected={showCurrentConversation}
             />
             <div className="main-panel">
                 {showConversation ? (
@@ -49,7 +66,7 @@ export default function App() {
                         config={viewingSession ? viewingSession.config : ws.config}
                         onPause={viewingSession ? undefined : ws.pause}
                         onResume={viewingSession ? undefined : ws.resume}
-                        onStop={viewingSession ? undefined : ws.stop}
+                        onNewConversation={viewingSession || ws.status !== "done" ? undefined : handleNewChat}
                     />
                 ) : (
                     <SetupForm onStart={handleStart} error={ws.error} />

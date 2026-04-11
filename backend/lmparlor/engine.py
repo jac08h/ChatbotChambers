@@ -34,7 +34,7 @@ async def run_conversation(
         ("b", config.chatbot_b, PREAMBLE_B),
     ]
 
-    while True:
+    while turn < config.max_turns:
         for chatbot_id, chatbot_config, individual_preamble in chatbots:
             if stop_event.is_set():
                 return
