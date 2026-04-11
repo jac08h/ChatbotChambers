@@ -23,16 +23,16 @@ const mockPresets = [
 beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn((url: string) => {
         if (url.includes("/settings")) {
-            return Promise.resolve({ json: () => Promise.resolve({}) })
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
         }
         if (url.includes("/providers")) {
-            return Promise.resolve({ json: () => Promise.resolve(mockProviders) })
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProviders) })
         }
         if (url.includes("/presets")) {
-            return Promise.resolve({ json: () => Promise.resolve(mockPresets) })
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(mockPresets) })
         }
         if (url.includes("/models")) {
-            return Promise.resolve({ json: () => Promise.resolve(mockModels) })
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(mockModels) })
         }
         return Promise.reject(new Error("Unknown URL"))
     }))
@@ -85,10 +85,11 @@ describe("SetupForm", () => {
     it("loads saved settings on mount", async () => {
         vi.stubGlobal("fetch", vi.fn((url: string, options?: RequestInit) => {
             if (url.includes("/settings") && options?.method === "POST") {
-                return Promise.resolve({ json: () => Promise.resolve({}) })
+                return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
             }
             if (url.includes("/settings")) {
                 return Promise.resolve({
+                    ok: true,
                     json: () => Promise.resolve({
                         chatbot_a: {
                             name: "Saved A",
@@ -107,13 +108,13 @@ describe("SetupForm", () => {
                 })
             }
             if (url.includes("/providers")) {
-                return Promise.resolve({ json: () => Promise.resolve(mockProviders) })
+                return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProviders) })
             }
             if (url.includes("/presets")) {
-                return Promise.resolve({ json: () => Promise.resolve(mockPresets) })
+                return Promise.resolve({ ok: true, json: () => Promise.resolve(mockPresets) })
             }
             if (url.includes("/models")) {
-                return Promise.resolve({ json: () => Promise.resolve(mockModels) })
+                return Promise.resolve({ ok: true, json: () => Promise.resolve(mockModels) })
             }
             return Promise.reject(new Error("Unknown URL"))
         }))
@@ -133,7 +134,7 @@ describe("SetupForm", () => {
     })
 
     it("Start button is disabled when no models loaded", async () => {
-        vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ json: () => Promise.resolve([]) })))
+        vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve([]) })))
         render(<SetupForm onStart={vi.fn()} error={null} />)
         await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).toBeDisabled())
     })

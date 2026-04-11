@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 from typing import List
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from lmparlor.engine import Generating, run_conversation
@@ -59,13 +59,21 @@ def get_models(provider: str = "openrouter") -> List[dict]:
 def get_settings() -> dict:
     if not SETTINGS_PATH.exists():
         return {}
-    return json.loads(SETTINGS_PATH.read_text())
+    try:
+        return json.loads(SETTINGS_PATH.read_text())
+    except (OSError, json.JSONDecodeError):
+        logger.exception("Failed to load settings")
+        return {}
 
 
 @app.post("/settings")
 def save_settings(settings: Settings) -> dict:
-    SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    SETTINGS_PATH.write_text(json.dumps(settings.model_dump()))
+    try:
+        SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        SETTINGS_PATH.write_text(json.dumps(settings.model_dump()))
+    except OSError as exc:
+        logger.exception("Failed to save settings")
+        raise HTTPException(status_code=500, detail="Failed to save settings") from exc
     return settings.model_dump()
 
 
