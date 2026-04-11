@@ -45,3 +45,4 @@ chat.txt
 .env.*.local
 
 plans/
+todo.md

@@ -8,7 +8,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 cd backend
-uv run uvicorn lmparlor.main:app --reload --port 8001 &
+uv run --project . uvicorn lmparlor.main:app --reload --port 8001 &
 backend_pid=$!
 cd ..
 
