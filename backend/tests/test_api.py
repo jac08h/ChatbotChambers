@@ -183,15 +183,15 @@ async def test_get_sessions_returns_saved_sessions(monkeypatch: pytest.MonkeyPat
 
     session1 = {
         "id": "session-1",
-        "label": "First Session",
+        "title": "First Session",
         "config": {},
         "messages": [],
-        "doneReason": "max_turns",
+        "doneReason": "leave:a",
         "error": None,
     }
     session2 = {
         "id": "session-2",
-        "label": "Second Session",
+        "title": None,
         "config": {},
         "messages": [],
         "doneReason": "stopped",
@@ -208,9 +208,10 @@ async def test_get_sessions_returns_saved_sessions(monkeypatch: pytest.MonkeyPat
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
-    ids = [s["id"] for s in data]
-    assert "session-1" in ids
-    assert "session-2" in ids
+    assert data[0]["id"] == "session-2"
+    assert data[0]["title"] is None
+    assert data[1]["id"] == "session-1"
+    assert data[1]["title"] == "First Session"
 
 
 async def test_patch_sessions_renames_session(monkeypatch: pytest.MonkeyPatch, tmp_path):
@@ -220,10 +221,10 @@ async def test_patch_sessions_renames_session(monkeypatch: pytest.MonkeyPatch, t
 
     session_data = {
         "id": "test-session",
-        "label": "Original Label",
+        "title": "Original Title",
         "config": {},
         "messages": [],
-        "doneReason": "max_turns",
+        "doneReason": "leave:a",
         "error": None,
     }
     session_file = sessions_dir / "test-session.json"
@@ -231,11 +232,11 @@ async def test_patch_sessions_renames_session(monkeypatch: pytest.MonkeyPatch, t
 
     monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.patch("/sessions/test-session", json={"label": "New Label"})
+        response = await client.patch("/sessions/test-session", json={"title": "New Title"})
 
     assert response.status_code == 200
-    assert response.json()["label"] == "New Label"
-    assert json.loads(session_file.read_text())["label"] == "New Label"
+    assert response.json()["title"] == "New Title"
+    assert json.loads(session_file.read_text())["title"] == "New Title"
 
 
 async def test_patch_sessions_returns_404_for_missing_session(monkeypatch: pytest.MonkeyPatch, tmp_path):
@@ -245,7 +246,7 @@ async def test_patch_sessions_returns_404_for_missing_session(monkeypatch: pytes
 
     monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.patch("/sessions/nonexistent", json={"label": "New Label"})
+        response = await client.patch("/sessions/nonexistent", json={"title": "New Title"})
 
     assert response.status_code == 404
 
@@ -257,16 +258,64 @@ async def test_patch_sessions_rejects_empty_label(monkeypatch: pytest.MonkeyPatc
 
     session_data = {
         "id": "test-session",
-        "label": "Original Label",
+        "title": "Original Title",
         "config": {},
         "messages": [],
-        "doneReason": "max_turns",
+        "doneReason": "leave:a",
         "error": None,
     }
     (sessions_dir / "test-session.json").write_text(json.dumps(session_data))
 
     monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.patch("/sessions/test-session", json={"label": "  "})
+        response = await client.patch("/sessions/test-session", json={"title": "  "})
 
     assert response.status_code == 422
+
+
+async def test_get_sessions_maps_legacy_label_to_title(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """GET /sessions converts legacy label-only records into title responses."""
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    (sessions_dir / "legacy.json").write_text(json.dumps({
+        "id": "legacy",
+        "label": "Custom legacy title",
+        "config": {},
+        "messages": [],
+        "doneReason": "stopped",
+        "error": None,
+    }))
+
+    monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/sessions")
+
+    assert response.status_code == 200
+    assert response.json()[0]["title"] == "Custom legacy title"
+
+
+async def test_delete_sessions_removes_session(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """DELETE /sessions/{id} removes the persisted session file."""
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    session_file = sessions_dir / "test-session.json"
+    session_file.write_text(json.dumps({"id": "test-session"}))
+
+    monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.delete("/sessions/test-session")
+
+    assert response.status_code == 204
+    assert not session_file.exists()
+
+
+async def test_delete_sessions_returns_404_for_missing_session(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """DELETE /sessions/{id} returns 404 when session file doesn't exist."""
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.delete("/sessions/nonexistent")
+
+    assert response.status_code == 404

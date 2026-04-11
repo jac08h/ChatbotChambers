@@ -58,10 +58,10 @@ describe("ConversationView", () => {
             <ConversationView
                 {...defaultProps}
                 status="done"
-                doneReason="max_turns"
+                doneReason="stopped"
             />
         )
-        expect(screen.getByText("Reached the turn limit.")).toBeInTheDocument()
+        expect(screen.getByText("Conversation stopped.")).toBeInTheDocument()
     })
 
     it("done banner includes chatbot name for leave:a reason", () => {
@@ -176,10 +176,22 @@ describe("ConversationView", () => {
             <ConversationView
                 {...defaultProps}
                 status="done"
-                doneReason="max_turns"
+                doneReason="stopped"
                 onNewConversation={vi.fn()}
             />
         )
         expect(screen.getByRole("button", { name: "New conversation" })).toBeInTheDocument()
+    })
+
+    it("shows Delete button when delete callback is provided", () => {
+        render(
+            <ConversationView
+                {...defaultProps}
+                status="done"
+                label="123e4567-e89b-12d3-a456-426614174000"
+                onDeleteSession={vi.fn()}
+            />
+        )
+        expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument()
     })
 })

@@ -33,7 +33,7 @@ class MockWebSocket {
 beforeEach(() => {
     MockWebSocket.reset()
     vi.stubGlobal("WebSocket", MockWebSocket)
-    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ json: () => Promise.resolve([]) })))
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve([]) })))
 })
 
 afterEach(() => {
@@ -100,9 +100,9 @@ describe("useWebSocket", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
-        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "max_turns" }) })
+        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "stopped" }) })
         expect(result.current.status).toBe("done")
-        expect(result.current.doneReason).toBe("max_turns")
+        expect(result.current.doneReason).toBe("stopped")
     })
 
     it("receiving 'done' with leave reason includes chatbot", () => {
@@ -179,15 +179,16 @@ describe("useWebSocket", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
         act(() => {
             MockWebSocket.instances[0].receive({
                 type: "message",
                 data: { chatbot: "a", name: "A", model: "m", content: "Hello world", turn: 0, thinking: "" },
             })
         })
-        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "max_turns" }) })
+        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "stopped" }) })
         expect(result.current.history).toHaveLength(1)
-        expect(result.current.history[0].doneReason).toBe("max_turns")
+        expect(result.current.history[0].doneReason).toBe("stopped")
         expect(result.current.history[0].messages).toHaveLength(1)
     })
 
@@ -196,26 +197,27 @@ describe("useWebSocket", () => {
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
         act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "test-id" }) })
-        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "max_turns" }) })
-        expect(result.current.history[0].label).toBe("test-id")
+        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "stopped" }) })
+        expect(result.current.history[0].title).toBeNull()
     })
 
-    it("currentLabel is set on session_id and cleared on reset", () => {
+    it("current session id is set on session_id and cleared on reset", () => {
         const { result } = renderHook(() => useWebSocket())
-        expect(result.current.currentLabel).toBeNull()
+        expect(result.current.currentSessionId).toBeNull()
         act(() => { result.current.start(sampleConfig) })
-        expect(result.current.currentLabel).toBeNull()
+        expect(result.current.currentSessionId).toBeNull()
         act(() => { MockWebSocket.instances[0].open() })
-        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "test-slug" }) })
-        expect(result.current.currentLabel).toBe("test-slug")
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "test-uuid" }) })
+        expect(result.current.currentSessionId).toBe("test-uuid")
         act(() => { result.current.reset() })
-        expect(result.current.currentLabel).toBeNull()
+        expect(result.current.currentSessionId).toBeNull()
     })
 
     it("error event archives session to history", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
         act(() => { MockWebSocket.instances[0].receive({ type: "error", message: "oops" }) })
         expect(result.current.history).toHaveLength(1)
         expect(result.current.history[0].error).toBe("oops")
@@ -225,6 +227,7 @@ describe("useWebSocket", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
         act(() => {
             MockWebSocket.instances[0].receive({
                 type: "message",
@@ -241,6 +244,7 @@ describe("useWebSocket", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
         act(() => {
             MockWebSocket.instances[0].receive({
                 type: "message",
@@ -255,17 +259,35 @@ describe("useWebSocket", () => {
     it("renameCurrentSession updates currentLabel", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
         act(() => { result.current.renameCurrentSession("my-custom-name") })
-        expect(result.current.currentLabel).toBe("my-custom-name")
+        expect(result.current.currentTitle).toBe("my-custom-name")
     })
 
-    it("renameSession updates label in history", () => {
+    it("renameSession updates title in history", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
-        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "max_turns" }) })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
+        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "stopped" }) })
         const id = result.current.history[0].id
         act(() => { result.current.renameSession(id, "renamed") })
-        expect(result.current.history[0].label).toBe("renamed")
+        expect(result.current.history[0].title).toBe("renamed")
+    })
+
+    it("deleteSession removes session from history", async () => {
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
+        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "stopped" }) })
+        expect(result.current.history).toHaveLength(1)
+
+        await act(async () => {
+            await result.current.deleteSession("session-1")
+        })
+
+        expect(result.current.history).toEqual([])
     })
 })

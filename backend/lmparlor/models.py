@@ -2,8 +2,6 @@ from typing import List, Literal, Tuple
 
 from pydantic import BaseModel
 
-MAX_TURNS_DEFAULT = 50
-
 MODELS: List[Tuple[str, str]] = [
     ("anthropic/claude-sonnet-4-5", "Claude Sonnet 4.5"),
     ("openai/gpt-4o", "GPT-4o"),
@@ -44,7 +42,6 @@ class SessionConfig(BaseModel):
     chatbot_a: ChatbotConfig
     chatbot_b: ChatbotConfig
     shared_system_prompt: str
-    max_turns: int = MAX_TURNS_DEFAULT
 
 
 class Settings(BaseModel):
@@ -54,7 +51,7 @@ class Settings(BaseModel):
 
 
 class RenameRequest(BaseModel):
-    label: str
+    title: str
 
 
 class Message(BaseModel):

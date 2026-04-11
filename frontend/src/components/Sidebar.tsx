@@ -1,4 +1,4 @@
-import type { ArchivedSession } from "../hooks/useWebSocket";
+import { getSessionDisplayTitle, type ArchivedSession } from "../hooks/useWebSocket";
 
 interface SidebarProps {
     history: ArchivedSession[];
@@ -6,6 +6,7 @@ interface SidebarProps {
     onNewChat: () => void;
     onSelectCurrentConversation: () => void;
     onSelectSession: (session: ArchivedSession) => void;
+    onDeleteSession: (session: ArchivedSession) => void;
     selectedSessionId: string | null;
     hasCurrentConversation: boolean;
     isCurrentConversationSelected: boolean;
@@ -17,6 +18,7 @@ export function Sidebar({
     onNewChat,
     onSelectCurrentConversation,
     onSelectSession,
+    onDeleteSession,
     selectedSessionId,
     hasCurrentConversation,
     isCurrentConversationSelected,
@@ -43,15 +45,25 @@ export function Sidebar({
                     </button>
                 )}
                 {history.map((session) => (
-                    <button
-                        key={session.id}
-                        className={`sidebar-item${selectedSessionId === session.id ? " sidebar-item-active" : ""}`}
-                        onClick={() => onSelectSession(session)}
-                        type="button"
-                        title={session.label}
-                    >
-                        {session.label}
-                    </button>
+                    <div className="sidebar-history-item" key={session.id}>
+                        <button
+                            className={`sidebar-item${selectedSessionId === session.id ? " sidebar-item-active" : ""}`}
+                            onClick={() => onSelectSession(session)}
+                            type="button"
+                            title={getSessionDisplayTitle(session)}
+                        >
+                            {getSessionDisplayTitle(session)}
+                        </button>
+                        <button
+                            className="sidebar-delete-btn"
+                            onClick={() => onDeleteSession(session)}
+                            type="button"
+                            aria-label={`Delete conversation ${getSessionDisplayTitle(session)}`}
+                            title="Delete conversation"
+                        >
+                            ×
+                        </button>
+                    </div>
                 ))}
                 {!hasCurrentConversation && history.length === 0 && (
                     <div className="sidebar-empty">No conversations yet</div>

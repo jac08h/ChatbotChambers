@@ -148,8 +148,14 @@ button {
     gap: 2px;
 }
 
+.sidebar-history-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
 .sidebar-item {
-    width: 100%;
+    flex: 1;
     padding: 0.5rem 0.75rem;
     border-radius: 8px;
     border: none;
@@ -182,6 +188,23 @@ button {
     color: var(--text-muted);
     font-style: italic;
     cursor: default;
+}
+
+.sidebar-delete-btn {
+    width: 1.8rem;
+    height: 1.8rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 150ms ease, color 150ms ease;
+}
+
+.sidebar-delete-btn:hover {
+    background: rgba(176, 122, 122, 0.15);
+    color: var(--chatbot-b);
 }
 
 .sidebar-empty {
@@ -361,6 +384,7 @@ input::placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 0.5rem;
     padding: 0.75rem 1.25rem 0;
     max-width: 820px;
     margin: 0 auto;
@@ -408,6 +432,21 @@ input::placeholder {
     padding: 0.25rem 0.5rem;
     outline: none;
     width: 280px;
+}
+
+.conversation-delete-btn {
+    border: 1px solid rgba(176, 122, 122, 0.35);
+    background: rgba(176, 122, 122, 0.08);
+    color: #d99a9a;
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease;
+}
+
+.conversation-delete-btn:hover {
+    background: rgba(176, 122, 122, 0.16);
+    border-color: rgba(176, 122, 122, 0.55);
 }
 
 .messages {

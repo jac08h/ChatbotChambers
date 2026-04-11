@@ -18,6 +18,7 @@ interface ConversationViewProps {
     onResume?: () => void;
     onNewConversation?: () => void;
     onRenameSession?: (label: string) => void;
+    onDeleteSession?: () => void;
 }
 
 
@@ -30,9 +31,6 @@ function doneLabel(reason: string, config: SessionConfig | null): string {
     }
     if (reason === "stopped") {
         return "Conversation stopped.";
-    }
-    if (reason === "max_turns") {
-        return "Reached the turn limit.";
     }
     return "Conversation ended.";
 }
@@ -49,6 +47,7 @@ export function ConversationView({
     onResume,
     onNewConversation,
     onRenameSession,
+    onDeleteSession,
 }: ConversationViewProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
     const [editing, setEditing] = useState(false);
@@ -106,6 +105,11 @@ export function ConversationView({
                         >
                             {label}
                             {canRename && onRenameSession && <span className="conversation-title-caret">▾</span>}
+                        </button>
+                    )}
+                    {onDeleteSession && (
+                        <button className="conversation-delete-btn" onClick={onDeleteSession} type="button">
+                            Delete
                         </button>
                     )}
                 </div>
