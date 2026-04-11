@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap");
 
 *, *::before, *::after {
     box-sizing: border-box;
@@ -20,8 +20,8 @@
     --radius-lg: 16px;
     --sidebar-width: 260px;
     color: var(--text);
-    font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 14px;
+    font-family: "IBM Plex Mono", "Menlo", monospace;
+    font-size: 15px;
     line-height: 1.6;
 }
 
@@ -108,19 +108,6 @@ button {
     scrollbar-color: var(--border) transparent;
 }
 
-.sidebar-brand {
-    padding: 0.35rem 0.75rem 0.65rem;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 0.15rem;
-}
-
-.sidebar-brand-title {
-    font-family: "Playfair Display", Georgia, serif;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--accent);
-    letter-spacing: 0.02em;
-}
 
 .sidebar-new-chat {
     width: 100%;
@@ -130,8 +117,9 @@ button {
     background: transparent;
     color: var(--accent);
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 500;
+    letter-spacing: 0.06em;
     text-align: left;
     transition: background 150ms ease, box-shadow 200ms ease, border-color 200ms ease;
 }
@@ -209,25 +197,16 @@ button {
     animation: fade-up 400ms ease-out both;
 }
 
-.setup-header {
-    text-align: center;
-}
 
 .setup-title {
-    margin: 0;
-    font-family: "Playfair Display", Georgia, serif;
-    font-size: 2rem;
-    font-weight: 700;
+    margin: 0 0 1.5rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 2.2rem;
+    font-weight: 600;
     text-align: center;
     color: var(--text);
-    letter-spacing: 0.02em;
-}
-
-.setup-subtitle {
-    margin: 0.35rem 0 0;
-    font-size: 0.9rem;
-    font-style: italic;
-    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-shadow: 2px 0 var(--accent), -2px 0 var(--chatbot-a);
 }
 
 .setup-form {
@@ -272,17 +251,21 @@ label span {
 
 .chatbot-config-header h3 {
     margin: 0;
-    font-family: "Playfair Display", Georgia, serif;
-    font-size: 0.95rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.85rem;
     font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
 }
 
 .side-a .chatbot-config-header h3 {
     color: var(--chatbot-a);
+    text-shadow: 0 0 10px rgba(107, 154, 138, 0.4);
 }
 
 .side-b .chatbot-config-header h3 {
     color: var(--chatbot-b);
+    text-shadow: 0 0 10px rgba(176, 122, 122, 0.4);
 }
 
 select,
@@ -324,6 +307,84 @@ input::placeholder {
     color: var(--text-dim);
 }
 
+.field-label {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.preset-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.1rem;
+}
+
+.preset-chip {
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.preset-chip:hover {
+    border-color: rgba(196, 149, 106, 0.4);
+    color: var(--accent);
+    background: var(--accent-glow);
+}
+
+.preset-chip-active {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.advanced-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 0;
+    width: fit-content;
+    transition: color 150ms ease;
+}
+
+.advanced-toggle:hover {
+    color: var(--text-muted);
+}
+
+.advanced-toggle-icon {
+    display: inline-block;
+    transition: transform 200ms ease;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.advanced-toggle-icon.open {
+    transform: rotate(90deg);
+}
+
+.advanced-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    animation: fade-up 200ms ease-out both;
+}
+
+.advanced-fields-hidden {
+    display: none;
+}
+
 .setup-actions {
     display: flex;
     justify-content: center;
@@ -337,6 +398,9 @@ input::placeholder {
     background: var(--accent);
     color: var(--bg);
     font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.82rem;
     cursor: pointer;
     transition: box-shadow 200ms ease, opacity 150ms ease;
 }
@@ -415,17 +479,21 @@ input::placeholder {
 }
 
 .sender-label {
-    font-size: 0.82rem;
-    font-weight: 500;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     color: var(--text);
 }
 
 .chatbot-a .sender-label {
     color: var(--chatbot-a);
+    text-shadow: 0 0 8px rgba(107, 154, 138, 0.5);
 }
 
 .chatbot-b .sender-label {
     color: var(--chatbot-b);
+    text-shadow: 0 0 8px rgba(176, 122, 122, 0.5);
 }
 
 .model-label {
@@ -463,8 +531,7 @@ input::placeholder {
 .message-content {
     white-space: pre-wrap;
     word-break: break-word;
-    font-family: "IBM Plex Mono", "Menlo", monospace;
-    font-size: 0.9rem;
+    font-size: 0.93rem;
     font-weight: 300;
     line-height: 1.7;
 }

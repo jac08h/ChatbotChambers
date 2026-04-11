@@ -17,10 +17,6 @@ export function Sidebar({
 }: SidebarProps) {
     return (
         <aside className="sidebar">
-            <div className="sidebar-brand">
-                <span className="sidebar-brand-title">ChatbotChambers</span>
-            </div>
-
             <button className="sidebar-new-chat" onClick={onNewChat} type="button">
                 + New chat
             </button>

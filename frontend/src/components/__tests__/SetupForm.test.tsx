@@ -58,8 +58,7 @@ describe("SetupForm", () => {
     it("loading a preset fills shared and individual prompts", async () => {
         render(<SetupForm onStart={vi.fn()} error={null} />)
         await waitFor(() => screen.getByText("Debate"))
-        const presetSelect = screen.getAllByRole("combobox")[0]
-        await userEvent.selectOptions(presetSelect, "debate")
+        await userEvent.click(screen.getByRole("button", { name: "Debate" }))
         expect(screen.getByDisplayValue("You are debating.")).toBeInTheDocument()
         expect(screen.getByDisplayValue("You argue for.")).toBeInTheDocument()
         expect(screen.getByDisplayValue("You argue against.")).toBeInTheDocument()
