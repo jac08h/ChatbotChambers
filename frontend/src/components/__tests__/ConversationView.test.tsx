@@ -183,7 +183,7 @@ describe("ConversationView", () => {
         expect(screen.getByRole("button", { name: "New conversation" })).toBeInTheDocument()
     })
 
-    it("shows Delete button when delete callback is provided", () => {
+    it("shows delete action in the conversation menu", async () => {
         render(
             <ConversationView
                 {...defaultProps}
@@ -192,6 +192,25 @@ describe("ConversationView", () => {
                 onDeleteSession={vi.fn()}
             />
         )
-        expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument()
+        await userEvent.click(screen.getByRole("button", { name: "Conversation options" }))
+        expect(screen.getByRole("menuitem", { name: "Delete" })).toBeInTheDocument()
+    })
+
+    it("renames a session from the conversation menu", async () => {
+        const onRenameSession = vi.fn()
+        render(
+            <ConversationView
+                {...defaultProps}
+                status="done"
+                label="Original name"
+                onRenameSession={onRenameSession}
+            />
+        )
+        await userEvent.click(screen.getByRole("button", { name: "Conversation options" }))
+        await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
+        const input = screen.getByDisplayValue("Original name")
+        await userEvent.clear(input)
+        await userEvent.type(input, "Renamed{enter}")
+        expect(onRenameSession).toHaveBeenCalledWith("Renamed")
     })
 })

@@ -32,6 +32,7 @@ Thumbs.db
 
 # Logs
 logs/
+.cache/
 
 # Planning docs
 idea.md

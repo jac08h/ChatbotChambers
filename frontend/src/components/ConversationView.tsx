@@ -14,13 +14,13 @@ interface ConversationViewProps {
     error: string | null;
     config: SessionConfig | null;
     label?: string | null;
+    onBack?: () => void;
     onPause?: () => void;
     onResume?: () => void;
     onNewConversation?: () => void;
     onRenameSession?: (label: string) => void;
     onDeleteSession?: () => void;
 }
-
 
 function doneLabel(reason: string, config: SessionConfig | null): string {
     if (reason === "leave:a") {
@@ -43,6 +43,7 @@ export function ConversationView({
     error,
     config,
     label,
+    onBack,
     onPause,
     onResume,
     onNewConversation,
@@ -50,22 +51,24 @@ export function ConversationView({
     onDeleteSession,
 }: ConversationViewProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
-    const [editing, setEditing] = useState(false);
-    const [editValue, setEditValue] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
+    const [editing, setEditing] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [editValue, setEditValue] = useState("");
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, generatingChatbot, status]);
 
-    const canRename = status === "paused" || status === "done";
+    useEffect(() => {
+        if (editing) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }
+    }, [editing]);
 
-    const handleStartEdit = () => {
-        if (!canRename || !onRenameSession) return;
-        setEditValue(label ?? "");
-        setEditing(true);
-        setTimeout(() => inputRef.current?.select(), 0);
-    };
+    const showControls = (status === "running" || status === "paused") && (onPause || onResume);
+    const hasSessionActions = Boolean(onRenameSession || onDeleteSession);
 
     const handleCommitEdit = () => {
         const trimmed = editValue.trim();
@@ -75,45 +78,77 @@ export function ConversationView({
         setEditing(false);
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Enter") handleCommitEdit();
-        if (e.key === "Escape") setEditing(false);
-    };
-
-    const showControls = (status === "running" || status === "paused") && (onPause || onResume);
-
     return (
         <div className="conversation-container">
-            {label && (
-                <div className="conversation-header">
-                    {editing ? (
+            <div className="conversation-header">
+                {onBack && (
+                    <button className="conversation-app-title" onClick={onBack} type="button">
+                        ChatbotChambers
+                    </button>
+                )}
+                {label && (
+                    editing ? (
                         <input
                             ref={inputRef}
                             className="conversation-title-input"
                             value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
+                            onChange={(event) => setEditValue(event.target.value)}
                             onBlur={handleCommitEdit}
-                            onKeyDown={handleKeyDown}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                    handleCommitEdit();
+                                }
+                                if (event.key === "Escape") {
+                                    setEditing(false);
+                                }
+                            }}
                             autoFocus
                         />
                     ) : (
+                        <h1 className="conversation-title">{label}</h1>
+                    )
+                )}
+                {hasSessionActions && (
+                    <div className="conversation-actions">
                         <button
-                            className={`conversation-title${canRename && onRenameSession ? " conversation-title-editable" : ""}`}
-                            onClick={handleStartEdit}
+                            className="conversation-menu-btn"
+                            onClick={() => setMenuOpen((open) => !open)}
                             type="button"
-                            disabled={!canRename || !onRenameSession}
+                            aria-label="Conversation options"
                         >
-                            {label}
-                            {canRename && onRenameSession && <span className="conversation-title-caret">▾</span>}
+                            ⋯
                         </button>
-                    )}
-                    {onDeleteSession && (
-                        <button className="conversation-delete-btn" onClick={onDeleteSession} type="button">
-                            Delete
-                        </button>
-                    )}
-                </div>
-            )}
+                        {menuOpen && (
+                            <div className="conversation-menu" role="menu">
+                                {onRenameSession && (
+                                    <button
+                                        className="conversation-menu-item"
+                                        onClick={() => {
+                                            setEditValue(label ?? "");
+                                            setEditing(true);
+                                            setMenuOpen(false);
+                                        }}
+                                        type="button"
+                                        role="menuitem"
+                                    >
+                                        Rename
+                                    </button>
+                                )}
+                                {onDeleteSession && (
+                                    <button
+                                        className="conversation-menu-item conversation-menu-item-danger"
+                                        onClick={onDeleteSession}
+                                        type="button"
+                                        role="menuitem"
+                                    >
+                                        Delete
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
             <div className="messages">
                 {messages.map((message, index) => (
                     <MessageBubble key={`${message.chatbot}-${index}`} message={message} />
@@ -196,6 +231,6 @@ function GeneratingBubble({ chatbot, name }: { chatbot: "a" | "b"; name: string 
 }
 
 function getGeneratingName(messages: ChatMessage[], chatbot: "a" | "b"): string {
-    const latest = [...messages].reverse().find((m) => m.chatbot === chatbot);
+    const latest = [...messages].reverse().find((message) => message.chatbot === chatbot);
     return latest?.name || DEFAULT_CHATBOT_NAMES[chatbot];
 }

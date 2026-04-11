@@ -115,11 +115,16 @@ button {
 }
 
 .sidebar-brand-title {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
     font-family: "Playfair Display", Georgia, serif;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--accent);
     letter-spacing: 0.02em;
+    cursor: pointer;
 }
 
 .sidebar-new-chat {
@@ -152,17 +157,18 @@ button {
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    position: relative;
 }
 
 .sidebar-item {
     flex: 1;
-    padding: 0.5rem 0.75rem;
+    padding: 0.65rem 0.75rem;
     border-radius: 8px;
     border: none;
     border-left: 2px solid transparent;
     background: transparent;
     color: var(--text);
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     text-align: left;
     cursor: pointer;
     white-space: nowrap;
@@ -184,15 +190,17 @@ button {
     background: var(--accent-glow);
 }
 
-.sidebar-item-live {
-    color: var(--text-muted);
-    font-style: italic;
-    cursor: default;
+.sidebar-item-input {
+    cursor: text;
 }
 
-.sidebar-delete-btn {
-    width: 1.8rem;
-    height: 1.8rem;
+.sidebar-item-actions {
+    position: relative;
+}
+
+.sidebar-menu-btn {
+    width: 2rem;
+    height: 2rem;
     border: none;
     border-radius: 999px;
     background: transparent;
@@ -202,9 +210,50 @@ button {
     transition: background 150ms ease, color 150ms ease;
 }
 
-.sidebar-delete-btn:hover {
-    background: rgba(176, 122, 122, 0.15);
-    color: var(--chatbot-b);
+.sidebar-menu-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text);
+}
+
+.sidebar-menu,
+.conversation-menu {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    min-width: 9rem;
+    padding: 0.35rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    z-index: 10;
+}
+
+.sidebar-menu-item,
+.conversation-menu-item {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+}
+
+.sidebar-menu-item:hover,
+.conversation-menu-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-menu-item-danger,
+.conversation-menu-item-danger {
+    color: #d99a9a;
+}
+
+.sidebar-menu-item-danger:hover,
+.conversation-menu-item-danger:hover {
+    background: rgba(176, 122, 122, 0.16);
 }
 
 .sidebar-empty {
@@ -242,7 +291,7 @@ button {
     font-size: 2rem;
     font-weight: 700;
     text-align: center;
-    color: var(--text);
+    color: var(--accent);
     letter-spacing: 0.02em;
 }
 
@@ -383,42 +432,33 @@ input::placeholder {
 .conversation-header {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
+    justify-content: space-between;
+    gap: 0.75rem;
     padding: 0.75rem 1.25rem 0;
     max-width: 820px;
     margin: 0 auto;
     width: 100%;
 }
 
-.conversation-title {
+.conversation-app-title {
     background: none;
     border: none;
-    color: var(--text);
-    font-family: inherit;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: default;
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.conversation-title-editable {
-    cursor: pointer;
-}
-
-.conversation-title-editable:hover {
-    background: var(--bg-secondary);
     color: var(--accent);
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.25rem 0;
 }
 
-.conversation-title-caret {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    line-height: 1;
+.conversation-title {
+    flex: 1;
+    margin: 0;
+    color: var(--text);
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    text-align: center;
 }
 
 .conversation-title-input {
@@ -426,27 +466,33 @@ input::placeholder {
     border: 1px solid var(--accent);
     border-radius: 6px;
     color: var(--text);
-    font-family: inherit;
-    font-size: 0.95rem;
-    font-weight: 500;
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: 1.05rem;
+    font-weight: 600;
     padding: 0.25rem 0.5rem;
     outline: none;
     width: 280px;
 }
 
-.conversation-delete-btn {
-    border: 1px solid rgba(176, 122, 122, 0.35);
-    background: rgba(176, 122, 122, 0.08);
-    color: #d99a9a;
-    border-radius: 999px;
-    padding: 0.3rem 0.75rem;
-    cursor: pointer;
-    transition: background 150ms ease, border-color 150ms ease;
+.conversation-actions {
+    position: relative;
 }
 
-.conversation-delete-btn:hover {
-    background: rgba(176, 122, 122, 0.16);
-    border-color: rgba(176, 122, 122, 0.55);
+.conversation-menu-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.conversation-menu-btn:hover {
+    background: var(--bg);
+    border-color: rgba(196, 149, 106, 0.25);
+    color: var(--text);
 }
 
 .messages {
@@ -507,7 +553,7 @@ input::placeholder {
 }
 
 .sender-label {
-    font-size: 0.82rem;
+    font-size: 0.92rem;
     font-weight: 500;
     color: var(--text);
 }
@@ -521,7 +567,7 @@ input::placeholder {
 }
 
 .model-label {
-    font-size: 0.78rem;
+    font-size: 0.82rem;
     color: var(--text-dim);
 }
 
@@ -556,9 +602,9 @@ input::placeholder {
     white-space: pre-wrap;
     word-break: break-word;
     font-family: "IBM Plex Mono", "Menlo", monospace;
-    font-size: 0.9rem;
+    font-size: 1rem;
     font-weight: 300;
-    line-height: 1.7;
+    line-height: 1.8;
 }
 
 .message-bubble.generating {

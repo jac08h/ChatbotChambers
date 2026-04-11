@@ -75,11 +75,22 @@ describe("SetupForm", () => {
         await userEvent.click(screen.getByRole("button", { name: "Start conversation" }))
         expect(onStart).toHaveBeenCalledOnce()
         const config = onStart.mock.calls[0][0]
+        const initialTitle = onStart.mock.calls[0][1]
         expect(config).toHaveProperty("chatbot_a")
         expect(config).toHaveProperty("chatbot_b")
         expect(config).toHaveProperty("shared_system_prompt")
         expect(config.chatbot_a.model).toBeTruthy()
         expect(config.chatbot_b.model).toBeTruthy()
+        expect(initialTitle).toBe("")
+    })
+
+    it("passes the optional conversation name to onStart", async () => {
+        const onStart = vi.fn()
+        render(<SetupForm onStart={onStart} error={null} />)
+        await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).not.toBeDisabled())
+        await userEvent.type(screen.getByLabelText("Conversation name"), "Test chat")
+        await userEvent.click(screen.getByRole("button", { name: "Start conversation" }))
+        expect(onStart).toHaveBeenCalledWith(expect.anything(), "Test chat")
     })
 
     it("loads saved settings on mount", async () => {

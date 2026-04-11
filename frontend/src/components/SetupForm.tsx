@@ -22,7 +22,7 @@ interface Providers {
 }
 
 interface SetupFormProps {
-    onStart: (config: SessionConfig) => void;
+    onStart: (config: SessionConfig, initialTitle: string) => void;
     error: string | null;
 }
 
@@ -77,6 +77,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [sharedPrompt, setSharedPrompt] = useState("");
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");
+    const [conversationTitle, setConversationTitle] = useState("");
     const [isInitialized, setIsInitialized] = useState(false);
 
     useEffect(() => {
@@ -179,7 +180,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             shared_system_prompt: sharedPrompt,
         };
         await saveSettings(config).catch(() => {});
-        onStart(config);
+        onStart(config, conversationTitle.trim());
     };
 
     return (
@@ -204,6 +205,16 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             </select>
                         </label>
                     )}
+
+                    <label className="field">
+                        <span>Conversation name</span>
+                        <input
+                            type="text"
+                            value={conversationTitle}
+                            onChange={(event) => setConversationTitle(event.target.value)}
+                            placeholder="Optional"
+                        />
+                    </label>
 
                     <label className="field">
                         <span>Shared prompt</span>

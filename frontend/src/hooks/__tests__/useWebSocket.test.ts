@@ -1,6 +1,12 @@
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { useWebSocket, type SessionConfig } from "../useWebSocket"
+import {
+    getSessionDisplayTitle,
+    getSessionIdFromPath,
+    getSessionPath,
+    useWebSocket,
+    type SessionConfig,
+} from "../useWebSocket"
 
 const sampleConfig: SessionConfig = {
     chatbot_a: { name: "A", model: "model-a", system_prompt: "sys a", provider: "openrouter" },
@@ -199,6 +205,7 @@ describe("useWebSocket", () => {
         act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "test-id" }) })
         act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "stopped" }) })
         expect(result.current.history[0].title).toBeNull()
+        expect(getSessionDisplayTitle(result.current.history[0])).toBe("test")
     })
 
     it("current session id is set on session_id and cleared on reset", () => {
@@ -265,6 +272,20 @@ describe("useWebSocket", () => {
         expect(result.current.currentTitle).toBe("my-custom-name")
     })
 
+    it("applies an initial conversation title after the session id arrives", () => {
+        const fetchMock = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve([]) }))
+        vi.stubGlobal("fetch", fetchMock)
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig, "Named chat") })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
+        expect(result.current.currentTitle).toBe("Named chat")
+        expect(fetchMock).toHaveBeenCalledWith(
+            "http://localhost:8001/sessions/session-1",
+            expect.objectContaining({ method: "PATCH" }),
+        )
+    })
+
     it("renameSession updates title in history", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
@@ -289,5 +310,11 @@ describe("useWebSocket", () => {
         })
 
         expect(result.current.history).toEqual([])
+    })
+
+    it("creates and parses chat paths", () => {
+        expect(getSessionPath("session-1")).toBe("/chat/session-1")
+        expect(getSessionIdFromPath("/chat/session-1")).toBe("session-1")
+        expect(getSessionIdFromPath("/")).toBeNull()
     })
 })
