@@ -53,6 +53,10 @@ class Settings(BaseModel):
     shared_system_prompt: str
 
 
+class RenameRequest(BaseModel):
+    label: str
+
+
 class Message(BaseModel):
     chatbot: Literal["a", "b"]
     name: str

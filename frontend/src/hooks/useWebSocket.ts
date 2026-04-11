@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface ChatMessage {
     chatbot: "a" | "b";
@@ -37,7 +37,7 @@ export type Status =
     | "error";
 
 export interface ArchivedSession {
-    id: number;
+    id: string;
     label: string;
     messages: ChatMessage[];
     config: SessionConfig;
@@ -52,23 +52,14 @@ export interface WebSocketState {
     doneReason: string | null;
     error: string | null;
     config: SessionConfig | null;
+    currentLabel: string | null;
     history: ArchivedSession[];
     start: (config: SessionConfig) => void;
     pause: () => void;
     resume: () => void;
     reset: () => void;
-}
-
-const LABEL_MAX_LENGTH = 40;
-
-function buildLabel(messages: ChatMessage[], id: number): string {
-    const first = messages[0]?.content?.trim();
-    if (!first) {
-        return `Conversation ${id}`;
-    }
-    return first.length > LABEL_MAX_LENGTH
-        ? `${first.slice(0, LABEL_MAX_LENGTH)}...`
-        : first;
+    renameCurrentSession: (label: string) => void;
+    renameSession: (id: string, label: string) => void;
 }
 
 export function useWebSocket(): WebSocketState {
@@ -78,37 +69,55 @@ export function useWebSocket(): WebSocketState {
     const [doneReason, setDoneReason] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [config, setConfig] = useState<SessionConfig | null>(null);
+    const [currentLabel, setCurrentLabel] = useState<string | null>(null);
     const [history, setHistory] = useState<ArchivedSession[]>([]);
     const wsRef = useRef<WebSocket | null>(null);
     const messagesRef = useRef<ChatMessage[]>([]);
     const configRef = useRef<SessionConfig | null>(null);
-    const nextIdRef = useRef(1);
+    const currentLabelRef = useRef<string | null>(null);
+    const currentIdRef = useRef<string | null>(null);
 
-    const archive = useCallback((doneReason: string | null, error: string | null) => {
-        if (!configRef.current) {
+    useEffect(() => {
+        fetch("http://localhost:8001/sessions")
+            .then((r) => r.json())
+            .then((sessions: ArchivedSession[]) => {
+                setHistory(sessions);
+            })
+            .catch(() => {});
+    }, []);
+
+    const archive = useCallback((reason: string | null, err: string | null) => {
+        if (!configRef.current || currentIdRef.current === null) {
             return;
         }
-        const id = nextIdRef.current++;
         const session: ArchivedSession = {
-            id,
-            label: buildLabel(messagesRef.current, id),
+            id: currentIdRef.current,
+            label: currentLabelRef.current ?? currentIdRef.current,
             messages: messagesRef.current,
             config: configRef.current,
-            doneReason,
-            error,
+            doneReason: reason,
+            error: err,
         };
-        setHistory((prev) => [session, ...prev]);
+        setHistory((prev) => {
+            const exists = prev.some((s) => s.id === session.id);
+            return exists ? prev : [session, ...prev];
+        });
     }, []);
 
     const start = useCallback((newConfig: SessionConfig) => {
+        archive("stopped", null);
         wsRef.current?.close();
         messagesRef.current = [];
         configRef.current = newConfig;
+        const tempId = `temp-${Date.now()}`;
+        currentIdRef.current = tempId;
+        currentLabelRef.current = null;
         setMessages([]);
         setGeneratingChatbot(null);
         setDoneReason(null);
         setError(null);
         setConfig(newConfig);
+        setCurrentLabel(null);
         const ws = new WebSocket("ws://localhost:8001/ws");
         wsRef.current = ws;
 
@@ -119,7 +128,19 @@ export function useWebSocket(): WebSocketState {
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            if (data.type === "generating") {
+            if (data.type === "session_id") {
+                if (currentIdRef.current?.startsWith("temp-")) {
+                    const oldId = currentIdRef.current;
+                    currentIdRef.current = data.id;
+                    setHistory((prev) =>
+                        prev.map((s) => (s.id === oldId ? { ...s, id: data.id } : s))
+                    );
+                } else {
+                    currentIdRef.current = data.id;
+                }
+                currentLabelRef.current = data.id;
+                setCurrentLabel(data.id);
+            } else if (data.type === "generating") {
                 setGeneratingChatbot(data.chatbot);
             } else if (data.type === "message") {
                 setGeneratingChatbot(null);
@@ -161,6 +182,7 @@ export function useWebSocket(): WebSocketState {
     }, []);
 
     const reset = useCallback(() => {
+        archive("stopped", null);
         wsRef.current?.close();
         wsRef.current = null;
         setMessages([]);
@@ -169,8 +191,38 @@ export function useWebSocket(): WebSocketState {
         setDoneReason(null);
         setError(null);
         setConfig(null);
+        setCurrentLabel(null);
         messagesRef.current = [];
         configRef.current = null;
+        currentLabelRef.current = null;
+        currentIdRef.current = null;
+    }, [archive]);
+
+    const renameCurrentSession = useCallback((label: string) => {
+        currentLabelRef.current = label;
+        setCurrentLabel(label);
+        if (currentIdRef.current) {
+            fetch(`http://localhost:8001/sessions/${currentIdRef.current}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ label }),
+            }).then((r) => {
+                if (!r.ok) console.error("Rename failed:", r.status, r.statusText);
+            }).catch((e) => console.error("Rename error:", e));
+        }
+    }, []);
+
+    const renameSession = useCallback((id: string, label: string) => {
+        setHistory((prev) =>
+            prev.map((s) => (s.id === id ? { ...s, label } : s))
+        );
+        fetch(`http://localhost:8001/sessions/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ label }),
+        }).then((r) => {
+            if (!r.ok) console.error("Rename failed:", r.status, r.statusText);
+        }).catch((e) => console.error("Rename error:", e));
     }, []);
 
     return {
@@ -180,10 +232,13 @@ export function useWebSocket(): WebSocketState {
         doneReason,
         error,
         config,
+        currentLabel,
         history,
         start,
         pause,
         resume,
         reset,
+        renameCurrentSession,
+        renameSession,
     };
 }

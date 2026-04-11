@@ -2,16 +2,18 @@ import type { ArchivedSession } from "../hooks/useWebSocket";
 
 interface SidebarProps {
     history: ArchivedSession[];
+    currentLabel: string | null;
     onNewChat: () => void;
     onSelectCurrentConversation: () => void;
     onSelectSession: (session: ArchivedSession) => void;
-    selectedSessionId: number | null;
+    selectedSessionId: string | null;
     hasCurrentConversation: boolean;
     isCurrentConversationSelected: boolean;
 }
 
 export function Sidebar({
     history,
+    currentLabel,
     onNewChat,
     onSelectCurrentConversation,
     onSelectSession,
@@ -35,8 +37,9 @@ export function Sidebar({
                         className={`sidebar-item sidebar-item-live${isCurrentConversationSelected ? " sidebar-item-active" : ""}`}
                         onClick={onSelectCurrentConversation}
                         type="button"
+                        title={currentLabel ?? "Current conversation"}
                     >
-                        Current conversation
+                        {currentLabel ?? "Current conversation"}
                     </button>
                 )}
                 {history.map((session) => (

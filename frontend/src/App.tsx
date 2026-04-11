@@ -19,7 +19,7 @@ export default function App() {
     const handleNewChat = () => {
         if (ws.status === "running") {
             ws.pause();
-        } else if (ws.status === "done" || ws.status === "error") {
+        } else {
             ws.reset();
         }
         setViewingSession(null);
@@ -48,6 +48,7 @@ export default function App() {
         <div className="app-shell">
             <Sidebar
                 history={ws.history}
+                currentLabel={ws.currentLabel}
                 onNewChat={handleNewChat}
                 onSelectCurrentConversation={handleSelectCurrentConversation}
                 onSelectSession={handleSelectSession}
@@ -64,9 +65,15 @@ export default function App() {
                         doneReason={viewingSession ? viewingSession.doneReason : ws.doneReason}
                         error={viewingSession ? viewingSession.error : ws.error}
                         config={viewingSession ? viewingSession.config : ws.config}
+                        label={viewingSession ? viewingSession.label : ws.currentLabel}
                         onPause={viewingSession ? undefined : ws.pause}
                         onResume={viewingSession ? undefined : ws.resume}
                         onNewConversation={viewingSession || ws.status !== "done" ? undefined : handleNewChat}
+                        onRenameSession={
+                            viewingSession
+                                ? (label) => ws.renameSession(viewingSession.id, label)
+                                : ws.renameCurrentSession
+                        }
                     />
                 ) : (
                     <SetupForm onStart={handleStart} error={ws.error} />

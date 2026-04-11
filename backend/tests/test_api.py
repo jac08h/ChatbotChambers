@@ -164,3 +164,109 @@ async def test_get_settings_returns_saved_settings(monkeypatch: pytest.MonkeyPat
 
     assert response.status_code == 200
     assert response.json() == payload
+
+
+async def test_get_sessions_returns_empty_list_when_none_exist(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """GET /sessions returns an empty list when no sessions have been saved."""
+    sessions_dir = tmp_path / "sessions"
+    monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/sessions")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+async def test_get_sessions_returns_saved_sessions(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """GET /sessions returns all saved session files ordered by mtime descending."""
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    session1 = {
+        "id": "session-1",
+        "label": "First Session",
+        "config": {},
+        "messages": [],
+        "doneReason": "max_turns",
+        "error": None,
+    }
+    session2 = {
+        "id": "session-2",
+        "label": "Second Session",
+        "config": {},
+        "messages": [],
+        "doneReason": "stopped",
+        "error": None,
+    }
+
+    (sessions_dir / "session-1.json").write_text(json.dumps(session1))
+    (sessions_dir / "session-2.json").write_text(json.dumps(session2))
+
+    monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/sessions")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    ids = [s["id"] for s in data]
+    assert "session-1" in ids
+    assert "session-2" in ids
+
+
+async def test_patch_sessions_renames_session(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """PATCH /sessions/{id} updates the label field in the session file."""
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    session_data = {
+        "id": "test-session",
+        "label": "Original Label",
+        "config": {},
+        "messages": [],
+        "doneReason": "max_turns",
+        "error": None,
+    }
+    session_file = sessions_dir / "test-session.json"
+    session_file.write_text(json.dumps(session_data))
+
+    monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.patch("/sessions/test-session", json={"label": "New Label"})
+
+    assert response.status_code == 200
+    assert response.json()["label"] == "New Label"
+    assert json.loads(session_file.read_text())["label"] == "New Label"
+
+
+async def test_patch_sessions_returns_404_for_missing_session(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """PATCH /sessions/{id} returns 404 when session file doesn't exist."""
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.patch("/sessions/nonexistent", json={"label": "New Label"})
+
+    assert response.status_code == 404
+
+
+async def test_patch_sessions_rejects_empty_label(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """PATCH /sessions/{id} returns 422 when label is empty."""
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    session_data = {
+        "id": "test-session",
+        "label": "Original Label",
+        "config": {},
+        "messages": [],
+        "doneReason": "max_turns",
+        "error": None,
+    }
+    (sessions_dir / "test-session.json").write_text(json.dumps(session_data))
+
+    monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.patch("/sessions/test-session", json={"label": "  "})
+
+    assert response.status_code == 422

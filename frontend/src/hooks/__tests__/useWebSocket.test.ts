@@ -33,6 +33,7 @@ class MockWebSocket {
 beforeEach(() => {
     MockWebSocket.reset()
     vi.stubGlobal("WebSocket", MockWebSocket)
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ json: () => Promise.resolve([]) })))
 })
 
 afterEach(() => {
@@ -190,6 +191,27 @@ describe("useWebSocket", () => {
         expect(result.current.history[0].messages).toHaveLength(1)
     })
 
+    it("archived session has an id label", () => {
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "test-id" }) })
+        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "max_turns" }) })
+        expect(result.current.history[0].label).toBe("test-id")
+    })
+
+    it("currentLabel is set on session_id and cleared on reset", () => {
+        const { result } = renderHook(() => useWebSocket())
+        expect(result.current.currentLabel).toBeNull()
+        act(() => { result.current.start(sampleConfig) })
+        expect(result.current.currentLabel).toBeNull()
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "test-slug" }) })
+        expect(result.current.currentLabel).toBe("test-slug")
+        act(() => { result.current.reset() })
+        expect(result.current.currentLabel).toBeNull()
+    })
+
     it("error event archives session to history", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
@@ -197,5 +219,53 @@ describe("useWebSocket", () => {
         act(() => { MockWebSocket.instances[0].receive({ type: "error", message: "oops" }) })
         expect(result.current.history).toHaveLength(1)
         expect(result.current.history[0].error).toBe("oops")
+    })
+
+    it("reset() archives a paused session", () => {
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => {
+            MockWebSocket.instances[0].receive({
+                type: "message",
+                data: { chatbot: "a", name: "A", model: "m", content: "Hi", turn: 0, thinking: "" },
+            })
+        })
+        act(() => { result.current.pause() })
+        act(() => { result.current.reset() })
+        expect(result.current.history).toHaveLength(1)
+        expect(result.current.history[0].doneReason).toBe("stopped")
+    })
+
+    it("starting a second conversation archives the first", () => {
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => {
+            MockWebSocket.instances[0].receive({
+                type: "message",
+                data: { chatbot: "a", name: "A", model: "m", content: "Hi", turn: 0, thinking: "" },
+            })
+        })
+        act(() => { result.current.start(sampleConfig) })
+        expect(result.current.history).toHaveLength(1)
+        expect(result.current.history[0].doneReason).toBe("stopped")
+    })
+
+    it("renameCurrentSession updates currentLabel", () => {
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { result.current.renameCurrentSession("my-custom-name") })
+        expect(result.current.currentLabel).toBe("my-custom-name")
+    })
+
+    it("renameSession updates label in history", () => {
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "max_turns" }) })
+        const id = result.current.history[0].id
+        act(() => { result.current.renameSession(id, "renamed") })
+        expect(result.current.history[0].label).toBe("renamed")
     })
 })

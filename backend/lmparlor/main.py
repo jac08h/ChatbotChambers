@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import random
 from pathlib import Path
 import shutil
 from typing import List
@@ -10,10 +11,33 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from lmparlor.engine import Generating, run_conversation
-from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, SessionConfig, Settings
+from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, RenameRequest, SessionConfig, Settings
 
 PRESETS_DIR = Path(__file__).parent / "presets"
-SETTINGS_PATH = Path(os.environ.get("LMPARLOR_SETTINGS_PATH", str(Path.cwd() / ".cache/settings.json")))
+_REPO_ROOT = Path(__file__).parent.parent.parent
+SETTINGS_PATH = Path(os.environ.get("LMPARLOR_SETTINGS_PATH", str(_REPO_ROOT / ".cache/settings.json")))
+SESSIONS_DIR = Path(os.environ.get("LMPARLOR_SESSIONS_DIR", str(_REPO_ROOT / ".cache/sessions")))
+
+_ADJECTIVES = [
+    "brave", "calm", "dark", "eager", "fancy", "gentle", "happy", "idle",
+    "jolly", "kind", "lively", "merry", "noble", "odd", "proud", "quiet",
+    "rapid", "sharp", "tidy", "unique", "vivid", "warm", "xenial", "young", "zany",
+    "amber", "blue", "crisp", "deft", "electric", "frozen", "grand", "hollow",
+    "icy", "jade", "keen", "lunar", "misty", "neon", "oaken", "pale",
+    "rustic", "silver", "teal", "urban", "velvet", "wild", "yellow", "zinc",
+]
+_NOUNS = [
+    "badger", "crane", "dingo", "eagle", "finch", "gecko", "heron", "ibis",
+    "jaguar", "kite", "lynx", "moose", "newt", "otter", "panda", "quail",
+    "raven", "stoat", "toad", "urial", "viper", "wren", "xerus", "yak", "zebra",
+    "anchor", "bridge", "cedar", "drift", "ember", "fjord", "grove", "haven",
+    "inlet", "jetty", "knoll", "ledge", "marsh", "nexus", "orbit", "petal",
+    "quartz", "ridge", "stone", "tide", "vault", "wave", "xenon", "yard", "zenith",
+]
+
+
+def _random_slug() -> str:
+    return "%s-%s" % (random.choice(_ADJECTIVES), random.choice(_NOUNS))
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +101,37 @@ def save_settings(settings: Settings) -> dict:
     return settings.model_dump()
 
 
+@app.get("/sessions")
+def get_sessions() -> List[dict]:
+    if not SESSIONS_DIR.exists():
+        return []
+    sessions = []
+    for path in sorted(SESSIONS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            sessions.append(json.loads(path.read_text()))
+        except (OSError, json.JSONDecodeError):
+            logger.warning("Failed to load session %s", path.name)
+    return sessions
+
+
+@app.patch("/sessions/{session_id}")
+def rename_session(session_id: str, request: RenameRequest) -> dict:
+    path = SESSIONS_DIR / ("%s.json" % session_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Session not found")
+    try:
+        data = json.loads(path.read_text())
+        new_label = request.label.strip()
+        if not new_label:
+            raise HTTPException(status_code=422, detail="label must not be empty")
+        data["label"] = new_label
+        path.write_text(json.dumps(data))
+        return data
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.exception("Failed to rename session %s", session_id)
+        raise HTTPException(status_code=500, detail="Failed to rename session") from exc
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     await ws.accept()
@@ -97,12 +152,16 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         await ws.send_json({"type": "error", "message": "OPENROUTER_API_KEY not set"})
         await ws.close()
         return
+
+    slug = _random_slug()
+    await ws.send_json({"type": "session_id", "id": slug})
+
     pause_event = asyncio.Event()
     pause_event.set()
     stop_event = asyncio.Event()
 
     engine_task = asyncio.create_task(
-        _run_engine(ws, config, api_key, pause_event, stop_event)
+        _run_engine(ws, config, api_key, pause_event, stop_event, slug)
     )
     listener_task = asyncio.create_task(
         _run_listener(ws, pause_event, stop_event)
@@ -127,7 +186,11 @@ async def _run_engine(
     api_key: str,
     pause_event: asyncio.Event,
     stop_event: asyncio.Event,
+    slug: str,
 ) -> None:
+    messages = []
+    done_reason = None
+    error_message = None
     try:
         last_message = None
         async for event in run_conversation(config, api_key, pause_event, stop_event):
@@ -135,27 +198,59 @@ async def _run_engine(
                 await ws.send_json({"type": "generating", "chatbot": event.chatbot})
             else:
                 last_message = event
+                messages.append(event.model_dump())
                 await ws.send_json({"type": "message", "data": event.model_dump()})
 
         if stop_event.is_set():
+            done_reason = "stopped"
             await ws.send_json({"type": "done", "reason": "stopped"})
         elif last_message and last_message.content.strip() == "/leave":
+            done_reason = "leave:%s" % last_message.chatbot
             await ws.send_json({"type": "done", "reason": "leave", "chatbot": last_message.chatbot})
         else:
+            done_reason = "max_turns"
             await ws.send_json({"type": "done", "reason": "max_turns"})
     except asyncio.CancelledError:
+        done_reason = "stopped"
         try:
             await ws.send_json({"type": "done", "reason": "stopped"})
         except Exception:
             pass
     except WebSocketDisconnect:
+        done_reason = "stopped"
         stop_event.set()
     except Exception as e:
         logger.exception("Engine error")
+        error_message = str(e)
         try:
-            await ws.send_json({"type": "error", "message": str(e)})
+            await ws.send_json({"type": "error", "message": error_message})
         except Exception:
             pass
+    finally:
+        _save_session(slug, config, messages, done_reason, error_message)
+
+
+def _save_session(
+    slug: str,
+    config: SessionConfig,
+    messages: List[dict],
+    done_reason: str | None,
+    error: str | None,
+) -> None:
+    try:
+        SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+        path = SESSIONS_DIR / ("%s.json" % slug)
+        data = {
+            "id": slug,
+            "label": slug,
+            "config": config.model_dump(),
+            "messages": messages,
+            "doneReason": done_reason,
+            "error": error,
+        }
+        path.write_text(json.dumps(data))
+    except OSError:
+        logger.exception("Failed to save session %s", slug)
 
 
 async def _run_listener(
