@@ -13,7 +13,7 @@ from lmparlor.engine import Generating, run_conversation
 from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, SessionConfig, Settings
 
 PRESETS_DIR = Path(__file__).parent / "presets"
-SETTINGS_PATH = Path(".cache/settings.json")
+SETTINGS_PATH = Path(os.environ.get("LMPARLOR_SETTINGS_PATH", str(Path.cwd() / ".cache/settings.json")))
 
 logger = logging.getLogger(__name__)
 

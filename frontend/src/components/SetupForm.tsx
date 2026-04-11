@@ -31,6 +31,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
     claude_code: "Claude Code",
     codex: "Codex CLI",
 };
+const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-flash-lite-preview";
 const DEFAULT_PROVIDERS: Providers = {
     openrouter: true,
     claude_code: false,
@@ -42,7 +43,7 @@ function defaultModelId(models: Model[], provider: Provider): string {
         return "";
     }
     if (provider === "openrouter") {
-        const flashLite = models.find((model) => model.id === "google/gemini-3.1-flash-lite-preview");
+        const flashLite = models.find((model) => model.id === DEFAULT_OPENROUTER_MODEL);
         return flashLite ? flashLite.id : models[0].id;
     }
     return models[0].id;
