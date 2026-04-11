@@ -31,6 +31,11 @@ const PROVIDER_LABELS: Record<Provider, string> = {
     claude_code: "Claude Code",
     codex: "Codex CLI",
 };
+const DEFAULT_PROVIDERS: Providers = {
+    openrouter: true,
+    claude_code: false,
+    codex: false,
+};
 
 function defaultModelId(models: Model[], provider: Provider): string {
     if (models.length === 0) {
@@ -57,7 +62,7 @@ async function fetchModels(provider: Provider): Promise<Model[]> {
 }
 
 export function SetupForm({ onStart, error }: SetupFormProps) {
-    const [providers, setProviders] = useState<Providers>({ openrouter: true, claude_code: false, codex: false });
+    const [providers, setProviders] = useState<Providers>(DEFAULT_PROVIDERS);
     const [presets, setPresets] = useState<Preset[]>([]);
 
     const [providerA, setProviderA] = useState<Provider>("openrouter");
@@ -80,7 +85,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             const [providersData, presetsData, settings] = await Promise.all([
                 fetch("http://localhost:8001/providers")
                     .then((response) => response.json())
-                    .catch(() => providers),
+                    .catch(() => DEFAULT_PROVIDERS),
                 fetch("http://localhost:8001/presets")
                     .then((response) => response.json())
                     .catch(() => []),
