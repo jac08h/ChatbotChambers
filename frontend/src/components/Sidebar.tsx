@@ -1,19 +1,27 @@
-import type { ArchivedSession } from "../hooks/useWebSocket";
+import { getSessionDisplayTitle, type ArchivedSession } from "../hooks/useWebSocket";
 
 interface SidebarProps {
     history: ArchivedSession[];
+    currentLabel: string | null;
     onNewChat: () => void;
+    onSelectCurrentConversation: () => void;
     onSelectSession: (session: ArchivedSession) => void;
-    selectedSessionId: number | null;
-    isLive: boolean;
+    onDeleteSession: (session: ArchivedSession) => void;
+    selectedSessionId: string | null;
+    hasCurrentConversation: boolean;
+    isCurrentConversationSelected: boolean;
 }
 
 export function Sidebar({
     history,
+    currentLabel,
     onNewChat,
+    onSelectCurrentConversation,
     onSelectSession,
+    onDeleteSession,
     selectedSessionId,
-    isLive,
+    hasCurrentConversation,
+    isCurrentConversationSelected,
 }: SidebarProps) {
     return (
         <aside className="sidebar">
@@ -26,23 +34,38 @@ export function Sidebar({
             </button>
 
             <div className="sidebar-history">
-                {isLive && (
-                    <div className="sidebar-item sidebar-item-live">
-                        Current conversation
-                    </div>
+                {hasCurrentConversation && (
+                    <button
+                        className={`sidebar-item sidebar-item-live${isCurrentConversationSelected ? " sidebar-item-active" : ""}`}
+                        onClick={onSelectCurrentConversation}
+                        type="button"
+                        title={currentLabel ?? "Current conversation"}
+                    >
+                        {currentLabel ?? "Current conversation"}
+                    </button>
                 )}
                 {history.map((session) => (
-                    <button
-                        key={session.id}
-                        className={`sidebar-item${selectedSessionId === session.id ? " sidebar-item-active" : ""}`}
-                        onClick={() => onSelectSession(session)}
-                        type="button"
-                        title={session.label}
-                    >
-                        {session.label}
-                    </button>
+                    <div className="sidebar-history-item" key={session.id}>
+                        <button
+                            className={`sidebar-item${selectedSessionId === session.id ? " sidebar-item-active" : ""}`}
+                            onClick={() => onSelectSession(session)}
+                            type="button"
+                            title={getSessionDisplayTitle(session)}
+                        >
+                            {getSessionDisplayTitle(session)}
+                        </button>
+                        <button
+                            className="sidebar-delete-btn"
+                            onClick={() => onDeleteSession(session)}
+                            type="button"
+                            aria-label={`Delete conversation ${getSessionDisplayTitle(session)}`}
+                            title="Delete conversation"
+                        >
+                            ×
+                        </button>
+                    </div>
                 ))}
-                {!isLive && history.length === 0 && (
+                {!hasCurrentConversation && history.length === 0 && (
                     <div className="sidebar-empty">No conversations yet</div>
                 )}
             </div>

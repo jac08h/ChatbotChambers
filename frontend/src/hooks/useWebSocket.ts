@@ -37,8 +37,8 @@ export type Status =
     | "error";
 
 export interface ArchivedSession {
-    id: number;
-    label: string;
+    id: string;
+    title: string | null;
     messages: ChatMessage[];
     config: SessionConfig;
     doneReason: string | null;
@@ -52,24 +52,42 @@ export interface WebSocketState {
     doneReason: string | null;
     error: string | null;
     config: SessionConfig | null;
+    currentSessionId: string | null;
+    currentTitle: string | null;
     history: ArchivedSession[];
     start: (config: SessionConfig) => void;
     pause: () => void;
     resume: () => void;
-    stop: () => void;
     reset: () => void;
+    renameCurrentSession: (title: string) => void;
+    renameSession: (id: string, title: string) => void;
+    deleteSession: (id: string) => Promise<boolean>;
 }
 
-const LABEL_MAX_LENGTH = 40;
+interface SessionResponse {
+    id: string;
+    title?: string | null;
+    label?: string | null;
+    messages: ChatMessage[];
+    config: SessionConfig;
+    doneReason: string | null;
+    error: string | null;
+}
 
-function buildLabel(messages: ChatMessage[], id: number): string {
-    const first = messages[0]?.content?.trim();
-    if (!first) {
-        return `Conversation ${id}`;
-    }
-    return first.length > LABEL_MAX_LENGTH
-        ? `${first.slice(0, LABEL_MAX_LENGTH)}...`
-        : first;
+export function getSessionDisplayTitle(session: Pick<ArchivedSession, "id" | "title">): string {
+    return session.title ?? session.id;
+}
+
+function normalizeSession(session: SessionResponse): ArchivedSession {
+    const title = session.title ?? (session.label && session.label !== session.id ? session.label : null);
+    return {
+        id: session.id,
+        title,
+        messages: session.messages,
+        config: session.config,
+        doneReason: session.doneReason,
+        error: session.error,
+    };
 }
 
 export function useWebSocket(): WebSocketState {
@@ -79,37 +97,75 @@ export function useWebSocket(): WebSocketState {
     const [doneReason, setDoneReason] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [config, setConfig] = useState<SessionConfig | null>(null);
+    const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+    const [currentTitle, setCurrentTitle] = useState<string | null>(null);
     const [history, setHistory] = useState<ArchivedSession[]>([]);
     const wsRef = useRef<WebSocket | null>(null);
     const messagesRef = useRef<ChatMessage[]>([]);
     const configRef = useRef<SessionConfig | null>(null);
-    const nextIdRef = useRef(1);
+    const currentIdRef = useRef<string | null>(null);
+    const currentTitleRef = useRef<string | null>(null);
 
-    const archive = useCallback((doneReason: string | null, error: string | null) => {
-        if (!configRef.current) {
+    const clearConversationState = useCallback(() => {
+        wsRef.current?.close();
+        wsRef.current = null;
+        setMessages([]);
+        setStatus("idle");
+        setGeneratingChatbot(null);
+        setDoneReason(null);
+        setError(null);
+        setConfig(null);
+        setCurrentSessionId(null);
+        setCurrentTitle(null);
+        messagesRef.current = [];
+        configRef.current = null;
+        currentIdRef.current = null;
+        currentTitleRef.current = null;
+    }, []);
+
+    useEffect(() => {
+        fetch("http://localhost:8001/sessions")
+            .then((r) => r.json())
+            .then((sessions: SessionResponse[]) => {
+                setHistory(sessions.map(normalizeSession));
+            })
+            .catch((loadError) => {
+                console.error("Failed to load sessions:", loadError);
+            });
+    }, []);
+
+    const archive = useCallback((reason: string | null, err: string | null) => {
+        if (!configRef.current || currentIdRef.current === null) {
             return;
         }
-        const id = nextIdRef.current++;
         const session: ArchivedSession = {
-            id,
-            label: buildLabel(messagesRef.current, id),
+            id: currentIdRef.current,
+            title: currentTitleRef.current,
             messages: messagesRef.current,
             config: configRef.current,
-            doneReason,
-            error,
+            doneReason: reason,
+            error: err,
         };
-        setHistory((prev) => [session, ...prev]);
+        setHistory((prev) => {
+            const exists = prev.some((existingSession) => existingSession.id === session.id);
+            return exists ? prev : [session, ...prev];
+        });
     }, []);
 
     const start = useCallback((newConfig: SessionConfig) => {
+        archive("stopped", null);
         wsRef.current?.close();
         messagesRef.current = [];
         configRef.current = newConfig;
+        currentIdRef.current = null;
+        currentTitleRef.current = null;
         setMessages([]);
         setGeneratingChatbot(null);
         setDoneReason(null);
         setError(null);
         setConfig(newConfig);
+        setCurrentSessionId(null);
+        setCurrentTitle(null);
         const ws = new WebSocket("ws://localhost:8001/ws");
         wsRef.current = ws;
 
@@ -120,7 +176,10 @@ export function useWebSocket(): WebSocketState {
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            if (data.type === "generating") {
+            if (data.type === "session_id") {
+                currentIdRef.current = data.id;
+                setCurrentSessionId(data.id);
+            } else if (data.type === "generating") {
                 setGeneratingChatbot(data.chatbot);
             } else if (data.type === "message") {
                 setGeneratingChatbot(null);
@@ -161,22 +220,84 @@ export function useWebSocket(): WebSocketState {
         setStatus("running");
     }, []);
 
-    const stop = useCallback(() => {
-        wsRef.current?.send(JSON.stringify({ type: "stop" }));
+    const reset = useCallback(() => {
+        archive("stopped", null);
+        clearConversationState();
+    }, [archive, clearConversationState]);
+
+    const renameCurrentSession = useCallback((title: string) => {
+        const trimmedTitle = title.trim();
+        if (!trimmedTitle) {
+            return;
+        }
+        currentTitleRef.current = trimmedTitle;
+        setCurrentTitle(trimmedTitle);
+        if (currentIdRef.current) {
+            setHistory((prev) =>
+                prev.map((session) =>
+                    session.id === currentIdRef.current
+                        ? { ...session, title: trimmedTitle }
+                        : session
+                )
+            );
+            fetch(`http://localhost:8001/sessions/${currentIdRef.current}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: trimmedTitle }),
+            }).then((r) => {
+                if (!r.ok) {
+                    console.error("Rename failed:", r.status, r.statusText);
+                }
+            }).catch((renameError) => {
+                console.error("Rename error:", renameError);
+            });
+        }
     }, []);
 
-    const reset = useCallback(() => {
-        wsRef.current?.close();
-        wsRef.current = null;
-        setMessages([]);
-        setStatus("idle");
-        setGeneratingChatbot(null);
-        setDoneReason(null);
-        setError(null);
-        setConfig(null);
-        messagesRef.current = [];
-        configRef.current = null;
+    const renameSession = useCallback((id: string, title: string) => {
+        const trimmedTitle = title.trim();
+        if (!trimmedTitle) {
+            return;
+        }
+        setHistory((prev) =>
+            prev.map((session) => (session.id === id ? { ...session, title: trimmedTitle } : session))
+        );
+        if (currentIdRef.current === id) {
+            currentTitleRef.current = trimmedTitle;
+            setCurrentTitle(trimmedTitle);
+        }
+        fetch(`http://localhost:8001/sessions/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: trimmedTitle }),
+        }).then((r) => {
+            if (!r.ok) {
+                console.error("Rename failed:", r.status, r.statusText);
+            }
+        }).catch((renameError) => {
+            console.error("Rename error:", renameError);
+        });
     }, []);
+
+    const deleteSession = useCallback(async (id: string) => {
+        try {
+            const response = await fetch(`http://localhost:8001/sessions/${id}`, {
+                method: "DELETE",
+            });
+            if (!response.ok) {
+                console.error("Delete failed:", response.status, response.statusText);
+                return false;
+            }
+            setHistory((prev) => prev.filter((session) => session.id !== id));
+            if (currentIdRef.current === id) {
+                clearConversationState();
+            }
+            return true;
+        } catch (deleteError) {
+            console.error("Delete error:", deleteError);
+            return false;
+        }
+    }, [clearConversationState]);
 
     return {
         messages,
@@ -185,11 +306,15 @@ export function useWebSocket(): WebSocketState {
         doneReason,
         error,
         config,
+        currentSessionId,
+        currentTitle,
         history,
         start,
         pause,
         resume,
-        stop,
         reset,
+        renameCurrentSession,
+        renameSession,
+        deleteSession,
     };
 }

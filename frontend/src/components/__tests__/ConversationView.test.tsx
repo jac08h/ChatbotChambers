@@ -58,10 +58,10 @@ describe("ConversationView", () => {
             <ConversationView
                 {...defaultProps}
                 status="done"
-                doneReason="max_turns"
+                doneReason="stopped"
             />
         )
-        expect(screen.getByText("Reached the turn limit.")).toBeInTheDocument()
+        expect(screen.getByText("Conversation stopped.")).toBeInTheDocument()
     })
 
     it("done banner includes chatbot name for leave:a reason", () => {
@@ -119,17 +119,6 @@ describe("ConversationView", () => {
         expect(screen.getByRole("button", { name: "Resume" })).toBeInTheDocument()
     })
 
-    it("shows Stop button when running", () => {
-        render(
-            <ConversationView
-                {...defaultProps}
-                status="running"
-                onStop={vi.fn()}
-            />
-        )
-        expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument()
-    })
-
     it("calls onPause when Pause button clicked", async () => {
         const onPause = vi.fn()
         render(
@@ -180,6 +169,29 @@ describe("ConversationView", () => {
             />
         )
         expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument()
-        expect(screen.queryByRole("button", { name: "Stop" })).not.toBeInTheDocument()
+    })
+
+    it("shows New conversation button when done", () => {
+        render(
+            <ConversationView
+                {...defaultProps}
+                status="done"
+                doneReason="stopped"
+                onNewConversation={vi.fn()}
+            />
+        )
+        expect(screen.getByRole("button", { name: "New conversation" })).toBeInTheDocument()
+    })
+
+    it("shows Delete button when delete callback is provided", () => {
+        render(
+            <ConversationView
+                {...defaultProps}
+                status="done"
+                label="123e4567-e89b-12d3-a456-426614174000"
+                onDeleteSession={vi.fn()}
+            />
+        )
+        expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument()
     })
 })

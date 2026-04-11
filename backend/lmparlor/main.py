@@ -5,14 +5,38 @@ import os
 from pathlib import Path
 import shutil
 from typing import List
+from uuid import uuid4
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from lmparlor.engine import Generating, run_conversation
-from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, SessionConfig
+from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, RenameRequest, SessionConfig, Settings
 
 PRESETS_DIR = Path(__file__).parent / "presets"
+_REPO_ROOT = Path(__file__).parent.parent.parent
+SETTINGS_PATH = Path(os.environ.get("LMPARLOR_SETTINGS_PATH", str(_REPO_ROOT / ".cache/settings.json")))
+SESSIONS_DIR = Path(os.environ.get("LMPARLOR_SESSIONS_DIR", str(_REPO_ROOT / ".cache/sessions")))
+
+def _new_session_id() -> str:
+    return str(uuid4())
+
+
+def _normalize_session_data(data: dict) -> dict:
+    title = data.get("title")
+    legacy_label = data.get("label")
+    if title is None and legacy_label and legacy_label != data.get("id"):
+        title = legacy_label
+
+    normalized = {
+        "id": data["id"],
+        "title": title,
+        "config": data.get("config", {}),
+        "messages": data.get("messages", []),
+        "doneReason": data.get("doneReason"),
+        "error": data.get("error"),
+    }
+    return normalized
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +78,71 @@ def get_models(provider: str = "openrouter") -> List[dict]:
     return [{"id": model_id, "name": name} for model_id, name in model_list]
 
 
+@app.get("/settings")
+def get_settings() -> dict:
+    if not SETTINGS_PATH.exists():
+        return {}
+    try:
+        return json.loads(SETTINGS_PATH.read_text())
+    except (OSError, json.JSONDecodeError):
+        logger.exception("Failed to load settings")
+        return {}
+
+
+@app.post("/settings")
+def save_settings(settings: Settings) -> dict:
+    try:
+        SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        SETTINGS_PATH.write_text(json.dumps(settings.model_dump()))
+    except OSError as exc:
+        logger.exception("Failed to save settings")
+        raise HTTPException(status_code=500, detail="Failed to save settings") from exc
+    return settings.model_dump()
+
+
+@app.get("/sessions")
+def get_sessions() -> List[dict]:
+    if not SESSIONS_DIR.exists():
+        return []
+    sessions = []
+    for path in sorted(SESSIONS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            sessions.append(_normalize_session_data(json.loads(path.read_text())))
+        except (OSError, json.JSONDecodeError):
+            logger.warning("Failed to load session %s", path.name)
+    return sessions
+
+
+@app.patch("/sessions/{session_id}")
+def rename_session(session_id: str, request: RenameRequest) -> dict:
+    path = SESSIONS_DIR / ("%s.json" % session_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Session not found")
+    try:
+        data = json.loads(path.read_text())
+        new_title = request.title.strip()
+        if not new_title:
+            raise HTTPException(status_code=422, detail="title must not be empty")
+        data["title"] = new_title
+        path.write_text(json.dumps(data))
+        return _normalize_session_data(data)
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.exception("Failed to rename session %s", session_id)
+        raise HTTPException(status_code=500, detail="Failed to rename session") from exc
+
+
+@app.delete("/sessions/{session_id}", status_code=204)
+def delete_session(session_id: str) -> None:
+    path = SESSIONS_DIR / ("%s.json" % session_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Session not found")
+    try:
+        path.unlink()
+    except OSError as exc:
+        logger.exception("Failed to delete session %s", session_id)
+        raise HTTPException(status_code=500, detail="Failed to delete session") from exc
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     await ws.accept()
@@ -74,12 +163,18 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         await ws.send_json({"type": "error", "message": "OPENROUTER_API_KEY not set"})
         await ws.close()
         return
+
+    session_id = _new_session_id()
+    await ws.send_json({"type": "session_id", "id": session_id})
+
+    _save_session(session_id, config, [], None, None)
+
     pause_event = asyncio.Event()
     pause_event.set()
     stop_event = asyncio.Event()
 
     engine_task = asyncio.create_task(
-        _run_engine(ws, config, api_key, pause_event, stop_event)
+        _run_engine(ws, config, api_key, pause_event, stop_event, session_id)
     )
     listener_task = asyncio.create_task(
         _run_listener(ws, pause_event, stop_event)
@@ -104,7 +199,11 @@ async def _run_engine(
     api_key: str,
     pause_event: asyncio.Event,
     stop_event: asyncio.Event,
+    session_id: str,
 ) -> None:
+    messages = []
+    done_reason = None
+    error_message = None
     try:
         last_message = None
         async for event in run_conversation(config, api_key, pause_event, stop_event):
@@ -112,27 +211,59 @@ async def _run_engine(
                 await ws.send_json({"type": "generating", "chatbot": event.chatbot})
             else:
                 last_message = event
+                messages.append(event.model_dump())
                 await ws.send_json({"type": "message", "data": event.model_dump()})
 
         if stop_event.is_set():
+            done_reason = "stopped"
             await ws.send_json({"type": "done", "reason": "stopped"})
         elif last_message and last_message.content.strip() == "/leave":
+            done_reason = "leave:%s" % last_message.chatbot
             await ws.send_json({"type": "done", "reason": "leave", "chatbot": last_message.chatbot})
         else:
-            await ws.send_json({"type": "done", "reason": "max_turns"})
+            done_reason = "stopped"
+            await ws.send_json({"type": "done", "reason": "stopped"})
     except asyncio.CancelledError:
+        done_reason = "stopped"
         try:
             await ws.send_json({"type": "done", "reason": "stopped"})
         except Exception:
             pass
     except WebSocketDisconnect:
+        done_reason = "stopped"
         stop_event.set()
     except Exception as e:
         logger.exception("Engine error")
+        error_message = str(e)
         try:
-            await ws.send_json({"type": "error", "message": str(e)})
+            await ws.send_json({"type": "error", "message": error_message})
         except Exception:
             pass
+    finally:
+        _save_session(session_id, config, messages, done_reason, error_message)
+
+
+def _save_session(
+    session_id: str,
+    config: SessionConfig,
+    messages: List[dict],
+    done_reason: str | None,
+    error: str | None,
+) -> None:
+    try:
+        SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+        path = SESSIONS_DIR / ("%s.json" % session_id)
+        data = {
+            "id": session_id,
+            "title": None,
+            "config": config.model_dump(),
+            "messages": messages,
+            "doneReason": done_reason,
+            "error": error,
+        }
+        path.write_text(json.dumps(data))
+    except OSError:
+        logger.exception("Failed to save session %s", session_id)
 
 
 async def _run_listener(

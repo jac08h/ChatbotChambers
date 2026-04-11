@@ -22,7 +22,6 @@ OPENROUTER_CONFIG = {
         "provider": "openrouter",
     },
     "shared_system_prompt": "Have a conversation.",
-    "max_turns": 1,
 }
 
 
@@ -39,7 +38,10 @@ def collect_ws_events(ws: object, stop_on: tuple = ("done", "error")) -> List[di
 def test_full_conversation_flow(monkeypatch: pytest.MonkeyPatch):
     """Start message triggers generating/message/done sequence."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", AsyncMock(return_value=("Hello!", "")))
+    monkeypatch.setattr(
+        "lmparlor.engine.call_openrouter",
+        AsyncMock(side_effect=[("Hello!", ""), ("/leave", "")]),
+    )
 
     client = TestClient(app)
     with client.websocket_connect("/ws") as ws:
@@ -50,20 +52,6 @@ def test_full_conversation_flow(monkeypatch: pytest.MonkeyPatch):
     assert "generating" in types
     assert "message" in types
     assert events[-1]["type"] == "done"
-
-
-def test_done_reason_max_turns(monkeypatch: pytest.MonkeyPatch):
-    """Conversation ending by exhausting turns reports reason 'max_turns'."""
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", AsyncMock(return_value=("Hello!", "")))
-
-    client = TestClient(app)
-    with client.websocket_connect("/ws") as ws:
-        ws.send_json({"type": "start", "config": OPENROUTER_CONFIG})
-        events = collect_ws_events(ws)
-
-    done = events[-1]
-    assert done["reason"] == "max_turns"
 
 
 def test_done_reason_leave(monkeypatch: pytest.MonkeyPatch):
@@ -77,7 +65,6 @@ def test_done_reason_leave(monkeypatch: pytest.MonkeyPatch):
         events = collect_ws_events(ws)
 
     done = events[-1]
-    assert done["type"] == "done"
     assert done["reason"] == "leave"
     assert "chatbot" in done
 
@@ -125,7 +112,10 @@ def test_missing_api_key_returns_error(monkeypatch: pytest.MonkeyPatch):
 def test_message_data_shape(monkeypatch: pytest.MonkeyPatch):
     """Message events contain all expected fields in 'data'."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", AsyncMock(return_value=("Hi!", "thinking")))
+    monkeypatch.setattr(
+        "lmparlor.engine.call_openrouter",
+        AsyncMock(side_effect=[("Hi!", "thinking"), ("/leave", "")]),
+    )
 
     client = TestClient(app)
     with client.websocket_connect("/ws") as ws:
@@ -142,7 +132,10 @@ def test_message_data_shape(monkeypatch: pytest.MonkeyPatch):
 def test_generating_events_indicate_correct_chatbot(monkeypatch: pytest.MonkeyPatch):
     """Generating events carry the chatbot id ('a' or 'b')."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", AsyncMock(return_value=("Hi!", "")))
+    monkeypatch.setattr(
+        "lmparlor.engine.call_openrouter",
+        AsyncMock(side_effect=[("Hi!", ""), ("/leave", "")]),
+    )
 
     client = TestClient(app)
     with client.websocket_connect("/ws") as ws:

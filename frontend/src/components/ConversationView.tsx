@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     DEFAULT_CHATBOT_NAMES,
     type ChatMessage,
@@ -13,10 +13,14 @@ interface ConversationViewProps {
     doneReason: string | null;
     error: string | null;
     config: SessionConfig | null;
+    label?: string | null;
     onPause?: () => void;
     onResume?: () => void;
-    onStop?: () => void;
+    onNewConversation?: () => void;
+    onRenameSession?: (label: string) => void;
+    onDeleteSession?: () => void;
 }
+
 
 function doneLabel(reason: string, config: SessionConfig | null): string {
     if (reason === "leave:a") {
@@ -28,9 +32,6 @@ function doneLabel(reason: string, config: SessionConfig | null): string {
     if (reason === "stopped") {
         return "Conversation stopped.";
     }
-    if (reason === "max_turns") {
-        return "Reached the turn limit.";
-    }
     return "Conversation ended.";
 }
 
@@ -41,20 +42,78 @@ export function ConversationView({
     doneReason,
     error,
     config,
+    label,
     onPause,
     onResume,
-    onStop,
+    onNewConversation,
+    onRenameSession,
+    onDeleteSession,
 }: ConversationViewProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
+    const [editing, setEditing] = useState(false);
+    const [editValue, setEditValue] = useState("");
+    const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, generatingChatbot, status]);
 
-    const showControls = (status === "running" || status === "paused") && (onPause || onResume || onStop);
+    const canRename = status === "paused" || status === "done";
+
+    const handleStartEdit = () => {
+        if (!canRename || !onRenameSession) return;
+        setEditValue(label ?? "");
+        setEditing(true);
+        setTimeout(() => inputRef.current?.select(), 0);
+    };
+
+    const handleCommitEdit = () => {
+        const trimmed = editValue.trim();
+        if (trimmed && onRenameSession) {
+            onRenameSession(trimmed);
+        }
+        setEditing(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") handleCommitEdit();
+        if (e.key === "Escape") setEditing(false);
+    };
+
+    const showControls = (status === "running" || status === "paused") && (onPause || onResume);
 
     return (
         <div className="conversation-container">
+            {label && (
+                <div className="conversation-header">
+                    {editing ? (
+                        <input
+                            ref={inputRef}
+                            className="conversation-title-input"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={handleCommitEdit}
+                            onKeyDown={handleKeyDown}
+                            autoFocus
+                        />
+                    ) : (
+                        <button
+                            className={`conversation-title${canRename && onRenameSession ? " conversation-title-editable" : ""}`}
+                            onClick={handleStartEdit}
+                            type="button"
+                            disabled={!canRename || !onRenameSession}
+                        >
+                            {label}
+                            {canRename && onRenameSession && <span className="conversation-title-caret">▾</span>}
+                        </button>
+                    )}
+                    {onDeleteSession && (
+                        <button className="conversation-delete-btn" onClick={onDeleteSession} type="button">
+                            Delete
+                        </button>
+                    )}
+                </div>
+            )}
             <div className="messages">
                 {messages.map((message, index) => (
                     <MessageBubble key={`${message.chatbot}-${index}`} message={message} />
@@ -86,9 +145,12 @@ export function ConversationView({
                     {status === "paused" && onResume && (
                         <button className="control-btn" onClick={onResume} type="button">Resume</button>
                     )}
-                    {onStop && (
-                        <button className="control-btn control-btn-stop" onClick={onStop} type="button">Stop</button>
-                    )}
+                </div>
+            )}
+
+            {status === "done" && onNewConversation && (
+                <div className="floating-controls">
+                    <button className="control-btn" onClick={onNewConversation} type="button">New conversation</button>
                 </div>
             )}
         </div>
