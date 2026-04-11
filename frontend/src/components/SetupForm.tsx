@@ -31,15 +31,118 @@ const PROVIDER_LABELS: Record<Provider, string> = {
     codex: "Codex CLI",
 };
 
+function shortModelName(model: Model): string {
+    const name = model.name || model.id;
+    const slashIndex = name.indexOf("/");
+    return slashIndex !== -1 ? name.slice(slashIndex + 1) : name;
+}
+
 async function fetchModels(provider: Provider): Promise<Model[]> {
     return fetch(`http://localhost:8001/models?provider=${provider}`)
         .then((r) => r.json())
         .catch(() => []);
 }
 
+interface ChatbotConfigProps {
+    side: "a" | "b";
+    label: string;
+    providers: Provider[];
+    models: Model[];
+    provider: Provider;
+    model: string;
+    name: string;
+    prompt: string;
+    onProviderChange: (p: Provider) => void;
+    onModelChange: (m: string) => void;
+    onNameChange: (n: string) => void;
+    onPromptChange: (p: string) => void;
+}
+
+function ChatbotConfig({
+    side,
+    label,
+    providers,
+    models,
+    provider,
+    model,
+    name,
+    prompt,
+    onProviderChange,
+    onModelChange,
+    onNameChange,
+    onPromptChange,
+}: ChatbotConfigProps) {
+    const [expanded, setExpanded] = useState(false);
+
+    const selectedModel = models.find((m) => m.id === model);
+    const displayName = selectedModel ? shortModelName(selectedModel) : model;
+
+    return (
+        <section className={`chatbot-config side-${side}`}>
+            <div className="chatbot-config-header">
+                <h3>{label}</h3>
+            </div>
+
+            <label className="field">
+                <span>Provider</span>
+                <select
+                    value={provider}
+                    onChange={(event) => onProviderChange(event.target.value as Provider)}
+                >
+                    {providers.map((p) => (
+                        <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
+                    ))}
+                </select>
+            </label>
+
+            <label className="field">
+                <span>Model</span>
+                <select value={model} onChange={(event) => onModelChange(event.target.value)} title={displayName}>
+                    {models.map((m) => (
+                        <option key={m.id} value={m.id}>{shortModelName(m)}</option>
+                    ))}
+                </select>
+            </label>
+
+            <label className="field">
+                <span>Instructions</span>
+                <textarea
+                    value={prompt}
+                    onChange={(event) => onPromptChange(event.target.value)}
+                    placeholder={`System prompt for ${label}`}
+                    rows={3}
+                />
+            </label>
+
+            <button
+                type="button"
+                className="advanced-toggle"
+                onClick={() => setExpanded((prev) => !prev)}
+                aria-expanded={expanded}
+            >
+                {expanded ? "Hide advanced" : "Advanced"}
+                <span className={`advanced-toggle-icon ${expanded ? "open" : ""}`}>›</span>
+            </button>
+
+            <div className={`advanced-fields ${expanded ? "" : "advanced-fields-hidden"}`} aria-hidden={!expanded}>
+                <label className="field">
+                    <span>Name</span>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(event) => onNameChange(event.target.value)}
+                        tabIndex={expanded ? 0 : -1}
+                    />
+                </label>
+            </div>
+        </section>
+    );
+}
+
 export function SetupForm({ onStart, error }: SetupFormProps) {
     const [providers, setProviders] = useState<Providers>({ openrouter: true, claude_code: false, codex: false });
     const [presets, setPresets] = useState<Preset[]>([]);
+    const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
     const [providerA, setProviderA] = useState<Provider>("openrouter");
     const [providerB, setProviderB] = useState<Provider>("openrouter");
@@ -94,16 +197,24 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         });
     }, [providerB]);
 
-    const availableProviders = (Object.keys(providers) as Provider[]).filter((provider) => providers[provider]);
+    const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
 
     const loadPreset = (id: string) => {
         const preset = presets.find((item) => item.id === id);
         if (!preset) {
             return;
         }
+        setSelectedPresetId(id);
         setSharedPrompt(preset.shared_system_prompt);
         setPromptA(preset.system_prompt_a);
         setPromptB(preset.system_prompt_b);
+    };
+
+    const clearPreset = () => {
+        setSelectedPresetId(null);
+        setSharedPrompt("");
+        setPromptA("");
+        setPromptB("");
     };
 
     const handleSubmit = (event: React.FormEvent) => {
@@ -115,27 +226,34 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         });
     };
 
+    const canStart = Boolean(modelA && modelB);
+
     return (
         <div className="setup-page">
             <div className="setup-landing">
-                <div className="setup-header">
-                    <h1 className="setup-title">ChatbotChambers</h1>
-                    <p className="setup-subtitle">A place for conversations.</p>
-                </div>
+                <h1 className="setup-title">ChatbotChambers</h1>
 
                 {error && <div className="error-banner">{error}</div>}
 
                 <form onSubmit={handleSubmit} className="setup-form">
                     {presets.length > 0 && (
-                        <label className="field">
-                            <span>Preset</span>
-                            <select defaultValue="" onChange={(event) => loadPreset(event.target.value)}>
-                                <option value="" disabled>Choose a preset</option>
+                        <div className="field">
+                            <span className="field-label">Preset</span>
+                            <div className="preset-chips">
                                 {presets.map((preset) => (
-                                    <option key={preset.id} value={preset.id}>{preset.name}</option>
+                                    <button
+                                        key={preset.id}
+                                        type="button"
+                                        className={`preset-chip ${selectedPresetId === preset.id ? "preset-chip-active" : ""}`}
+                                        onClick={() =>
+                                            selectedPresetId === preset.id ? clearPreset() : loadPreset(preset.id)
+                                        }
+                                    >
+                                        {preset.name}
+                                    </button>
                                 ))}
-                            </select>
-                        </label>
+                            </div>
+                        </div>
                     )}
 
                     <label className="field">
@@ -149,93 +267,38 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                     </label>
 
                     <div className="chatbot-configs">
-                        <section className="chatbot-config side-a">
-                            <div className="chatbot-config-header">
-                                <h3>Chatbot A</h3>
-                            </div>
-                            <label className="field">
-                                <span>Name</span>
-                                <input
-                                    type="text"
-                                    value={nameA}
-                                    onChange={(event) => setNameA(event.target.value)}
-                                />
-                            </label>
-                            <label className="field">
-                                <span>Provider</span>
-                                <select
-                                    value={providerA}
-                                    onChange={(event) => setProviderA(event.target.value as Provider)}
-                                >
-                                    {availableProviders.map((provider) => (
-                                        <option key={provider} value={provider}>{PROVIDER_LABELS[provider]}</option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="field">
-                                <span>Model</span>
-                                <select value={modelA} onChange={(event) => setModelA(event.target.value)}>
-                                    {modelsA.map((model) => (
-                                        <option key={model.id} value={model.id}>{model.name}</option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="field">
-                                <span>Instructions</span>
-                                <textarea
-                                    value={promptA}
-                                    onChange={(event) => setPromptA(event.target.value)}
-                                    placeholder="System prompt for Chatbot A"
-                                    rows={3}
-                                />
-                            </label>
-                        </section>
-
-                        <section className="chatbot-config side-b">
-                            <div className="chatbot-config-header">
-                                <h3>Chatbot B</h3>
-                            </div>
-                            <label className="field">
-                                <span>Name</span>
-                                <input
-                                    type="text"
-                                    value={nameB}
-                                    onChange={(event) => setNameB(event.target.value)}
-                                />
-                            </label>
-                            <label className="field">
-                                <span>Provider</span>
-                                <select
-                                    value={providerB}
-                                    onChange={(event) => setProviderB(event.target.value as Provider)}
-                                >
-                                    {availableProviders.map((provider) => (
-                                        <option key={provider} value={provider}>{PROVIDER_LABELS[provider]}</option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="field">
-                                <span>Model</span>
-                                <select value={modelB} onChange={(event) => setModelB(event.target.value)}>
-                                    {modelsB.map((model) => (
-                                        <option key={model.id} value={model.id}>{model.name}</option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="field">
-                                <span>Instructions</span>
-                                <textarea
-                                    value={promptB}
-                                    onChange={(event) => setPromptB(event.target.value)}
-                                    placeholder="System prompt for Chatbot B"
-                                    rows={3}
-                                />
-                            </label>
-                        </section>
+                        <ChatbotConfig
+                            side="a"
+                            label="Chatbot A"
+                            providers={availableProviders}
+                            models={modelsA}
+                            provider={providerA}
+                            model={modelA}
+                            name={nameA}
+                            prompt={promptA}
+                            onProviderChange={setProviderA}
+                            onModelChange={setModelA}
+                            onNameChange={setNameA}
+                            onPromptChange={setPromptA}
+                        />
+                        <ChatbotConfig
+                            side="b"
+                            label="Chatbot B"
+                            providers={availableProviders}
+                            models={modelsB}
+                            provider={providerB}
+                            model={modelB}
+                            name={nameB}
+                            prompt={promptB}
+                            onProviderChange={setProviderB}
+                            onModelChange={setModelB}
+                            onNameChange={setNameB}
+                            onPromptChange={setPromptB}
+                        />
                     </div>
 
                     <div className="setup-actions">
-                        <button type="submit" className="start-btn" disabled={!modelA || !modelB}>
+                        <button type="submit" className="start-btn" disabled={!canStart}>
                             Start conversation
                         </button>
                     </div>
