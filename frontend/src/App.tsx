@@ -1,42 +1,138 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ConversationView } from "./components/ConversationView";
 import { SetupForm } from "./components/SetupForm";
 import { Sidebar } from "./components/Sidebar";
-import type { ArchivedSession, SessionConfig } from "./hooks/useWebSocket";
-import { useWebSocket } from "./hooks/useWebSocket";
+import {
+    getSessionDisplayTitle,
+    getSessionIdFromPath,
+    getSessionPath,
+    type ArchivedSession,
+    type SessionConfig,
+    useWebSocket,
+} from "./hooks/useWebSocket";
 
 export default function App() {
     const ws = useWebSocket();
-    const [viewingSession, setViewingSession] = useState<ArchivedSession | null>(null);
+    const [routeSessionId, setRouteSessionId] = useState<string | null>(() => getSessionIdFromPath(window.location.pathname));
+    const [showSetup, setShowSetup] = useState(() => routeSessionId === null);
 
-    const handleStart = (config: SessionConfig) => {
-        setViewingSession(null);
-        ws.start(config);
+    const handleStart = (config: SessionConfig, initialTitle: string) => {
+        setRouteSessionId(null);
+        setShowSetup(false);
+        ws.start(config, initialTitle);
     };
 
     const handleNewChat = () => {
-        setViewingSession(null);
-        ws.reset();
+        if (ws.status === "running") {
+            ws.pause();
+        } else {
+            ws.reset();
+        }
+        setShowSetup(true);
+        setRouteSessionId(null);
+    };
+
+    const handleGoHome = () => {
+        setShowSetup(true);
+        setRouteSessionId(null);
+    };
+
+    const handleSelectCurrentConversation = () => {
+        setShowSetup(false);
+        setRouteSessionId(ws.currentSessionId);
     };
 
     const handleSelectSession = (session: ArchivedSession) => {
-        if (ws.status === "running" || ws.status === "paused") {
+        if (ws.status === "running") {
             return;
         }
-        setViewingSession(session);
+        setShowSetup(false);
+        setRouteSessionId(session.id);
     };
 
-    const isLive = ws.status === "running" || ws.status === "paused";
-    const showConversation = isLive || viewingSession;
+    const handleDeleteSession = async (session: Pick<ArchivedSession, "id" | "title">) => {
+        const confirmed = window.confirm(`Delete conversation "${getSessionDisplayTitle(session)}"?`);
+        if (!confirmed) {
+            return;
+        }
+        const deleted = await ws.deleteSession(session.id);
+        if (!deleted) {
+            return;
+        }
+        if (routeSessionId === session.id || ws.currentSessionId === session.id) {
+            setShowSetup(true);
+            setRouteSessionId(null);
+        }
+    };
+
+    const handleRenameSession = (sessionId: string, title: string) => {
+        if (ws.currentSessionId === sessionId) {
+            ws.renameCurrentSession(title);
+            return;
+        }
+        ws.renameSession(sessionId, title);
+    };
+
+    const viewingSession = routeSessionId
+        ? ws.history.find((session) => session.id === routeSessionId) ?? null
+        : null;
+    const hasConversationState = ws.config !== null;
+    const hasCurrentConversation = ws.status === "running" || ws.status === "paused";
+    const showCurrentConversation = !showSetup && hasConversationState && (!routeSessionId || routeSessionId === ws.currentSessionId);
+    const showConversation = Boolean(viewingSession) || showCurrentConversation;
+    const currentDisplayTitle = ws.currentSessionId
+        ? getSessionDisplayTitle({ id: ws.currentSessionId, title: ws.currentTitle })
+        : null;
+    const currentSession = ws.currentSessionId
+        ? { id: ws.currentSessionId, title: ws.currentTitle }
+        : null;
+
+    useEffect(() => {
+        const handlePopState = () => {
+            const nextSessionId = getSessionIdFromPath(window.location.pathname);
+            setRouteSessionId(nextSessionId);
+            if (nextSessionId === null) {
+                setShowSetup(true);
+                return;
+            }
+            setShowSetup(false);
+        };
+
+        window.addEventListener("popstate", handlePopState);
+        return () => {
+            window.removeEventListener("popstate", handlePopState);
+        };
+    }, []);
+
+    useEffect(() => {
+        const pathname = showSetup
+            ? "/"
+            : viewingSession
+                ? getSessionPath(viewingSession.id)
+                : ws.currentSessionId
+                    ? getSessionPath(ws.currentSessionId)
+                    : null;
+
+        if (pathname && window.location.pathname !== pathname) {
+            window.history.pushState({}, "", pathname);
+        }
+    }, [showSetup, viewingSession, ws.currentSessionId]);
 
     return (
         <div className="app-shell">
             <Sidebar
+                currentSession={currentSession}
                 history={ws.history}
+                currentLabel={currentDisplayTitle}
                 onNewChat={handleNewChat}
+                onHome={handleGoHome}
+                onSelectCurrentConversation={handleSelectCurrentConversation}
                 onSelectSession={handleSelectSession}
-                selectedSessionId={viewingSession?.id ?? null}
-                isLive={isLive}
+                onDeleteSession={handleDeleteSession}
+                onRenameSession={handleRenameSession}
+                selectedSessionId={routeSessionId}
+                hasCurrentConversation={hasCurrentConversation}
+                isCurrentConversationSelected={showCurrentConversation}
             />
             <div className="main-panel">
                 {showConversation ? (
@@ -47,9 +143,23 @@ export default function App() {
                         doneReason={viewingSession ? viewingSession.doneReason : ws.doneReason}
                         error={viewingSession ? viewingSession.error : ws.error}
                         config={viewingSession ? viewingSession.config : ws.config}
+                        label={viewingSession ? getSessionDisplayTitle(viewingSession) : currentDisplayTitle}
+                        onBack={handleGoHome}
                         onPause={viewingSession ? undefined : ws.pause}
                         onResume={viewingSession ? undefined : ws.resume}
-                        onStop={viewingSession ? undefined : ws.stop}
+                        onNewConversation={viewingSession || ws.status !== "done" ? undefined : handleNewChat}
+                        onRenameSession={
+                            viewingSession
+                                ? (label) => ws.renameSession(viewingSession.id, label)
+                                : ws.renameCurrentSession
+                        }
+                        onDeleteSession={
+                            viewingSession
+                                ? () => { void handleDeleteSession(viewingSession); }
+                                : currentSession
+                                    ? () => { void handleDeleteSession(currentSession); }
+                                    : undefined
+                        }
                     />
                 ) : (
                     <SetupForm onStart={handleStart} error={ws.error} />

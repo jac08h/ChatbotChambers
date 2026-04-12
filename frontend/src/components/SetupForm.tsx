@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_CHATBOT_NAMES, type Provider, type SessionConfig } from "../hooks/useWebSocket";
+import { loadSettings, saveSettings } from "../settings";
 
 interface Model {
     id: string;
@@ -21,7 +22,7 @@ interface Providers {
 }
 
 interface SetupFormProps {
-    onStart: (config: SessionConfig) => void;
+    onStart: (config: SessionConfig, initialTitle: string) => void;
     error: string | null;
 }
 
@@ -30,6 +31,30 @@ const PROVIDER_LABELS: Record<Provider, string> = {
     claude_code: "Claude Code",
     codex: "Codex CLI",
 };
+const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-flash-lite-preview";
+const DEFAULT_PROVIDERS: Providers = {
+    openrouter: true,
+    claude_code: false,
+    codex: false,
+};
+
+function defaultModelId(models: Model[], provider: Provider): string {
+    if (models.length === 0) {
+        return "";
+    }
+    if (provider === "openrouter") {
+        const flashLite = models.find((model) => model.id === DEFAULT_OPENROUTER_MODEL);
+        return flashLite ? flashLite.id : models[0].id;
+    }
+    return models[0].id;
+}
+
+function preferredModelId(models: Model[], provider: Provider, currentModel: string): string {
+    if (models.some((model) => model.id === currentModel)) {
+        return currentModel;
+    }
+    return defaultModelId(models, provider);
+}
 
 function shortModelName(model: Model): string {
     const name = model.name || model.id;
@@ -140,7 +165,7 @@ function ChatbotConfig({
 }
 
 export function SetupForm({ onStart, error }: SetupFormProps) {
-    const [providers, setProviders] = useState<Providers>({ openrouter: true, claude_code: false, codex: false });
+    const [providers, setProviders] = useState<Providers>(DEFAULT_PROVIDERS);
     const [presets, setPresets] = useState<Preset[]>([]);
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
@@ -155,47 +180,88 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [sharedPrompt, setSharedPrompt] = useState("");
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");
+    const [conversationTitle, setConversationTitle] = useState("");
+    const [isInitialized, setIsInitialized] = useState(false);
 
     useEffect(() => {
-        fetch("http://localhost:8001/providers")
-            .then((r) => r.json())
-            .then((data: Providers) => setProviders(data))
-            .catch(() => {});
+        let cancelled = false;
 
-        fetch("http://localhost:8001/presets")
-            .then((r) => r.json())
-            .then((data: Preset[]) => setPresets(data))
-            .catch(() => {});
+        async function initialize(): Promise<void> {
+            const [providersData, presetsData, settings] = await Promise.all([
+                fetch("http://localhost:8001/providers")
+                    .then((response) => response.json())
+                    .catch(() => DEFAULT_PROVIDERS),
+                fetch("http://localhost:8001/presets")
+                    .then((response) => response.json())
+                    .catch(() => []),
+                loadSettings().catch(() => null),
+            ]);
 
-        fetchModels("openrouter").then((data) => {
-            setModelsA(data);
-            setModelsB(data);
-            if (data.length > 0) {
-                const flashLite = data.find((m) => m.id === "google/gemini-3.1-flash-lite-preview");
-                const defaultModel = flashLite ? flashLite.id : data[0].id;
-                setModelA(defaultModel);
-                setModelB(defaultModel);
+            if (cancelled) {
+                return;
             }
-        });
+
+            setProviders(providersData);
+            setPresets(presetsData);
+
+            const availableProviders = (Object.keys(providersData) as Provider[]).filter((provider) => providersData[provider]);
+            const fallbackProvider = availableProviders[0] ?? "openrouter";
+            const initialProviderA = settings?.chatbot_a.provider && providersData[settings.chatbot_a.provider]
+                ? settings.chatbot_a.provider
+                : fallbackProvider;
+            const initialProviderB = settings?.chatbot_b.provider && providersData[settings.chatbot_b.provider]
+                ? settings.chatbot_b.provider
+                : fallbackProvider;
+
+            const [initialModelsA, initialModelsB] = await Promise.all([
+                fetchModels(initialProviderA),
+                fetchModels(initialProviderB),
+            ]);
+
+            if (cancelled) {
+                return;
+            }
+
+            setProviderA(initialProviderA);
+            setProviderB(initialProviderB);
+            setModelsA(initialModelsA);
+            setModelsB(initialModelsB);
+            setModelA(preferredModelId(initialModelsA, initialProviderA, settings?.chatbot_a.model ?? ""));
+            setModelB(preferredModelId(initialModelsB, initialProviderB, settings?.chatbot_b.model ?? ""));
+            setNameA(settings?.chatbot_a.name ?? DEFAULT_CHATBOT_NAMES.a);
+            setNameB(settings?.chatbot_b.name ?? DEFAULT_CHATBOT_NAMES.b);
+            setSharedPrompt(settings?.shared_system_prompt ?? "");
+            setPromptA(settings?.chatbot_a.system_prompt ?? "");
+            setPromptB(settings?.chatbot_b.system_prompt ?? "");
+            setIsInitialized(true);
+        }
+
+        initialize();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     useEffect(() => {
+        if (!isInitialized) {
+            return;
+        }
         fetchModels(providerA).then((data) => {
             setModelsA(data);
-            if (data.length > 0) {
-                setModelA(data[0].id);
-            }
+            setModelA((current) => preferredModelId(data, providerA, current));
         });
-    }, [providerA]);
+    }, [isInitialized, providerA]);
 
     useEffect(() => {
+        if (!isInitialized) {
+            return;
+        }
         fetchModels(providerB).then((data) => {
             setModelsB(data);
-            if (data.length > 0) {
-                setModelB(data[0].id);
-            }
+            setModelB((current) => preferredModelId(data, providerB, current));
         });
-    }, [providerB]);
+    }, [isInitialized, providerB]);
 
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
 
@@ -217,13 +283,15 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         setPromptB("");
     };
 
-    const handleSubmit = (event: React.FormEvent) => {
+    const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        onStart({
+        const config = {
             chatbot_a: { name: nameA, model: modelA, system_prompt: promptA, provider: providerA },
             chatbot_b: { name: nameB, model: modelB, system_prompt: promptB, provider: providerB },
             shared_system_prompt: sharedPrompt,
-        });
+        };
+        await saveSettings(config).catch(() => {});
+        onStart(config, conversationTitle.trim());
     };
 
     const canStart = Boolean(modelA && modelB);
@@ -255,6 +323,16 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             </div>
                         </div>
                     )}
+
+                    <label className="field">
+                        <span>Conversation name</span>
+                        <input
+                            type="text"
+                            value={conversationTitle}
+                            onChange={(event) => setConversationTitle(event.target.value)}
+                            placeholder="Optional"
+                        />
+                    </label>
 
                     <label className="field">
                         <span>Shared prompt</span>

@@ -32,7 +32,6 @@ def session_config(chatbot_config_a: ChatbotConfig, chatbot_config_b: ChatbotCon
         chatbot_a=chatbot_config_a,
         chatbot_b=chatbot_config_b,
         shared_system_prompt="You are in a debate.",
-        max_turns=2,
     )
 
 

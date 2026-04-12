@@ -20,7 +20,7 @@ async def collect(config: SessionConfig, mock_key: str = "test-key") -> List[Uni
 
 async def test_basic_two_turns_produces_four_messages(mock_openrouter: AsyncMock, session_config: SessionConfig):
     """Two turns produce 4 Message events alternating a/b/a/b."""
-    mock_openrouter.return_value = ("Hello!", "")
+    mock_openrouter.side_effect = [("Hello!", ""), ("Hi!", ""), ("Again", ""), ("/leave", "")]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
     assert len(messages) == 4
@@ -29,7 +29,7 @@ async def test_basic_two_turns_produces_four_messages(mock_openrouter: AsyncMock
 
 async def test_generating_precedes_each_message(mock_openrouter: AsyncMock, session_config: SessionConfig):
     """Each Message is immediately preceded by a Generating event for the same chatbot."""
-    mock_openrouter.return_value = ("Hello!", "")
+    mock_openrouter.side_effect = [("Hello!", ""), ("Hi!", ""), ("Again", ""), ("/leave", "")]
     events = await collect(session_config)
     for i, event in enumerate(events):
         if isinstance(event, Message):
@@ -71,10 +71,9 @@ async def test_stop_event_terminates(mock_openrouter: AsyncMock, session_config:
     assert events == []
 
 
-async def test_max_turns_one_produces_two_messages(mock_openrouter: AsyncMock, session_config: SessionConfig):
-    """max_turns=1 yields exactly 2 messages (a then b)."""
-    session_config.max_turns = 1
-    mock_openrouter.return_value = ("Hi!", "")
+async def test_leave_after_two_messages_stops_conversation(mock_openrouter: AsyncMock, session_config: SessionConfig):
+    """A /leave from chatbot B stops the conversation after two messages."""
+    mock_openrouter.side_effect = [("Hi!", ""), ("/leave", "")]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
     assert len(messages) == 2
@@ -84,8 +83,7 @@ async def test_max_turns_one_produces_two_messages(mock_openrouter: AsyncMock, s
 
 async def test_thinking_passed_through(mock_openrouter: AsyncMock, session_config: SessionConfig):
     """Thinking content from openrouter is included in the yielded Message."""
-    mock_openrouter.return_value = ("Answer", "My reasoning here")
-    session_config.max_turns = 1
+    mock_openrouter.side_effect = [("Answer", "My reasoning here"), ("/leave", "")]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
     assert messages[0].thinking == "My reasoning here"
@@ -101,21 +99,21 @@ async def test_mixed_providers_dispatches_correctly(
     monkeypatch.setattr("lmparlor.engine.call_openrouter", mock_or)
     monkeypatch.setattr("lmparlor.engine.call_claude_code", mock_cc)
 
-    session_config.max_turns = 1
+    mock_or.side_effect = [("From OR", "")]
+    mock_cc.side_effect = ["/leave"]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
 
     assert mock_or.call_count == 1
     assert mock_cc.call_count == 1
     assert messages[0].content == "From OR"
-    assert messages[1].content == "From CC"
+    assert messages[1].content == "/leave"
 
 
 async def test_history_role_perspective(mock_openrouter: AsyncMock, session_config: SessionConfig):
     """When B speaks, A's messages appear as 'user' and B's prior messages as 'assistant'."""
-    responses = [("A says hi", ""), ("B replies", ""), ("A again", ""), ("B again", "")]
+    responses = [("A says hi", ""), ("B replies", ""), ("A again", ""), ("/leave", "")]
     mock_openrouter.side_effect = responses
-    session_config.max_turns = 2
 
     await collect(session_config)
 
@@ -132,8 +130,7 @@ async def test_history_role_perspective(mock_openrouter: AsyncMock, session_conf
 
 async def test_message_name_populated(mock_openrouter: AsyncMock, session_config: SessionConfig):
     """Yielded messages carry the chatbot display name from config."""
-    mock_openrouter.return_value = ("Hi", "")
-    session_config.max_turns = 1
+    mock_openrouter.side_effect = [("Hi", ""), ("/leave", "")]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
     assert messages[0].name == session_config.chatbot_a.name
@@ -142,7 +139,7 @@ async def test_message_name_populated(mock_openrouter: AsyncMock, session_config
 
 async def test_turn_number_increments(mock_openrouter: AsyncMock, session_config: SessionConfig):
     """Turn number increments after both chatbots have spoken."""
-    mock_openrouter.return_value = ("Hi", "")
+    mock_openrouter.side_effect = [("Hi", ""), ("Hi", ""), ("Hi", ""), ("/leave", "")]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
     assert messages[0].turn == 0

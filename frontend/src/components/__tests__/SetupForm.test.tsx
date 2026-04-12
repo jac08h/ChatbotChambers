@@ -22,14 +22,17 @@ const mockPresets = [
 
 beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn((url: string) => {
+        if (url.includes("/settings")) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+        }
         if (url.includes("/providers")) {
-            return Promise.resolve({ json: () => Promise.resolve(mockProviders) })
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProviders) })
         }
         if (url.includes("/presets")) {
-            return Promise.resolve({ json: () => Promise.resolve(mockPresets) })
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(mockPresets) })
         }
         if (url.includes("/models")) {
-            return Promise.resolve({ json: () => Promise.resolve(mockModels) })
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(mockModels) })
         }
         return Promise.reject(new Error("Unknown URL"))
     }))
@@ -71,11 +74,68 @@ describe("SetupForm", () => {
         await userEvent.click(screen.getByRole("button", { name: "Start conversation" }))
         expect(onStart).toHaveBeenCalledOnce()
         const config = onStart.mock.calls[0][0]
+        const initialTitle = onStart.mock.calls[0][1]
         expect(config).toHaveProperty("chatbot_a")
         expect(config).toHaveProperty("chatbot_b")
         expect(config).toHaveProperty("shared_system_prompt")
         expect(config.chatbot_a.model).toBeTruthy()
         expect(config.chatbot_b.model).toBeTruthy()
+        expect(initialTitle).toBe("")
+    })
+
+    it("passes the optional conversation name to onStart", async () => {
+        const onStart = vi.fn()
+        render(<SetupForm onStart={onStart} error={null} />)
+        await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).not.toBeDisabled())
+        await userEvent.type(screen.getByLabelText("Conversation name"), "Test chat")
+        await userEvent.click(screen.getByRole("button", { name: "Start conversation" }))
+        expect(onStart).toHaveBeenCalledWith(expect.anything(), "Test chat")
+    })
+
+    it("loads saved settings on mount", async () => {
+        vi.stubGlobal("fetch", vi.fn((url: string, options?: RequestInit) => {
+            if (url.includes("/settings") && options?.method === "POST") {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+            }
+            if (url.includes("/settings")) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({
+                        chatbot_a: {
+                            name: "Saved A",
+                            model: "model-2",
+                            system_prompt: "Prompt A",
+                            provider: "openrouter",
+                        },
+                        chatbot_b: {
+                            name: "Saved B",
+                            model: "model-1",
+                            system_prompt: "Prompt B",
+                            provider: "openrouter",
+                        },
+                        shared_system_prompt: "Saved shared prompt",
+                    }),
+                })
+            }
+            if (url.includes("/providers")) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProviders) })
+            }
+            if (url.includes("/presets")) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve(mockPresets) })
+            }
+            if (url.includes("/models")) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve(mockModels) })
+            }
+            return Promise.reject(new Error("Unknown URL"))
+        }))
+
+        render(<SetupForm onStart={vi.fn()} error={null} />)
+
+        await waitFor(() => expect(screen.getByDisplayValue("Saved A")).toBeInTheDocument())
+        expect(screen.getByDisplayValue("Saved B")).toBeInTheDocument()
+        expect(screen.getByDisplayValue("Saved shared prompt")).toBeInTheDocument()
+        expect(screen.getByDisplayValue("Prompt A")).toBeInTheDocument()
+        expect(screen.getByDisplayValue("Prompt B")).toBeInTheDocument()
     })
 
     it("shows error banner when error prop is set", async () => {
@@ -84,7 +144,7 @@ describe("SetupForm", () => {
     })
 
     it("Start button is disabled when no models loaded", async () => {
-        vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ json: () => Promise.resolve([]) })))
+        vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve([]) })))
         render(<SetupForm onStart={vi.fn()} error={null} />)
         await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).toBeDisabled())
     })
