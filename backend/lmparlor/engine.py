@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from pathlib import Path
 from typing import AsyncGenerator, AsyncIterator, Dict, List, Literal, Tuple, Union
 
@@ -12,6 +13,8 @@ PROMPTS_DIR = Path(__file__).parent / "prompts"
 PREAMBLE = (PROMPTS_DIR / "preamble.md").read_text().strip()
 PREAMBLE_A = (PROMPTS_DIR / "preamble_a.md").read_text().strip()
 PREAMBLE_B = (PROMPTS_DIR / "preamble_b.md").read_text().strip()
+
+logger = logging.getLogger(__name__)
 
 
 class Generating:
@@ -182,4 +185,4 @@ async def _close_stream(stream: AsyncIterator[Tuple[str, str]]) -> None:
     try:
         await close()
     except RuntimeError:
-        return
+        logger.debug("Response stream already closed")

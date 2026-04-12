@@ -1,5 +1,8 @@
 import asyncio
+import logging
 from typing import AsyncGenerator, List
+
+logger = logging.getLogger(__name__)
 
 
 async def call_codex(model: str, system_prompt: str, messages: List[dict]) -> str:
@@ -34,7 +37,9 @@ async def stream_codex(
             output += chunk.decode()
             yield _extract_content(output)
         await process.wait()
-        await stderr_task
+        stderr_output = (await stderr_task).decode().strip()
+        if stderr_output:
+            logger.warning("Codex CLI stderr: %s", stderr_output)
     except asyncio.CancelledError:
         stderr_task.cancel()
         process.kill()
