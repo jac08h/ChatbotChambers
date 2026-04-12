@@ -35,13 +35,17 @@ def collect_ws_events(ws: object, stop_on: tuple = ("done", "error")) -> List[di
 
 
 def make_stream_mock(responses: List[object]):
+    call_index = 0
+
     async def mock_stream(*args: object, **kwargs: object):
-        for response in responses:
-            if isinstance(response, list):
-                for item in response:
-                    yield item
-                continue
-            yield response
+        nonlocal call_index
+        response = responses[call_index]
+        call_index += 1
+        if isinstance(response, list):
+            for item in response:
+                yield item
+            return
+        yield response
 
     return mock_stream
 

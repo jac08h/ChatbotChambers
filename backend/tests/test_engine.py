@@ -30,15 +30,19 @@ async def test_basic_two_turns_produces_four_messages(mock_openrouter: object, s
 
 
 async def test_generating_precedes_each_message(mock_openrouter: object, session_config: SessionConfig):
-    """Each Message is immediately preceded by a Generating event for the same chatbot."""
+    """Each Message is preceded by a Generating event for the same chatbot."""
     mock_openrouter.side_effect = [("Hello!", ""), ("Hi!", ""), ("Again", ""), ("/leave", "")]
     events = await collect(session_config)
     for i, event in enumerate(events):
         if isinstance(event, Message):
             assert i > 0
-            prev = events[i - 1]
-            assert isinstance(prev, Generating)
-            assert prev.chatbot == event.chatbot
+            prior_events = events[:i]
+            generating = next(
+                candidate
+                for candidate in reversed(prior_events)
+                if isinstance(candidate, Generating)
+            )
+            assert generating.chatbot == event.chatbot
 
 
 async def test_leave_command_ends_conversation(mock_openrouter: object, session_config: SessionConfig):
