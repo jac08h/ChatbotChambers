@@ -8,7 +8,10 @@ from lmparlor.claude_code import _build_prompt, call_claude_code
 
 def make_mock_process(stdout: bytes = b"response\n", stderr: bytes = b"") -> MagicMock:
     mock_process = MagicMock()
-    mock_process.communicate = AsyncMock(return_value=(stdout, stderr))
+    chunks = [stdout] if stdout else []
+    mock_process.stdout.read = AsyncMock(side_effect=[*chunks, b""])
+    mock_process.stderr.read = AsyncMock(return_value=stderr)
+    mock_process.wait = AsyncMock(return_value=None)
     return mock_process
 
 

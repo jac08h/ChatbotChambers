@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import AsyncMock
+from types import SimpleNamespace
 
 import pytest
 
@@ -47,22 +47,47 @@ def stop_event() -> asyncio.Event:
     return asyncio.Event()
 
 
+class StreamMock:
+    def __init__(self, default_response: object):
+        self.default_response = default_response
+        self.side_effect: list[object] | None = None
+        self.call_count = 0
+        self.call_args_list: list[SimpleNamespace] = []
+
+    def __call__(self, *args: object, **kwargs: object):
+        self.call_count += 1
+        self.call_args_list.append(SimpleNamespace(args=args, kwargs=kwargs))
+        if self.side_effect is None:
+            response = self.default_response
+        else:
+            response = self.side_effect[self.call_count - 1]
+
+        async def generator():
+            if isinstance(response, list):
+                for item in response:
+                    yield item
+                return
+            yield response
+
+        return generator()
+
+
 @pytest.fixture
-def mock_openrouter(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
-    mock = AsyncMock(return_value=("Hello!", ""))
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", mock)
+def mock_openrouter(monkeypatch: pytest.MonkeyPatch) -> StreamMock:
+    mock = StreamMock(("Hello!", ""))
+    monkeypatch.setattr("lmparlor.engine.stream_openrouter", mock)
     return mock
 
 
 @pytest.fixture
-def mock_claude_code(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
-    mock = AsyncMock(return_value="Hello from Claude!")
-    monkeypatch.setattr("lmparlor.engine.call_claude_code", mock)
+def mock_claude_code(monkeypatch: pytest.MonkeyPatch) -> StreamMock:
+    mock = StreamMock("Hello from Claude!")
+    monkeypatch.setattr("lmparlor.engine.stream_claude_code", mock)
     return mock
 
 
 @pytest.fixture
-def mock_codex(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
-    mock = AsyncMock(return_value="Hello from Codex!")
-    monkeypatch.setattr("lmparlor.engine.call_codex", mock)
+def mock_codex(monkeypatch: pytest.MonkeyPatch) -> StreamMock:
+    mock = StreamMock("Hello from Codex!")
+    monkeypatch.setattr("lmparlor.engine.stream_codex", mock)
     return mock

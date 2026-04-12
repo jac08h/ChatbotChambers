@@ -6,10 +6,16 @@ import pytest
 
 def make_mock_client(content: str) -> MagicMock:
     mock_client = MagicMock()
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = content
-    mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+    stream = MagicMock()
+
+    async def iterator():
+        chunk = MagicMock()
+        chunk.choices = [MagicMock()]
+        chunk.choices[0].delta.content = content
+        yield chunk
+
+    stream.__aiter__.return_value = iterator()
+    mock_client.chat.completions.create = AsyncMock(return_value=stream)
     return mock_client
 
 
@@ -45,6 +51,32 @@ async def test_strips_multiple_think_blocks(tmp_path: Path, monkeypatch: pytest.
     assert "think" not in content
     assert content == "Answer"
     assert thinking == "First"
+
+
+async def test_stream_hides_incomplete_think_block(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """An open <think> block is not surfaced in streamed content."""
+    monkeypatch.setattr("lmparlor.openrouter.LOGS_DIR", tmp_path)
+    mock_client = MagicMock()
+    stream = MagicMock()
+
+    async def iterator():
+        for piece in ["<think>draft", "</think>Visible"]:
+            chunk = MagicMock()
+            chunk.choices = [MagicMock()]
+            chunk.choices[0].delta.content = piece
+            yield chunk
+
+    stream.__aiter__.return_value = iterator()
+    mock_client.chat.completions.create = AsyncMock(return_value=stream)
+    with patch("lmparlor.openrouter.AsyncOpenAI", return_value=mock_client):
+        from lmparlor.openrouter import stream_openrouter
+
+        updates = []
+        async for content, thinking in stream_openrouter("model", "sys", [], "key"):
+            updates.append((content, thinking))
+
+    assert updates[0] == ("", "")
+    assert updates[1] == ("Visible", "draft")
 
 
 async def test_system_prompt_prepended(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

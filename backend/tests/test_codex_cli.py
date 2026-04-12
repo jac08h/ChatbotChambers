@@ -7,7 +7,13 @@ from lmparlor.codex_cli import _build_prompt, call_codex
 
 def make_mock_process(stdout: bytes = b"response\n", stderr: bytes = b"") -> MagicMock:
     mock_process = MagicMock()
-    mock_process.communicate = AsyncMock(return_value=(stdout, stderr))
+    chunks = [stdout] if stdout else []
+    mock_process.stdin.write = MagicMock()
+    mock_process.stdin.drain = AsyncMock(return_value=None)
+    mock_process.stdin.close = MagicMock()
+    mock_process.stdout.read = AsyncMock(side_effect=[*chunks, b""])
+    mock_process.stderr.read = AsyncMock(return_value=stderr)
+    mock_process.wait = AsyncMock(return_value=None)
     return mock_process
 
 
@@ -44,8 +50,7 @@ async def test_prompt_sent_via_stdin():
     mock_process = make_mock_process()
     with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=mock_process)):
         await call_codex("model", "system prompt", [{"role": "user", "content": "Hello"}])
-    call_kwargs = mock_process.communicate.call_args.kwargs
-    stdin_input = call_kwargs.get("input") or mock_process.communicate.call_args.args[0]
+    stdin_input = mock_process.stdin.write.call_args.args[0]
     assert b"Hello" in stdin_input
     assert b"system prompt" in stdin_input
 

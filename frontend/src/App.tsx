@@ -136,10 +136,11 @@ export default function App() {
             />
             <div className="main-panel">
                 {showConversation ? (
-                    <ConversationView
-                        messages={viewingSession ? viewingSession.messages : ws.messages}
-                        status={viewingSession ? (viewingSession.error ? "error" : "done") : ws.status}
-                        generatingChatbot={viewingSession ? null : ws.generatingChatbot}
+                        <ConversationView
+                            messages={viewingSession ? viewingSession.messages : ws.messages}
+                            draftMessage={viewingSession ? null : ws.draftMessage}
+                            status={viewingSession ? (viewingSession.error ? "error" : "done") : ws.status}
+                            generatingChatbot={viewingSession ? null : ws.generatingChatbot}
                         doneReason={viewingSession ? viewingSession.doneReason : ws.doneReason}
                         error={viewingSession ? viewingSession.error : ws.error}
                         config={viewingSession ? viewingSession.config : ws.config}

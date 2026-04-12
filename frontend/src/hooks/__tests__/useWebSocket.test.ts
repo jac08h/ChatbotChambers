@@ -51,6 +51,7 @@ describe("useWebSocket", () => {
         const { result } = renderHook(() => useWebSocket())
         expect(result.current.status).toBe("idle")
         expect(result.current.messages).toEqual([])
+        expect(result.current.draftMessage).toBeNull()
         expect(result.current.generatingChatbot).toBeNull()
     })
 
@@ -100,6 +101,22 @@ describe("useWebSocket", () => {
         expect(result.current.messages).toHaveLength(1)
         expect(result.current.messages[0].content).toBe("Hello")
         expect(result.current.generatingChatbot).toBeNull()
+        expect(result.current.draftMessage).toBeNull()
+    })
+
+    it("receiving 'stream' updates the draft message", () => {
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "generating", chatbot: "a" }) })
+        act(() => {
+            MockWebSocket.instances[0].receive({
+                type: "stream",
+                data: { chatbot: "a", name: "A", model: "m", content: "Partial", turn: 0, thinking: "" },
+            })
+        })
+        expect(result.current.draftMessage?.content).toBe("Partial")
+        expect(result.current.messages).toEqual([])
     })
 
     it("receiving 'done' sets status to done and captures reason", () => {
@@ -140,10 +157,32 @@ describe("useWebSocket", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
+        act(() => {
+            MockWebSocket.instances[0].receive({
+                type: "stream",
+                data: { chatbot: "a", name: "A", model: "m", content: "Partial", turn: 0, thinking: "" },
+            })
+        })
         act(() => { result.current.pause() })
         const sent = JSON.parse(MockWebSocket.instances[0].send.mock.calls[1][0])
         expect(sent.type).toBe("pause")
         expect(result.current.status).toBe("paused")
+        expect(result.current.draftMessage).toBeNull()
+        expect(result.current.generatingChatbot).toBeNull()
+    })
+
+    it("ignores streamed updates while paused", () => {
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { result.current.pause() })
+        act(() => {
+            MockWebSocket.instances[0].receive({
+                type: "stream",
+                data: { chatbot: "a", name: "A", model: "m", content: "Interrupted", turn: 0, thinking: "" },
+            })
+        })
+        expect(result.current.draftMessage).toBeNull()
     })
 
     it("resume() sends resume message and sets status to running", () => {

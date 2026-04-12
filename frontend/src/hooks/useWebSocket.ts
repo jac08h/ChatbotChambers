@@ -47,6 +47,7 @@ export interface ArchivedSession {
 
 export interface WebSocketState {
     messages: ChatMessage[];
+    draftMessage: ChatMessage | null;
     status: Status;
     generatingChatbot: "a" | "b" | null;
     doneReason: string | null;
@@ -105,6 +106,7 @@ function normalizeSession(session: SessionResponse): ArchivedSession {
 
 export function useWebSocket(): WebSocketState {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [draftMessage, setDraftMessage] = useState<ChatMessage | null>(null);
     const [status, setStatus] = useState<Status>("idle");
     const [generatingChatbot, setGeneratingChatbot] = useState<"a" | "b" | null>(null);
     const [doneReason, setDoneReason] = useState<string | null>(null);
@@ -115,10 +117,12 @@ export function useWebSocket(): WebSocketState {
     const [history, setHistory] = useState<ArchivedSession[]>([]);
     const wsRef = useRef<WebSocket | null>(null);
     const messagesRef = useRef<ChatMessage[]>([]);
+    const draftMessageRef = useRef<ChatMessage | null>(null);
     const configRef = useRef<SessionConfig | null>(null);
     const currentIdRef = useRef<string | null>(null);
     const currentTitleRef = useRef<string | null>(null);
     const pendingInitialTitleRef = useRef<string | null>(null);
+    const statusRef = useRef<Status>("idle");
 
     const persistSessionTitle = useCallback((id: string, title: string) => {
         fetch(`http://localhost:8001/sessions/${id}`, {
@@ -148,6 +152,7 @@ export function useWebSocket(): WebSocketState {
         wsRef.current?.close();
         wsRef.current = null;
         setMessages([]);
+        setDraftMessage(null);
         setStatus("idle");
         setGeneratingChatbot(null);
         setDoneReason(null);
@@ -156,10 +161,12 @@ export function useWebSocket(): WebSocketState {
         setCurrentSessionId(null);
         setCurrentTitle(null);
         messagesRef.current = [];
+        draftMessageRef.current = null;
         configRef.current = null;
         currentIdRef.current = null;
         currentTitleRef.current = null;
         pendingInitialTitleRef.current = null;
+        statusRef.current = "idle";
     }, []);
 
     useEffect(() => {
@@ -201,18 +208,22 @@ export function useWebSocket(): WebSocketState {
         currentTitleRef.current = trimmedInitialTitle;
         pendingInitialTitleRef.current = trimmedInitialTitle;
         setMessages([]);
+        setDraftMessage(null);
         setGeneratingChatbot(null);
         setDoneReason(null);
         setError(null);
         setConfig(newConfig);
         setCurrentSessionId(null);
         setCurrentTitle(trimmedInitialTitle);
+        draftMessageRef.current = null;
+        statusRef.current = "idle";
         const ws = new WebSocket("ws://localhost:8001/ws");
         wsRef.current = ws;
 
         ws.onopen = () => {
             ws.send(JSON.stringify({ type: "start", config: newConfig }));
             setStatus("running");
+            statusRef.current = "running";
         };
 
         ws.onmessage = (event) => {
@@ -228,29 +239,48 @@ export function useWebSocket(): WebSocketState {
                 }
             } else if (data.type === "generating") {
                 setGeneratingChatbot(data.chatbot);
+                draftMessageRef.current = null;
+                setDraftMessage(null);
+            } else if (data.type === "stream") {
+                if (statusRef.current === "paused") {
+                    return;
+                }
+                draftMessageRef.current = data.data;
+                setDraftMessage(data.data);
             } else if (data.type === "message") {
                 setGeneratingChatbot(null);
+                draftMessageRef.current = null;
+                setDraftMessage(null);
                 messagesRef.current = [...messagesRef.current, data.data];
                 setMessages((prev) => [...prev, data.data]);
             } else if (data.type === "done") {
                 setGeneratingChatbot(null);
+                draftMessageRef.current = null;
+                setDraftMessage(null);
                 const reason = data.reason === "leave" && data.chatbot
                     ? `leave:${data.chatbot}`
                     : data.reason;
                 setDoneReason(reason);
                 setStatus("done");
+                statusRef.current = "done";
                 archive(reason, null);
             } else if (data.type === "error") {
                 setGeneratingChatbot(null);
+                draftMessageRef.current = null;
+                setDraftMessage(null);
                 setError(data.message);
                 setStatus("error");
+                statusRef.current = "error";
                 archive(null, data.message);
             }
         };
 
         ws.onerror = () => {
+            draftMessageRef.current = null;
+            setDraftMessage(null);
             setError("WebSocket connection error");
             setStatus("error");
+            statusRef.current = "error";
             archive(null, "WebSocket connection error");
         };
 
@@ -259,12 +289,17 @@ export function useWebSocket(): WebSocketState {
 
     const pause = useCallback(() => {
         wsRef.current?.send(JSON.stringify({ type: "pause" }));
+        draftMessageRef.current = null;
+        setDraftMessage(null);
+        setGeneratingChatbot(null);
         setStatus("paused");
+        statusRef.current = "paused";
     }, []);
 
     const resume = useCallback(() => {
         wsRef.current?.send(JSON.stringify({ type: "resume" }));
         setStatus("running");
+        statusRef.current = "running";
     }, []);
 
     const reset = useCallback(() => {
@@ -318,6 +353,7 @@ export function useWebSocket(): WebSocketState {
 
     return {
         messages,
+        draftMessage,
         status,
         generatingChatbot,
         doneReason,

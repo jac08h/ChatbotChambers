@@ -23,6 +23,7 @@ function makeMessage(chatbot: "a" | "b", content: string, turn = 0): ChatMessage
 
 const defaultProps = {
     messages: [],
+    draftMessage: null,
     status: "idle" as const,
     generatingChatbot: null,
     doneReason: null,
@@ -51,6 +52,19 @@ describe("ConversationView", () => {
             />
         )
         expect(screen.getByText("composing")).toBeInTheDocument()
+    })
+
+    it("shows streamed draft content while generating", () => {
+        render(
+            <ConversationView
+                {...defaultProps}
+                status="running"
+                generatingChatbot="a"
+                draftMessage={{ ...makeMessage("a", "Streaming now"), thinking: "draft thought" }}
+            />
+        )
+        expect(screen.getByText("Streaming now")).toBeInTheDocument()
+        expect(screen.getByText("draft thought")).toBeInTheDocument()
     })
 
     it("shows done banner when status is done", () => {

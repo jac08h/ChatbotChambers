@@ -32,6 +32,7 @@ vi.mock("./hooks/useWebSocket", async () => {
 function createWebSocketState(overrides: Partial<WebSocketState> = {}): WebSocketState {
     return {
         messages: [],
+        draftMessage: null,
         status: "idle",
         generatingChatbot: null,
         doneReason: null,

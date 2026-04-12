@@ -10,7 +10,7 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from lmparlor.engine import Generating, run_conversation
+from lmparlor.engine import Generating, Streaming, run_conversation
 from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, RenameRequest, SessionConfig, Settings
 
 PRESETS_DIR = Path(__file__).parent / "presets"
@@ -172,12 +172,13 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     pause_event = asyncio.Event()
     pause_event.set()
     stop_event = asyncio.Event()
+    interrupt_event = asyncio.Event()
 
     engine_task = asyncio.create_task(
-        _run_engine(ws, config, api_key, pause_event, stop_event, session_id)
+        _run_engine(ws, config, api_key, pause_event, stop_event, interrupt_event, session_id)
     )
     listener_task = asyncio.create_task(
-        _run_listener(ws, pause_event, stop_event)
+        _run_listener(ws, pause_event, stop_event, interrupt_event)
     )
 
     done, pending = await asyncio.wait(
@@ -199,6 +200,7 @@ async def _run_engine(
     api_key: str,
     pause_event: asyncio.Event,
     stop_event: asyncio.Event,
+    interrupt_event: asyncio.Event,
     session_id: str,
 ) -> None:
     messages = []
@@ -206,9 +208,11 @@ async def _run_engine(
     error_message = None
     try:
         last_message = None
-        async for event in run_conversation(config, api_key, pause_event, stop_event):
+        async for event in run_conversation(config, api_key, pause_event, stop_event, interrupt_event):
             if isinstance(event, Generating):
                 await ws.send_json({"type": "generating", "chatbot": event.chatbot})
+            elif isinstance(event, Streaming):
+                await ws.send_json({"type": "stream", "data": event.message.model_dump()})
             else:
                 last_message = event
                 messages.append(event.model_dump())
@@ -270,6 +274,7 @@ async def _run_listener(
     ws: WebSocket,
     pause_event: asyncio.Event,
     stop_event: asyncio.Event,
+    interrupt_event: asyncio.Event,
 ) -> None:
     try:
         while True:
@@ -277,12 +282,15 @@ async def _run_listener(
             msg_type = data.get("type")
             if msg_type == "pause":
                 pause_event.clear()
+                interrupt_event.set()
             elif msg_type == "resume":
                 pause_event.set()
             elif msg_type == "stop":
                 stop_event.set()
+                interrupt_event.set()
                 pause_event.set()
                 return
     except WebSocketDisconnect:
         stop_event.set()
+        interrupt_event.set()
         pause_event.set()

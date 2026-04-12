@@ -1,5 +1,4 @@
 from typing import List
-from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -35,12 +34,24 @@ def collect_ws_events(ws: object, stop_on: tuple = ("done", "error")) -> List[di
     return events
 
 
+def make_stream_mock(responses: List[object]):
+    async def mock_stream(*args: object, **kwargs: object):
+        for response in responses:
+            if isinstance(response, list):
+                for item in response:
+                    yield item
+                continue
+            yield response
+
+    return mock_stream
+
+
 def test_full_conversation_flow(monkeypatch: pytest.MonkeyPatch):
     """Start message triggers generating/message/done sequence."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(
-        "lmparlor.engine.call_openrouter",
-        AsyncMock(side_effect=[("Hello!", ""), ("/leave", "")]),
+        "lmparlor.engine.stream_openrouter",
+        make_stream_mock([("Hello!", ""), ("/leave", "")]),
     )
 
     client = TestClient(app)
@@ -57,7 +68,10 @@ def test_full_conversation_flow(monkeypatch: pytest.MonkeyPatch):
 def test_done_reason_leave(monkeypatch: pytest.MonkeyPatch):
     """When chatbot responds /leave, done reason is 'leave'."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", AsyncMock(return_value=("/leave", "")))
+    monkeypatch.setattr(
+        "lmparlor.engine.stream_openrouter",
+        make_stream_mock([("/leave", "")]),
+    )
 
     client = TestClient(app)
     with client.websocket_connect("/ws") as ws:
@@ -72,7 +86,10 @@ def test_done_reason_leave(monkeypatch: pytest.MonkeyPatch):
 def test_stop_command_accepted_without_error(monkeypatch: pytest.MonkeyPatch):
     """Sending stop command does not produce an error response."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", AsyncMock(return_value=("Hello!", "")))
+    monkeypatch.setattr(
+        "lmparlor.engine.stream_openrouter",
+        make_stream_mock([("Hello!", "")]),
+    )
 
     client = TestClient(app)
     with client.websocket_connect("/ws") as ws:
@@ -113,8 +130,8 @@ def test_message_data_shape(monkeypatch: pytest.MonkeyPatch):
     """Message events contain all expected fields in 'data'."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(
-        "lmparlor.engine.call_openrouter",
-        AsyncMock(side_effect=[("Hi!", "thinking"), ("/leave", "")]),
+        "lmparlor.engine.stream_openrouter",
+        make_stream_mock([("Hi!", "thinking"), ("/leave", "")]),
     )
 
     client = TestClient(app)
@@ -133,8 +150,8 @@ def test_generating_events_indicate_correct_chatbot(monkeypatch: pytest.MonkeyPa
     """Generating events carry the chatbot id ('a' or 'b')."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(
-        "lmparlor.engine.call_openrouter",
-        AsyncMock(side_effect=[("Hi!", ""), ("/leave", "")]),
+        "lmparlor.engine.stream_openrouter",
+        make_stream_mock([("Hi!", ""), ("/leave", "")]),
     )
 
     client = TestClient(app)
@@ -144,3 +161,22 @@ def test_generating_events_indicate_correct_chatbot(monkeypatch: pytest.MonkeyPa
 
     generating_events = [e for e in events if e["type"] == "generating"]
     assert all(e["chatbot"] in ("a", "b") for e in generating_events)
+
+
+def test_stream_event_sent_before_final_message(monkeypatch: pytest.MonkeyPatch):
+    """Streaming updates are sent before the final message event."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "lmparlor.engine.stream_openrouter",
+        make_stream_mock([[("Par", ""), ("Partial", "")], [("/leave", "")]]),
+    )
+
+    client = TestClient(app)
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"type": "start", "config": OPENROUTER_CONFIG})
+        events = collect_ws_events(ws)
+
+    stream_events = [event for event in events if event["type"] == "stream"]
+    assert len(stream_events) >= 2
+    assert stream_events[0]["data"]["content"] == "Par"
+    assert stream_events[1]["data"]["content"] == "Partial"

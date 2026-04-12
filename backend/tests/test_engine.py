@@ -1,24 +1,26 @@
 import asyncio
 from typing import List, Union
-from unittest.mock import AsyncMock
 
 import pytest
 
-from lmparlor.engine import Generating, _build_messages, _build_system_prompt, run_conversation
+from lmparlor.engine import Generating, Streaming, _build_messages, _build_system_prompt, run_conversation
 from lmparlor.models import ChatbotConfig, Message, SessionConfig
 
 
-async def collect(config: SessionConfig, mock_key: str = "test-key") -> List[Union[Generating, Message]]:
+async def collect(
+    config: SessionConfig, mock_key: str = "test-key"
+) -> List[Union[Generating, Streaming, Message]]:
     pause = asyncio.Event()
     pause.set()
     stop = asyncio.Event()
+    interrupt = asyncio.Event()
     events = []
-    async for event in run_conversation(config, mock_key, pause, stop):
+    async for event in run_conversation(config, mock_key, pause, stop, interrupt):
         events.append(event)
     return events
 
 
-async def test_basic_two_turns_produces_four_messages(mock_openrouter: AsyncMock, session_config: SessionConfig):
+async def test_basic_two_turns_produces_four_messages(mock_openrouter: object, session_config: SessionConfig):
     """Two turns produce 4 Message events alternating a/b/a/b."""
     mock_openrouter.side_effect = [("Hello!", ""), ("Hi!", ""), ("Again", ""), ("/leave", "")]
     events = await collect(session_config)
@@ -27,7 +29,7 @@ async def test_basic_two_turns_produces_four_messages(mock_openrouter: AsyncMock
     assert [m.chatbot for m in messages] == ["a", "b", "a", "b"]
 
 
-async def test_generating_precedes_each_message(mock_openrouter: AsyncMock, session_config: SessionConfig):
+async def test_generating_precedes_each_message(mock_openrouter: object, session_config: SessionConfig):
     """Each Message is immediately preceded by a Generating event for the same chatbot."""
     mock_openrouter.side_effect = [("Hello!", ""), ("Hi!", ""), ("Again", ""), ("/leave", "")]
     events = await collect(session_config)
@@ -39,7 +41,7 @@ async def test_generating_precedes_each_message(mock_openrouter: AsyncMock, sess
             assert prev.chatbot == event.chatbot
 
 
-async def test_leave_command_ends_conversation(mock_openrouter: AsyncMock, session_config: SessionConfig):
+async def test_leave_command_ends_conversation(mock_openrouter: object, session_config: SessionConfig):
     """When chatbot A responds with /leave, conversation ends after that message."""
     mock_openrouter.side_effect = [("/leave", "")]
     events = await collect(session_config)
@@ -49,7 +51,7 @@ async def test_leave_command_ends_conversation(mock_openrouter: AsyncMock, sessi
     assert messages[0].chatbot == "a"
 
 
-async def test_leave_by_chatbot_b(mock_openrouter: AsyncMock, session_config: SessionConfig):
+async def test_leave_by_chatbot_b(mock_openrouter: object, session_config: SessionConfig):
     """When chatbot B responds with /leave, conversation ends after that message."""
     mock_openrouter.side_effect = [("Hello!", ""), ("/leave", "")]
     events = await collect(session_config)
@@ -59,19 +61,20 @@ async def test_leave_by_chatbot_b(mock_openrouter: AsyncMock, session_config: Se
     assert messages[-1].content == "/leave"
 
 
-async def test_stop_event_terminates(mock_openrouter: AsyncMock, session_config: SessionConfig):
+async def test_stop_event_terminates(mock_openrouter: object, session_config: SessionConfig):
     """Setting stop_event before start yields no events."""
     pause = asyncio.Event()
     pause.set()
     stop = asyncio.Event()
     stop.set()
+    interrupt = asyncio.Event()
     events = []
-    async for event in run_conversation(session_config, "key", pause, stop):
+    async for event in run_conversation(session_config, "key", pause, stop, interrupt):
         events.append(event)
     assert events == []
 
 
-async def test_leave_after_two_messages_stops_conversation(mock_openrouter: AsyncMock, session_config: SessionConfig):
+async def test_leave_after_two_messages_stops_conversation(mock_openrouter: object, session_config: SessionConfig):
     """A /leave from chatbot B stops the conversation after two messages."""
     mock_openrouter.side_effect = [("Hi!", ""), ("/leave", "")]
     events = await collect(session_config)
@@ -81,7 +84,7 @@ async def test_leave_after_two_messages_stops_conversation(mock_openrouter: Asyn
     assert messages[1].chatbot == "b"
 
 
-async def test_thinking_passed_through(mock_openrouter: AsyncMock, session_config: SessionConfig):
+async def test_thinking_passed_through(mock_openrouter: object, session_config: SessionConfig):
     """Thinking content from openrouter is included in the yielded Message."""
     mock_openrouter.side_effect = [("Answer", "My reasoning here"), ("/leave", "")]
     events = await collect(session_config)
@@ -94,23 +97,29 @@ async def test_mixed_providers_dispatches_correctly(
 ):
     """Chatbot A uses openrouter, chatbot B uses claude_code — correct functions called."""
     session_config.chatbot_b.provider = "claude_code"
-    mock_or = AsyncMock(return_value=("From OR", ""))
-    mock_cc = AsyncMock(return_value="From CC")
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", mock_or)
-    monkeypatch.setattr("lmparlor.engine.call_claude_code", mock_cc)
+    openrouter_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    claude_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-    mock_or.side_effect = [("From OR", "")]
-    mock_cc.side_effect = ["/leave"]
+    async def mock_or(*args: object, **kwargs: object):
+        openrouter_calls.append((args, kwargs))
+        yield "From OR", ""
+
+    async def mock_cc(*args: object, **kwargs: object):
+        claude_calls.append((args, kwargs))
+        yield "/leave"
+
+    monkeypatch.setattr("lmparlor.engine.stream_openrouter", mock_or)
+    monkeypatch.setattr("lmparlor.engine.stream_claude_code", mock_cc)
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
 
-    assert mock_or.call_count == 1
-    assert mock_cc.call_count == 1
+    assert len(openrouter_calls) == 1
+    assert len(claude_calls) == 1
     assert messages[0].content == "From OR"
     assert messages[1].content == "/leave"
 
 
-async def test_history_role_perspective(mock_openrouter: AsyncMock, session_config: SessionConfig):
+async def test_history_role_perspective(mock_openrouter: object, session_config: SessionConfig):
     """When B speaks, A's messages appear as 'user' and B's prior messages as 'assistant'."""
     responses = [("A says hi", ""), ("B replies", ""), ("A again", ""), ("/leave", "")]
     mock_openrouter.side_effect = responses
@@ -128,7 +137,7 @@ async def test_history_role_perspective(mock_openrouter: AsyncMock, session_conf
     assert roles == ["user", "assistant", "user"]
 
 
-async def test_message_name_populated(mock_openrouter: AsyncMock, session_config: SessionConfig):
+async def test_message_name_populated(mock_openrouter: object, session_config: SessionConfig):
     """Yielded messages carry the chatbot display name from config."""
     mock_openrouter.side_effect = [("Hi", ""), ("/leave", "")]
     events = await collect(session_config)
@@ -137,7 +146,7 @@ async def test_message_name_populated(mock_openrouter: AsyncMock, session_config
     assert messages[1].name == session_config.chatbot_b.name
 
 
-async def test_turn_number_increments(mock_openrouter: AsyncMock, session_config: SessionConfig):
+async def test_turn_number_increments(mock_openrouter: object, session_config: SessionConfig):
     """Turn number increments after both chatbots have spoken."""
     mock_openrouter.side_effect = [("Hi", ""), ("Hi", ""), ("Hi", ""), ("/leave", "")]
     events = await collect(session_config)
@@ -146,6 +155,55 @@ async def test_turn_number_increments(mock_openrouter: AsyncMock, session_config
     assert messages[1].turn == 0
     assert messages[2].turn == 1
     assert messages[3].turn == 1
+
+
+async def test_interrupt_drops_partial_message_and_retries_same_chatbot(
+    monkeypatch: pytest.MonkeyPatch, session_config: SessionConfig
+):
+    """Interrupting generation yields no final Message and retries the same chatbot after resume."""
+    pause = asyncio.Event()
+    pause.set()
+    stop = asyncio.Event()
+    interrupt = asyncio.Event()
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def mock_or(*args: object, **kwargs: object):
+        started.set()
+        yield "Part", ""
+        await release.wait()
+        yield "Complete", ""
+
+    monkeypatch.setattr("lmparlor.engine.stream_openrouter", mock_or)
+
+    events: list[Union[Generating, Streaming, Message]] = []
+
+    async def consume() -> None:
+        async for event in run_conversation(session_config, "key", pause, stop, interrupt):
+            events.append(event)
+            if isinstance(event, Message):
+                stop.set()
+                interrupt.set()
+                pause.set()
+
+    task = asyncio.create_task(consume())
+
+    while not started.is_set():
+        await asyncio.sleep(0)
+
+    pause.clear()
+    interrupt.set()
+    await asyncio.sleep(0)
+    assert not any(isinstance(event, Message) for event in events)
+
+    release.set()
+    pause.set()
+    await task
+
+    messages = [event for event in events if isinstance(event, Message)]
+    assert len(messages) == 1
+    assert messages[0].chatbot == "a"
+    assert messages[0].content == "Complete"
 
 
 def test_build_system_prompt_all_parts():

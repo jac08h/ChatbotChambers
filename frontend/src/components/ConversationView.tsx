@@ -8,6 +8,7 @@ import {
 
 interface ConversationViewProps {
     messages: ChatMessage[];
+    draftMessage: ChatMessage | null;
     status: Status;
     generatingChatbot: "a" | "b" | null;
     doneReason: string | null;
@@ -37,6 +38,7 @@ function doneLabel(reason: string, config: SessionConfig | null): string {
 
 export function ConversationView({
     messages,
+    draftMessage,
     status,
     generatingChatbot,
     doneReason,
@@ -158,6 +160,7 @@ export function ConversationView({
                     <GeneratingBubble
                         chatbot={generatingChatbot}
                         name={getGeneratingName(messages, generatingChatbot)}
+                        draftMessage={draftMessage}
                     />
                 )}
 
@@ -213,7 +216,15 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     );
 }
 
-function GeneratingBubble({ chatbot, name }: { chatbot: "a" | "b"; name: string }) {
+function GeneratingBubble({
+    chatbot,
+    name,
+    draftMessage,
+}: {
+    chatbot: "a" | "b";
+    name: string;
+    draftMessage: ChatMessage | null;
+}) {
     return (
         <div className={`message-row chatbot-${chatbot}`}>
             <div className="message-glyph">{name.trim().charAt(0).toUpperCase() || "?"}</div>
@@ -222,9 +233,19 @@ function GeneratingBubble({ chatbot, name }: { chatbot: "a" | "b"; name: string 
                     <span className="sender-label">{name}</span>
                     <span className="model-label">composing</span>
                 </div>
-                <div className="typing-dots">
-                    <span /><span /><span />
-                </div>
+                {draftMessage?.thinking && (
+                    <details className="thinking-block" open>
+                        <summary>Thinking</summary>
+                        <div className="message-content">{draftMessage.thinking}</div>
+                    </details>
+                )}
+                {draftMessage?.content ? (
+                    <div className="message-content">{draftMessage.content}</div>
+                ) : (
+                    <div className="typing-dots">
+                        <span /><span /><span />
+                    </div>
+                )}
             </div>
         </div>
     );
