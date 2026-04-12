@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 async def call_claude_code(model: str, system_prompt: str, messages: List[dict]) -> str:
     content = ""
-    async for content in stream_claude_code(model, system_prompt, messages):
-        continue
+    async for streamed_content in stream_claude_code(model, system_prompt, messages):
+        content = streamed_content
     return content
 
 

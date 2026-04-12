@@ -185,4 +185,4 @@ async def _close_stream(stream: AsyncIterator[Tuple[str, str]]) -> None:
     try:
         await close()
     except RuntimeError:
-        logger.debug("Response stream already closed")
+        logger.debug("Response stream already closed for %s", type(stream).__name__)

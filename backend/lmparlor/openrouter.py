@@ -20,8 +20,11 @@ async def call_openrouter(
 ) -> Tuple[str, str]:
     content = ""
     thinking = ""
-    async for content, thinking in stream_openrouter(model, system_prompt, messages, api_key):
-        continue
+    async for streamed_content, streamed_thinking in stream_openrouter(
+        model, system_prompt, messages, api_key
+    ):
+        content = streamed_content
+        thinking = streamed_thinking
     return content, thinking
 
 

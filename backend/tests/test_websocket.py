@@ -92,7 +92,7 @@ def test_stop_command_accepted_without_error(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(
         "lmparlor.engine.stream_openrouter",
-        make_stream_mock([("Hello!", "")]),
+        make_stream_mock([("Hello!", ""), ("Hello!", "")]),
     )
 
     client = TestClient(app)

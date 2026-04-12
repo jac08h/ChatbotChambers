@@ -234,7 +234,7 @@ function GeneratingBubble({
                     <span className="model-label">composing</span>
                 </div>
                 {draftMessage?.thinking && (
-                    <details className="thinking-block" open>
+                    <details className="thinking-block" open aria-expanded="true">
                         <summary>Thinking</summary>
                         <div className="message-content">{draftMessage.thinking}</div>
                     </details>
