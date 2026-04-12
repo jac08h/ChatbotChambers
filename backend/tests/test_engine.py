@@ -161,7 +161,7 @@ async def test_turn_number_increments(mock_openrouter: object, session_config: S
     assert messages[3].turn == 1
 
 
-async def test_interrupt_drops_partial_message_and_retries_same_chatbot(
+async def test_interrupt_drops_partial_message_and_completes_on_next_generation(
     monkeypatch: pytest.MonkeyPatch, session_config: SessionConfig
 ):
     """Interrupting generation yields no final Message and retries the same chatbot after resume."""

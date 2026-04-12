@@ -46,17 +46,14 @@ async def stream_openrouter(
         stream=True,
     )
     raw_content = ""
-    try:
-        async for chunk in stream:
-            if not chunk.choices:
-                continue
-            delta = chunk.choices[0].delta.content or ""
-            if not delta:
-                continue
-            raw_content += delta
-            yield _split_content_and_thinking(raw_content)
-    except asyncio.CancelledError:
-        raise
+    async for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta.content or ""
+        if not delta:
+            continue
+        raw_content += delta
+        yield _split_content_and_thinking(raw_content)
 
 
 def _log_prompt(model: str, messages: List[dict]) -> None:
