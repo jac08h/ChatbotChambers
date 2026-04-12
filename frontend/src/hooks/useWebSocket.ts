@@ -16,6 +16,9 @@ export const DEFAULT_CHATBOT_NAMES = {
     b: "LM B",
 } as const;
 
+const STREAM_REVEAL_INTERVAL_MS = 16;
+const STREAM_REVEAL_STEP = 6;
+
 export interface ChatbotConfig {
     name: string;
     model: string;
@@ -118,6 +121,9 @@ export function useWebSocket(): WebSocketState {
     const wsRef = useRef<WebSocket | null>(null);
     const messagesRef = useRef<ChatMessage[]>([]);
     const draftMessageRef = useRef<ChatMessage | null>(null);
+    const targetDraftMessageRef = useRef<ChatMessage | null>(null);
+    const pendingFinalMessageRef = useRef<ChatMessage | null>(null);
+    const draftRevealTimerRef = useRef<number | null>(null);
     const configRef = useRef<SessionConfig | null>(null);
     const currentIdRef = useRef<string | null>(null);
     const currentTitleRef = useRef<string | null>(null);
@@ -162,12 +168,99 @@ export function useWebSocket(): WebSocketState {
         setCurrentTitle(null);
         messagesRef.current = [];
         draftMessageRef.current = null;
+        targetDraftMessageRef.current = null;
+        pendingFinalMessageRef.current = null;
+        if (draftRevealTimerRef.current !== null) {
+            window.clearInterval(draftRevealTimerRef.current);
+            draftRevealTimerRef.current = null;
+        }
         configRef.current = null;
         currentIdRef.current = null;
         currentTitleRef.current = null;
         pendingInitialTitleRef.current = null;
         statusRef.current = "idle";
     }, []);
+
+    const commitFinalMessage = useCallback((message: ChatMessage) => {
+        if (draftRevealTimerRef.current !== null) {
+            window.clearInterval(draftRevealTimerRef.current);
+            draftRevealTimerRef.current = null;
+        }
+        draftMessageRef.current = null;
+        targetDraftMessageRef.current = null;
+        pendingFinalMessageRef.current = null;
+        setDraftMessage(null);
+        setGeneratingChatbot(null);
+        messagesRef.current = [...messagesRef.current, message];
+        setMessages((prev) => [...prev, message]);
+    }, []);
+
+    const clearDraftState = useCallback(() => {
+        if (draftRevealTimerRef.current !== null) {
+            window.clearInterval(draftRevealTimerRef.current);
+            draftRevealTimerRef.current = null;
+        }
+        draftMessageRef.current = null;
+        targetDraftMessageRef.current = null;
+        pendingFinalMessageRef.current = null;
+        setDraftMessage(null);
+    }, []);
+
+    const revealText = useCallback((current: string, target: string): string => {
+        if (current === target) {
+            return current;
+        }
+        const nextLength = Math.min(target.length, current.length + STREAM_REVEAL_STEP);
+        return target.slice(0, nextLength);
+    }, []);
+
+    const sameMessage = useCallback((left: ChatMessage | null, right: ChatMessage | null): boolean => {
+        if (left === null || right === null) {
+            return false;
+        }
+        return left.chatbot === right.chatbot && left.turn === right.turn;
+    }, []);
+
+    const revealDraftStep = useCallback((targetMessage: ChatMessage): ChatMessage => {
+        const existingDraft = draftMessageRef.current;
+        const currentDraft: ChatMessage = sameMessage(existingDraft, targetMessage) && existingDraft !== null
+            ? existingDraft
+            : { ...targetMessage, content: "", thinking: "" };
+        const nextDraft = {
+            ...targetMessage,
+            content: revealText(currentDraft.content, targetMessage.content),
+            thinking: revealText(currentDraft.thinking, targetMessage.thinking),
+        };
+        draftMessageRef.current = nextDraft;
+        setDraftMessage(nextDraft);
+        return nextDraft;
+    }, [revealText, sameMessage]);
+
+    const ensureDraftReveal = useCallback(() => {
+        if (draftRevealTimerRef.current !== null) {
+            return;
+        }
+        draftRevealTimerRef.current = window.setInterval(() => {
+            const targetMessage = targetDraftMessageRef.current;
+            if (targetMessage === null || statusRef.current !== "running") {
+                return;
+            }
+            const nextDraft = revealDraftStep(targetMessage);
+            const isComplete = nextDraft.content === targetMessage.content
+                && nextDraft.thinking === targetMessage.thinking;
+            if (!isComplete) {
+                return;
+            }
+            if (pendingFinalMessageRef.current !== null) {
+                commitFinalMessage(pendingFinalMessageRef.current);
+                return;
+            }
+            if (draftRevealTimerRef.current !== null) {
+                window.clearInterval(draftRevealTimerRef.current);
+                draftRevealTimerRef.current = null;
+            }
+        }, STREAM_REVEAL_INTERVAL_MS);
+    }, [commitFinalMessage, revealDraftStep]);
 
     useEffect(() => {
         fetch("http://localhost:8001/sessions")
@@ -178,6 +271,15 @@ export function useWebSocket(): WebSocketState {
             .catch((loadError) => {
                 console.error("Failed to load sessions:", loadError);
             });
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (draftRevealTimerRef.current !== null) {
+                window.clearInterval(draftRevealTimerRef.current);
+                draftRevealTimerRef.current = null;
+            }
+        };
     }, []);
 
     const archive = useCallback((reason: string | null, err: string | null) => {
@@ -215,7 +317,7 @@ export function useWebSocket(): WebSocketState {
         setConfig(newConfig);
         setCurrentSessionId(null);
         setCurrentTitle(trimmedInitialTitle);
-        draftMessageRef.current = null;
+        clearDraftState();
         statusRef.current = "idle";
         const ws = new WebSocket("ws://localhost:8001/ws");
         wsRef.current = ws;
@@ -239,24 +341,34 @@ export function useWebSocket(): WebSocketState {
                 }
             } else if (data.type === "generating") {
                 setGeneratingChatbot(data.chatbot);
-                draftMessageRef.current = null;
-                setDraftMessage(null);
+                clearDraftState();
             } else if (data.type === "stream") {
                 if (statusRef.current === "paused") {
                     return;
                 }
-                draftMessageRef.current = data.data;
-                setDraftMessage(data.data);
+                pendingFinalMessageRef.current = null;
+                targetDraftMessageRef.current = data.data;
+                const nextDraft = revealDraftStep(data.data);
+                if (nextDraft.content !== data.data.content || nextDraft.thinking !== data.data.thinking) {
+                    ensureDraftReveal();
+                }
             } else if (data.type === "message") {
-                setGeneratingChatbot(null);
-                draftMessageRef.current = null;
-                setDraftMessage(null);
-                messagesRef.current = [...messagesRef.current, data.data];
-                setMessages((prev) => [...prev, data.data]);
+                pendingFinalMessageRef.current = data.data;
+                targetDraftMessageRef.current = data.data;
+                const nextDraft = revealDraftStep(data.data);
+                const isComplete = nextDraft.content === data.data.content
+                    && nextDraft.thinking === data.data.thinking;
+                if (isComplete) {
+                    commitFinalMessage(data.data);
+                } else {
+                    ensureDraftReveal();
+                }
             } else if (data.type === "done") {
+                if (pendingFinalMessageRef.current !== null) {
+                    commitFinalMessage(pendingFinalMessageRef.current);
+                }
                 setGeneratingChatbot(null);
-                draftMessageRef.current = null;
-                setDraftMessage(null);
+                clearDraftState();
                 const reason = data.reason === "leave" && data.chatbot
                     ? `leave:${data.chatbot}`
                     : data.reason;
@@ -266,8 +378,7 @@ export function useWebSocket(): WebSocketState {
                 archive(reason, null);
             } else if (data.type === "error") {
                 setGeneratingChatbot(null);
-                draftMessageRef.current = null;
-                setDraftMessage(null);
+                clearDraftState();
                 setError(data.message);
                 setStatus("error");
                 statusRef.current = "error";
@@ -276,8 +387,7 @@ export function useWebSocket(): WebSocketState {
         };
 
         ws.onerror = () => {
-            draftMessageRef.current = null;
-            setDraftMessage(null);
+            clearDraftState();
             setError("WebSocket connection error");
             setStatus("error");
             statusRef.current = "error";
@@ -285,16 +395,15 @@ export function useWebSocket(): WebSocketState {
         };
 
         ws.onclose = () => {};
-    }, [applySessionTitle, archive, persistSessionTitle]);
+    }, [applySessionTitle, archive, clearDraftState, commitFinalMessage, ensureDraftReveal, persistSessionTitle, revealDraftStep]);
 
     const pause = useCallback(() => {
         wsRef.current?.send(JSON.stringify({ type: "pause" }));
-        draftMessageRef.current = null;
-        setDraftMessage(null);
+        clearDraftState();
         setGeneratingChatbot(null);
         setStatus("paused");
         statusRef.current = "paused";
-    }, []);
+    }, [clearDraftState]);
 
     const resume = useCallback(() => {
         wsRef.current?.send(JSON.stringify({ type: "resume" }));

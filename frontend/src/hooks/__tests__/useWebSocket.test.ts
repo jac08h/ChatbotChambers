@@ -43,6 +43,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
 })
 
@@ -105,6 +106,7 @@ describe("useWebSocket", () => {
     })
 
     it("receiving 'stream' updates the draft message", () => {
+        vi.useFakeTimers()
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
@@ -115,8 +117,32 @@ describe("useWebSocket", () => {
                 data: { chatbot: "a", name: "A", model: "m", content: "Partial", turn: 0, thinking: "" },
             })
         })
+        expect(result.current.draftMessage?.content).toBe("Partia")
+        act(() => { vi.advanceTimersByTime(16) })
         expect(result.current.draftMessage?.content).toBe("Partial")
         expect(result.current.messages).toEqual([])
+    })
+
+    it("reveals a final message before committing it", () => {
+        vi.useFakeTimers()
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "generating", chatbot: "a" }) })
+        act(() => {
+            MockWebSocket.instances[0].receive({
+                type: "message",
+                data: { chatbot: "a", name: "A", model: "m", content: "Hello there", turn: 0, thinking: "" },
+            })
+        })
+        expect(result.current.messages).toEqual([])
+        expect(result.current.generatingChatbot).toBe("a")
+        expect(result.current.draftMessage?.content).toBe("Hello ")
+        act(() => { vi.advanceTimersByTime(16) })
+        expect(result.current.messages).toHaveLength(1)
+        expect(result.current.messages[0].content).toBe("Hello there")
+        expect(result.current.draftMessage).toBeNull()
+        expect(result.current.generatingChatbot).toBeNull()
     })
 
     it("receiving 'done' sets status to done and captures reason", () => {
