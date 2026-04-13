@@ -22,11 +22,12 @@ from lmparlor.models import (
     Settings,
 )
 
-_REPO_ROOT = Path(__file__).parent.parent.parent
+PRESET_ID_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
+REPO_ROOT = Path(__file__).parent.parent.parent
 DEFAULT_PRESETS_DIR = Path(__file__).parent / "presets"
-PRESETS_DIR = Path(os.environ.get("LMPARLOR_PRESETS_DIR", str(_REPO_ROOT / ".cache/presets")))
-SETTINGS_PATH = Path(os.environ.get("LMPARLOR_SETTINGS_PATH", str(_REPO_ROOT / ".cache/settings.json")))
-SESSIONS_DIR = Path(os.environ.get("LMPARLOR_SESSIONS_DIR", str(_REPO_ROOT / ".cache/sessions")))
+PRESETS_DIR = Path(os.environ.get("LMPARLOR_PRESETS_DIR", str(REPO_ROOT / ".cache/presets")))
+SETTINGS_PATH = Path(os.environ.get("LMPARLOR_SETTINGS_PATH", str(REPO_ROOT / ".cache/settings.json")))
+SESSIONS_DIR = Path(os.environ.get("LMPARLOR_SESSIONS_DIR", str(REPO_ROOT / ".cache/sessions")))
 
 def _new_session_id() -> str:
     return str(uuid4())
@@ -82,6 +83,7 @@ def _normalize_preset_data(preset_id: str, data: dict) -> dict:
 
 def _new_preset_id(name: str) -> str:
     base_slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "preset"
+    base_slug = re.sub(r"-+", "-", base_slug)
     candidate = base_slug
     suffix = 2
     while _preset_path(candidate).exists():
@@ -91,7 +93,7 @@ def _new_preset_id(name: str) -> str:
 
 
 def _preset_path(preset_id: str) -> Path:
-    if re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", preset_id) is None:
+    if re.fullmatch(PRESET_ID_PATTERN, preset_id) is None:
         raise ValueError("Invalid preset id")
     presets_root = PRESETS_DIR.resolve()
     path = (presets_root / (preset_id + ".json")).resolve()

@@ -312,6 +312,16 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         setPromptB("");
     };
 
+    const handlePresetClick = (presetId: string) => {
+        if (selectedPresetId === presetId) {
+            clearPreset();
+            return;
+        }
+        loadPreset(presetId).catch(() => {
+            setPresetError("Failed to load preset.");
+        });
+    };
+
     const handleSavePreset = async () => {
         const trimmedPresetName = presetName.trim();
         if (!trimmedPresetName) {
@@ -385,9 +395,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                         key={preset.id}
                                         type="button"
                                         className={`preset-chip ${selectedPresetId === preset.id ? "preset-chip-active" : ""}`}
-                                        onClick={() =>
-                                            selectedPresetId === preset.id ? clearPreset() : loadPreset(preset.id)
-                                        }
+                                        onClick={() => handlePresetClick(preset.id)}
                                     >
                                         {preset.name}
                                     </button>
