@@ -412,7 +412,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                     <button
                                         type="button"
                                         className="preset-save-confirm"
-                                        onClick={() => void handleSavePreset()}
+                                        onClick={handleSavePreset}
                                         disabled={isSavingPreset}
                                     >
                                         {isSavingPreset ? "Saving…" : "Save preset"}

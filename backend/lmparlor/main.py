@@ -84,10 +84,20 @@ def _new_preset_id(name: str) -> str:
     base_slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "preset"
     candidate = base_slug
     suffix = 2
-    while (PRESETS_DIR / ("%s.json" % candidate)).exists():
-        candidate = "%s-%s" % (base_slug, suffix)
+    while _preset_path(candidate).exists():
+        candidate = base_slug + "-" + str(suffix)
         suffix += 1
     return candidate
+
+
+def _preset_path(preset_id: str) -> Path:
+    if re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", preset_id) is None:
+        raise ValueError("Invalid preset id")
+    presets_root = PRESETS_DIR.resolve()
+    path = (presets_root / (preset_id + ".json")).resolve()
+    if path.parent != presets_root:
+        raise ValueError("Invalid preset path")
+    return path
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +135,7 @@ def save_preset(request: PresetCreateRequest) -> dict:
             "name": preset_name,
             "config": request.config.model_dump(),
         }
-        path = PRESETS_DIR / ("%s.json" % preset_id)
+        path = _preset_path(preset_id)
         path.write_text(json.dumps(data))
         return _normalize_preset_data(preset_id, data)
     except OSError as exc:
