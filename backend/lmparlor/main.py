@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 import shutil
 from typing import List
 from uuid import uuid4
@@ -11,10 +12,19 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from lmparlor.engine import Generating, run_conversation
-from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, RenameRequest, SessionConfig, Settings
+from lmparlor.models import (
+    CLAUDE_CODE_MODELS,
+    CODEX_MODELS,
+    MODELS,
+    PresetCreateRequest,
+    RenameRequest,
+    SessionConfig,
+    Settings,
+)
 
-PRESETS_DIR = Path(__file__).parent / "presets"
 _REPO_ROOT = Path(__file__).parent.parent.parent
+DEFAULT_PRESETS_DIR = Path(__file__).parent / "presets"
+PRESETS_DIR = Path(os.environ.get("LMPARLOR_PRESETS_DIR", str(_REPO_ROOT / ".cache/presets")))
 SETTINGS_PATH = Path(os.environ.get("LMPARLOR_SETTINGS_PATH", str(_REPO_ROOT / ".cache/settings.json")))
 SESSIONS_DIR = Path(os.environ.get("LMPARLOR_SESSIONS_DIR", str(_REPO_ROOT / ".cache/sessions")))
 
@@ -38,6 +48,47 @@ def _normalize_session_data(data: dict) -> dict:
     }
     return normalized
 
+
+def _ensure_presets_dir() -> None:
+    PRESETS_DIR.mkdir(parents=True, exist_ok=True)
+    if any(PRESETS_DIR.glob("*.json")):
+        return
+    for source_path in sorted(DEFAULT_PRESETS_DIR.glob("*.json")):
+        shutil.copy2(source_path, PRESETS_DIR / source_path.name)
+
+
+def _normalize_preset_data(preset_id: str, data: dict) -> dict:
+    config = data.get("config")
+    normalized = {
+        "id": preset_id,
+        "name": data["name"],
+        "shared_system_prompt": data.get(
+            "shared_system_prompt",
+            config.get("shared_system_prompt", "") if config else "",
+        ),
+        "system_prompt_a": data.get(
+            "system_prompt_a",
+            config.get("chatbot_a", {}).get("system_prompt", "") if config else "",
+        ),
+        "system_prompt_b": data.get(
+            "system_prompt_b",
+            config.get("chatbot_b", {}).get("system_prompt", "") if config else "",
+        ),
+    }
+    if config:
+        normalized["config"] = config
+    return normalized
+
+
+def _new_preset_id(name: str) -> str:
+    base_slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "preset"
+    candidate = base_slug
+    suffix = 2
+    while (PRESETS_DIR / ("%s.json" % candidate)).exists():
+        candidate = "%s-%s" % (base_slug, suffix)
+        suffix += 1
+    return candidate
+
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
@@ -51,11 +102,35 @@ app.add_middleware(
 
 @app.get("/presets")
 def get_presets() -> List[dict]:
+    _ensure_presets_dir()
     presets = []
     for path in sorted(PRESETS_DIR.glob("*.json")):
-        data = json.loads(path.read_text())
-        presets.append({"id": path.stem, **data})
+        try:
+            data = json.loads(path.read_text())
+            presets.append(_normalize_preset_data(path.stem, data))
+        except (OSError, json.JSONDecodeError, KeyError):
+            logger.warning("Failed to load preset %s", path.name)
     return presets
+
+
+@app.post("/presets", status_code=201)
+def save_preset(request: PresetCreateRequest) -> dict:
+    preset_name = request.name.strip()
+    if not preset_name:
+        raise HTTPException(status_code=422, detail="name must not be empty")
+    try:
+        _ensure_presets_dir()
+        preset_id = _new_preset_id(preset_name)
+        data = {
+            "name": preset_name,
+            "config": request.config.model_dump(),
+        }
+        path = PRESETS_DIR / ("%s.json" % preset_id)
+        path.write_text(json.dumps(data))
+        return _normalize_preset_data(preset_id, data)
+    except OSError as exc:
+        logger.exception("Failed to save preset %s", preset_name)
+        raise HTTPException(status_code=500, detail="Failed to save preset") from exc
 
 
 @app.get("/providers")

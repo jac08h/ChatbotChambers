@@ -81,22 +81,114 @@ async def test_get_providers_claude_code_unavailable_when_cli_missing(monkeypatc
     assert response.json()["codex"] is False
 
 
-async def test_get_presets_returns_list():
-    """GET /presets returns a non-empty list."""
+async def test_get_presets_seeds_cache_from_bundled_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """GET /presets copies bundled presets into .cache/presets when none exist yet."""
+    bundled_presets_dir = tmp_path / "bundled-presets"
+    bundled_presets_dir.mkdir(parents=True, exist_ok=True)
+    bundled_preset = bundled_presets_dir / "debate.json"
+    bundled_preset.write_text(json.dumps({
+        "name": "Debate",
+        "shared_system_prompt": "Shared",
+        "system_prompt_a": "A",
+        "system_prompt_b": "B",
+    }))
+
+    presets_dir = tmp_path / ".cache" / "presets"
+    monkeypatch.setattr("lmparlor.main.DEFAULT_PRESETS_DIR", bundled_presets_dir)
+    monkeypatch.setattr("lmparlor.main.PRESETS_DIR", presets_dir)
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/presets")
+
     assert response.status_code == 200
-    data = response.json()
-    assert isinstance(data, list)
-    assert len(data) > 0
+    assert response.json() == [{
+        "id": "debate",
+        "name": "Debate",
+        "shared_system_prompt": "Shared",
+        "system_prompt_a": "A",
+        "system_prompt_b": "B",
+    }]
+    assert json.loads((presets_dir / "debate.json").read_text())["name"] == "Debate"
 
 
-async def test_get_presets_each_has_id():
-    """Each preset has an 'id' field derived from the filename."""
+async def test_get_presets_returns_saved_config(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """GET /presets includes persisted full configs for user-saved presets."""
+    presets_dir = tmp_path / ".cache" / "presets"
+    presets_dir.mkdir(parents=True, exist_ok=True)
+    preset_payload = {
+        "name": "Saved preset",
+        "config": {
+            "chatbot_a": {
+                "name": "Alpha",
+                "model": "model-a",
+                "system_prompt": "Prompt A",
+                "provider": "openrouter",
+            },
+            "chatbot_b": {
+                "name": "Beta",
+                "model": "model-b",
+                "system_prompt": "Prompt B",
+                "provider": "codex",
+            },
+            "shared_system_prompt": "Shared prompt",
+        },
+    }
+    (presets_dir / "saved-preset.json").write_text(json.dumps(preset_payload))
+
+    monkeypatch.setattr("lmparlor.main.DEFAULT_PRESETS_DIR", tmp_path / "unused-defaults")
+    monkeypatch.setattr("lmparlor.main.PRESETS_DIR", presets_dir)
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/presets")
-    for preset in response.json():
-        assert "id" in preset
+
+    assert response.status_code == 200
+    assert response.json() == [{
+        "id": "saved-preset",
+        "name": "Saved preset",
+        "shared_system_prompt": "Shared prompt",
+        "system_prompt_a": "Prompt A",
+        "system_prompt_b": "Prompt B",
+        "config": preset_payload["config"],
+    }]
+
+
+async def test_post_presets_writes_file_and_returns_body(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """POST /presets persists a user preset to .cache/presets."""
+    presets_dir = tmp_path / ".cache" / "presets"
+    monkeypatch.setattr("lmparlor.main.DEFAULT_PRESETS_DIR", tmp_path / "unused-defaults")
+    monkeypatch.setattr("lmparlor.main.PRESETS_DIR", presets_dir)
+    payload = {
+        "name": "My preset",
+        "config": {
+            "chatbot_a": {
+                "name": "Alpha",
+                "model": "model-a",
+                "system_prompt": "Prompt A",
+                "provider": "openrouter",
+            },
+            "chatbot_b": {
+                "name": "Beta",
+                "model": "model-b",
+                "system_prompt": "Prompt B",
+                "provider": "claude_code",
+            },
+            "shared_system_prompt": "Shared prompt",
+        },
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/presets", json=payload)
+
+    assert response.status_code == 201
+    assert response.json() == {
+        "id": "my-preset",
+        "name": "My preset",
+        "shared_system_prompt": "Shared prompt",
+        "system_prompt_a": "Prompt A",
+        "system_prompt_b": "Prompt B",
+        "config": payload["config"],
+    }
+    assert json.loads((presets_dir / "my-preset.json").read_text()) == payload
 
 
 async def test_get_settings_returns_empty_object_when_missing(monkeypatch: pytest.MonkeyPatch, tmp_path):

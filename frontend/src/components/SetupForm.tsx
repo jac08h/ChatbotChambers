@@ -13,6 +13,7 @@ interface Preset {
     shared_system_prompt: string;
     system_prompt_a: string;
     system_prompt_b: string;
+    config?: SessionConfig;
 }
 
 interface Providers {
@@ -182,6 +183,10 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [promptB, setPromptB] = useState("");
     const [conversationTitle, setConversationTitle] = useState("");
     const [isInitialized, setIsInitialized] = useState(false);
+    const [isSavePresetOpen, setIsSavePresetOpen] = useState(false);
+    const [presetName, setPresetName] = useState("");
+    const [presetError, setPresetError] = useState<string | null>(null);
+    const [isSavingPreset, setIsSavingPreset] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -265,12 +270,36 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
 
-    const loadPreset = (id: string) => {
+    const buildConfig = (): SessionConfig => ({
+        chatbot_a: { name: nameA, model: modelA, system_prompt: promptA, provider: providerA },
+        chatbot_b: { name: nameB, model: modelB, system_prompt: promptB, provider: providerB },
+        shared_system_prompt: sharedPrompt,
+    });
+
+    const loadPreset = async (id: string) => {
         const preset = presets.find((item) => item.id === id);
         if (!preset) {
             return;
         }
         setSelectedPresetId(id);
+        if (preset.config) {
+            const [presetModelsA, presetModelsB] = await Promise.all([
+                fetchModels(preset.config.chatbot_a.provider),
+                fetchModels(preset.config.chatbot_b.provider),
+            ]);
+            setProviderA(preset.config.chatbot_a.provider);
+            setProviderB(preset.config.chatbot_b.provider);
+            setModelsA(presetModelsA);
+            setModelsB(presetModelsB);
+            setModelA(preferredModelId(presetModelsA, preset.config.chatbot_a.provider, preset.config.chatbot_a.model));
+            setModelB(preferredModelId(presetModelsB, preset.config.chatbot_b.provider, preset.config.chatbot_b.model));
+            setNameA(preset.config.chatbot_a.name);
+            setNameB(preset.config.chatbot_b.name);
+            setSharedPrompt(preset.config.shared_system_prompt);
+            setPromptA(preset.config.chatbot_a.system_prompt);
+            setPromptB(preset.config.chatbot_b.system_prompt);
+            return;
+        }
         setSharedPrompt(preset.shared_system_prompt);
         setPromptA(preset.system_prompt_a);
         setPromptB(preset.system_prompt_b);
@@ -283,13 +312,43 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         setPromptB("");
     };
 
+    const handleSavePreset = async () => {
+        const trimmedPresetName = presetName.trim();
+        if (!trimmedPresetName) {
+            setPresetError("Enter a preset name.");
+            return;
+        }
+        setIsSavingPreset(true);
+        setPresetError(null);
+        try {
+            const response = await fetch("http://localhost:8001/presets", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    name: trimmedPresetName,
+                    config: buildConfig(),
+                }),
+            });
+            if (!response.ok) {
+                throw new Error("Failed to save preset");
+            }
+            const savedPreset: Preset = await response.json();
+            setPresets((currentPresets) => [savedPreset, ...currentPresets]);
+            setSelectedPresetId(savedPreset.id);
+            setPresetName("");
+            setIsSavePresetOpen(false);
+        } catch {
+            setPresetError("Failed to save preset.");
+        } finally {
+            setIsSavingPreset(false);
+        }
+    };
+
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        const config = {
-            chatbot_a: { name: nameA, model: modelA, system_prompt: promptA, provider: providerA },
-            chatbot_b: { name: nameB, model: modelB, system_prompt: promptB, provider: providerB },
-            shared_system_prompt: sharedPrompt,
-        };
+        const config = buildConfig();
         await saveSettings(config).catch(() => {});
         onStart(config, conversationTitle.trim());
     };
@@ -304,9 +363,22 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                 {error && <div className="error-banner">{error}</div>}
 
                 <form onSubmit={handleSubmit} className="setup-form">
-                    {presets.length > 0 && (
-                        <div className="field">
+                    <div className="field">
+                        <div className="preset-header">
                             <span className="field-label">Preset</span>
+                            <button
+                                type="button"
+                                className="preset-save-btn"
+                                onClick={() => {
+                                    setPresetError(null);
+                                    setIsSavePresetOpen((open) => !open);
+                                }}
+                                disabled={!canStart || isSavingPreset}
+                            >
+                                Save current as preset
+                            </button>
+                        </div>
+                        {presets.length > 0 ? (
                             <div className="preset-chips">
                                 {presets.map((preset) => (
                                     <button
@@ -321,8 +393,46 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                     </button>
                                 ))}
                             </div>
-                        </div>
-                    )}
+                        ) : (
+                            <div className="preset-empty">No saved presets yet</div>
+                        )}
+                        {isSavePresetOpen && (
+                            <div className="preset-save-panel">
+                                <label className="field">
+                                    <span>Preset name</span>
+                                    <input
+                                        type="text"
+                                        value={presetName}
+                                        onChange={(event) => setPresetName(event.target.value)}
+                                        placeholder="Enter a preset name"
+                                    />
+                                </label>
+                                {presetError && <div className="preset-save-error">{presetError}</div>}
+                                <div className="preset-save-actions">
+                                    <button
+                                        type="button"
+                                        className="preset-save-confirm"
+                                        onClick={() => void handleSavePreset()}
+                                        disabled={isSavingPreset}
+                                    >
+                                        {isSavingPreset ? "Saving…" : "Save preset"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="preset-save-cancel"
+                                        onClick={() => {
+                                            setIsSavePresetOpen(false);
+                                            setPresetName("");
+                                            setPresetError(null);
+                                        }}
+                                        disabled={isSavingPreset}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     <label className="field">
                         <span>Conversation name</span>

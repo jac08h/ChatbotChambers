@@ -404,6 +404,34 @@ input::placeholder {
     color: var(--text-muted);
 }
 
+.preset-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.preset-save-btn {
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--accent);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+.preset-save-btn:hover:not(:disabled) {
+    background: var(--accent-glow);
+    border-color: rgba(196, 149, 106, 0.4);
+}
+
+.preset-save-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .preset-chips {
     display: flex;
     flex-wrap: wrap;
@@ -434,6 +462,59 @@ input::placeholder {
     background: var(--accent-glow);
     color: var(--accent);
     box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.preset-empty {
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    font-style: italic;
+}
+
+.preset-save-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.9rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+.preset-save-error {
+    color: #d99a9a;
+    font-size: 0.82rem;
+}
+
+.preset-save-actions {
+    display: flex;
+    gap: 0.65rem;
+}
+
+.preset-save-confirm,
+.preset-save-cancel {
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+.preset-save-confirm {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.preset-save-confirm:hover:not(:disabled),
+.preset-save-cancel:hover:not(:disabled) {
+    background: var(--accent-glow);
+}
+
+.preset-save-confirm:disabled,
+.preset-save-cancel:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 .advanced-toggle {

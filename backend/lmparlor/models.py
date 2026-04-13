@@ -54,6 +54,11 @@ class RenameRequest(BaseModel):
     title: str
 
 
+class PresetCreateRequest(BaseModel):
+    name: str
+    config: SessionConfig
+
+
 class Message(BaseModel):
     chatbot: Literal["a", "b"]
     name: str
