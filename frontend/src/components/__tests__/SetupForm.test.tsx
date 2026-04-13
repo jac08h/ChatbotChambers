@@ -135,7 +135,7 @@ describe("SetupForm", () => {
         expect(screen.getAllByRole("combobox")[0]).toHaveValue("codex")
         expect(screen.getAllByRole("combobox")[1]).toHaveValue("model-2")
 
-        const advancedButtons = screen.getAllByRole("button", { name: "Advanced" })
+        const advancedButtons = screen.getAllByRole("button", { name: /Advanced/ })
         await userEvent.click(advancedButtons[0])
         await userEvent.click(advancedButtons[1])
         expect(screen.getByDisplayValue("Preset A")).toBeInTheDocument()
