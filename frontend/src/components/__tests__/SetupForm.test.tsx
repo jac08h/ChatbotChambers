@@ -20,22 +20,51 @@ const mockPresets = [
     },
 ]
 
-beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn((url: string) => {
-        if (url.includes("/settings")) {
+function createFetchMock({
+    presets = mockPresets,
+    settings = {},
+    providers = mockProviders,
+}: {
+    presets?: unknown[]
+    settings?: unknown
+    providers?: typeof mockProviders
+} = {}) {
+    return vi.fn((url: string, options?: RequestInit) => {
+        if (url.includes("/settings") && options?.method === "POST") {
             return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
         }
+        if (url.includes("/settings")) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(settings) })
+        }
         if (url.includes("/providers")) {
-            return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProviders) })
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(providers) })
+        }
+        if (url.includes("/presets") && options?.method === "POST") {
+            const body = JSON.parse(String(options.body))
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({
+                    id: "saved-preset",
+                    name: body.name,
+                    shared_system_prompt: body.config.shared_system_prompt,
+                    system_prompt_a: body.config.chatbot_a.system_prompt,
+                    system_prompt_b: body.config.chatbot_b.system_prompt,
+                    config: body.config,
+                }),
+            })
         }
         if (url.includes("/presets")) {
-            return Promise.resolve({ ok: true, json: () => Promise.resolve(mockPresets) })
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(presets) })
         }
         if (url.includes("/models")) {
             return Promise.resolve({ ok: true, json: () => Promise.resolve(mockModels) })
         }
         return Promise.reject(new Error("Unknown URL"))
-    }))
+    })
+}
+
+beforeEach(() => {
+    vi.stubGlobal("fetch", createFetchMock())
 })
 
 afterEach(() => {
@@ -67,6 +96,84 @@ describe("SetupForm", () => {
         expect(screen.getByDisplayValue("You argue against.")).toBeInTheDocument()
     })
 
+    it("loading a saved preset restores the full saved configuration", async () => {
+        vi.stubGlobal("fetch", createFetchMock({
+            providers: { openrouter: true, claude_code: true, codex: true },
+            presets: [
+                {
+                    id: "full-preset",
+                    name: "Full preset",
+                    shared_system_prompt: "Saved shared prompt",
+                    system_prompt_a: "Prompt A",
+                    system_prompt_b: "Prompt B",
+                    config: {
+                        chatbot_a: {
+                            name: "Preset A",
+                            model: "model-2",
+                            system_prompt: "Prompt A",
+                            provider: "codex",
+                        },
+                        chatbot_b: {
+                            name: "Preset B",
+                            model: "model-1",
+                            system_prompt: "Prompt B",
+                            provider: "openrouter",
+                        },
+                        shared_system_prompt: "Saved shared prompt",
+                    },
+                },
+            ],
+        }))
+
+        render(<SetupForm onStart={vi.fn()} error={null} />)
+        await waitFor(() => screen.getByText("Full preset"))
+        await userEvent.click(screen.getByRole("button", { name: "Full preset" }))
+
+        await waitFor(() => expect(screen.getByDisplayValue("Saved shared prompt")).toBeInTheDocument())
+        expect(screen.getByDisplayValue("Prompt A")).toBeInTheDocument()
+        expect(screen.getByDisplayValue("Prompt B")).toBeInTheDocument()
+        expect(screen.getAllByRole("combobox")[0]).toHaveValue("codex")
+        expect(screen.getAllByRole("combobox")[1]).toHaveValue("model-2")
+
+        const advancedButtons = screen.getAllByRole("button", { name: /Advanced/ })
+        await userEvent.click(advancedButtons[0])
+        await userEvent.click(advancedButtons[1])
+        expect(screen.getByDisplayValue("Preset A")).toBeInTheDocument()
+        expect(screen.getByDisplayValue("Preset B")).toBeInTheDocument()
+    })
+
+    it("saves the current configuration as a preset", async () => {
+        const fetchMock = createFetchMock()
+        vi.stubGlobal("fetch", fetchMock)
+
+        render(<SetupForm onStart={vi.fn()} error={null} />)
+        await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).not.toBeDisabled())
+
+        await userEvent.type(screen.getByLabelText("Shared prompt"), "Shared preset prompt")
+        await userEvent.click(screen.getByRole("button", { name: "Save current as preset" }))
+        await userEvent.type(screen.getByLabelText("Preset name"), "My saved preset")
+        await userEvent.click(screen.getByRole("button", { name: "Save preset" }))
+
+        await waitFor(() => expect(screen.getByRole("button", { name: "My saved preset" })).toBeInTheDocument())
+        expect(fetchMock).toHaveBeenCalledWith(
+            "http://localhost:8001/presets",
+            expect.objectContaining({
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            })
+        )
+        const saveCall = fetchMock.mock.calls.find(
+            ([url, options]) => url === "http://localhost:8001/presets" && options?.method === "POST"
+        )
+        expect(saveCall).toBeDefined()
+        expect(JSON.parse(String(saveCall?.[1]?.body))).toMatchObject({
+            name: "My saved preset",
+            config: {
+                shared_system_prompt: "Shared preset prompt",
+            },
+        })
+    })
+
     it("submit calls onStart with correct SessionConfig shape", async () => {
         const onStart = vi.fn()
         render(<SetupForm onStart={onStart} error={null} />)
@@ -93,40 +200,22 @@ describe("SetupForm", () => {
     })
 
     it("loads saved settings on mount", async () => {
-        vi.stubGlobal("fetch", vi.fn((url: string, options?: RequestInit) => {
-            if (url.includes("/settings") && options?.method === "POST") {
-                return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
-            }
-            if (url.includes("/settings")) {
-                return Promise.resolve({
-                    ok: true,
-                    json: () => Promise.resolve({
-                        chatbot_a: {
-                            name: "Saved A",
-                            model: "model-2",
-                            system_prompt: "Prompt A",
-                            provider: "openrouter",
-                        },
-                        chatbot_b: {
-                            name: "Saved B",
-                            model: "model-1",
-                            system_prompt: "Prompt B",
-                            provider: "openrouter",
-                        },
-                        shared_system_prompt: "Saved shared prompt",
-                    }),
-                })
-            }
-            if (url.includes("/providers")) {
-                return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProviders) })
-            }
-            if (url.includes("/presets")) {
-                return Promise.resolve({ ok: true, json: () => Promise.resolve(mockPresets) })
-            }
-            if (url.includes("/models")) {
-                return Promise.resolve({ ok: true, json: () => Promise.resolve(mockModels) })
-            }
-            return Promise.reject(new Error("Unknown URL"))
+        vi.stubGlobal("fetch", createFetchMock({
+            settings: {
+                chatbot_a: {
+                    name: "Saved A",
+                    model: "model-2",
+                    system_prompt: "Prompt A",
+                    provider: "openrouter",
+                },
+                chatbot_b: {
+                    name: "Saved B",
+                    model: "model-1",
+                    system_prompt: "Prompt B",
+                    provider: "openrouter",
+                },
+                shared_system_prompt: "Saved shared prompt",
+            },
         }))
 
         render(<SetupForm onStart={vi.fn()} error={null} />)
