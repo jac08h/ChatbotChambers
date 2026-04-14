@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avatar Variants — Radial Style</title>
+<style>
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        background: #141210;
+        color: #e8e0d4;
+        font-family: "Inter", system-ui, sans-serif;
+        padding: 3rem 2rem;
+    }
+    h1 {
+        text-align: center;
+        color: #c4956a;
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 0 0 0.35rem;
+        letter-spacing: 0.04em;
+    }
+    p.subtitle {
+        text-align: center;
+        color: #6b6050;
+        font-size: 0.82rem;
+        margin: 0 0 3rem;
+    }
+    .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2.5rem;
+        justify-content: center;
+    }
+    .card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .label {
+        color: #6b6050;
+        font-size: 0.68rem;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+    img { display: block; }
+</style>
+</head>
+<body>
+
+<h1>Radial Avatars — 8 Variants</h1>
+<p class="subtitle">All stored in frontend/public/avatars/</p>
+
+<div class="grid">
+    <div class="card">
+        <img src="frontend/public/avatars/avatar_01.svg" width="72" height="72">
+        <span class="label">01 · 8 spokes uniform</span>
+    </div>
+    <div class="card">
+        <img src="frontend/public/avatars/avatar_02.svg" width="72" height="72">
+        <span class="label">02 · 6 spokes</span>
+    </div>
+    <div class="card">
+        <img src="frontend/public/avatars/avatar_03.svg" width="72" height="72">
+        <span class="label">03 · 8 long/short alt</span>
+    </div>
+    <div class="card">
+        <img src="frontend/public/avatars/avatar_04.svg" width="72" height="72">
+        <span class="label">04 · 5 spokes + midpoints</span>
+    </div>
+    <div class="card">
+        <img src="frontend/public/avatars/avatar_05.svg" width="72" height="72">
+        <span class="label">05 · 7 spokes + inner ring</span>
+    </div>
+    <div class="card">
+        <img src="frontend/public/avatars/avatar_06.svg" width="72" height="72">
+        <span class="label">06 · 9 spokes hollow center</span>
+    </div>
+    <div class="card">
+        <img src="frontend/public/avatars/avatar_07.svg" width="72" height="72">
+        <span class="label">07 · 8 rotated 22.5°</span>
+    </div>
+    <div class="card">
+        <img src="frontend/public/avatars/avatar_08.svg" width="72" height="72">
+        <span class="label">08 · 8 graduated lengths</span>
+    </div>
+</div>
+
+</body>
+</html>

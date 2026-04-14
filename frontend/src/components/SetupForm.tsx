@@ -403,36 +403,39 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
                 <form onSubmit={handleSubmit} className="setup-form">
                     <div className="field">
-                        <label className="field">
+                        <div className="preset-header">
                             <span className="field-label">Preset</span>
-                            <select
-                                value={selectedPresetId ?? ""}
-                                onChange={(event) => {
-                                    const val = event.target.value;
-                                    if (!val) {
-                                        clearPreset();
-                                    } else {
-                                        loadPreset(val).catch(() => setPresetError("Failed to load preset."));
-                                    }
+                            <button
+                                type="button"
+                                className="preset-save-link"
+                                onClick={() => {
+                                    setPresetError(null);
+                                    setIsSavePresetOpen((open) => !open);
                                 }}
+                                disabled={!canStart || isSavingPreset}
                             >
-                                <option value="">— none —</option>
-                                {presets.map((preset) => (
-                                    <option key={preset.id} value={preset.id}>{preset.name}</option>
-                                ))}
-                            </select>
-                        </label>
-                        <button
-                            type="button"
-                            className="preset-save-link"
-                            onClick={() => {
-                                setPresetError(null);
-                                setIsSavePresetOpen((open) => !open);
-                            }}
-                            disabled={!canStart || isSavingPreset}
-                        >
-                            Save current config as preset
-                        </button>
+                                Save current config as preset
+                            </button>
+                        </div>
+                        <div className="preset-chips" role="group">
+                            <button
+                                type="button"
+                                className={`preset-chip${selectedPresetId === null ? " preset-chip-active" : ""}`}
+                                onClick={clearPreset}
+                            >
+                                none
+                            </button>
+                            {presets.map((preset) => (
+                                <button
+                                    key={preset.id}
+                                    type="button"
+                                    className={`preset-chip${selectedPresetId === preset.id ? " preset-chip-active" : ""}`}
+                                    onClick={() => loadPreset(preset.id).catch(() => setPresetError("Failed to load preset."))}
+                                >
+                                    {preset.name}
+                                </button>
+                            ))}
+                        </div>
                         {isSavePresetOpen && (
                             <div className="preset-save-panel">
                                 <label className="field">

@@ -15,6 +15,8 @@ interface ConversationViewProps {
     emptyMessageError?: "a" | "b" | null;
     config: SessionConfig | null;
     label?: string | null;
+    avatarA?: string;
+    avatarB?: string;
     onBack?: () => void;
     onPause?: () => void;
     onResume?: () => void;
@@ -46,6 +48,8 @@ export function ConversationView({
     emptyMessageError,
     config,
     label,
+    avatarA,
+    avatarB,
     onBack,
     onPause,
     onResume,
@@ -150,13 +154,18 @@ export function ConversationView({
             </div>
             <div className="messages">
                 {messages.map((message, index) => (
-                    <MessageBubble key={`${message.chatbot}-${index}`} message={message} />
+                    <MessageBubble
+                        key={`${message.chatbot}-${index}`}
+                        message={message}
+                        avatar={message.chatbot === "a" ? avatarA : avatarB}
+                    />
                 ))}
 
                 {generatingChatbot && (
                     <GeneratingBubble
                         chatbot={generatingChatbot}
                         name={getGeneratingName(messages, generatingChatbot)}
+                        avatar={generatingChatbot === "a" ? avatarA : avatarB}
                     />
                 )}
 
@@ -201,10 +210,14 @@ export function ConversationView({
     );
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({ message, avatar }: { message: ChatMessage; avatar?: string }) {
     return (
         <div className={`message-row chatbot-${message.chatbot}`}>
-            <div className="message-glyph">{message.name.trim().charAt(0).toUpperCase() || "?"}</div>
+            <div className="message-glyph">
+                {avatar
+                    ? <img src={avatar} width="32" height="32" alt="" />
+                    : message.name.trim().charAt(0).toUpperCase() || "?"}
+            </div>
             <div className="message-bubble">
                 <div className="message-meta">
                     <span className="sender-label">{message.name}</span>
@@ -222,10 +235,14 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     );
 }
 
-function GeneratingBubble({ chatbot, name }: { chatbot: "a" | "b"; name: string }) {
+function GeneratingBubble({ chatbot, name, avatar }: { chatbot: "a" | "b"; name: string; avatar?: string }) {
     return (
         <div className={`message-row chatbot-${chatbot}`}>
-            <div className="message-glyph">{name.trim().charAt(0).toUpperCase() || "?"}</div>
+            <div className="message-glyph">
+                {avatar
+                    ? <img src={avatar} width="32" height="32" alt="" />
+                    : name.trim().charAt(0).toUpperCase() || "?"}
+            </div>
             <div className="message-bubble generating">
                 <div className="message-meta">
                     <span className="sender-label">{name}</span>

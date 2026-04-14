@@ -11,14 +11,26 @@ import {
     useWebSocket,
 } from "./hooks/useWebSocket";
 
+const AVATAR_COUNT = 8;
+
+function pickAvatars(): [string, string] {
+    const a = Math.floor(Math.random() * AVATAR_COUNT) + 1;
+    let b = Math.floor(Math.random() * (AVATAR_COUNT - 1)) + 1;
+    if (b >= a) b += 1;
+    const fmt = (n: number) => `/avatars/avatar_${String(n).padStart(2, "0")}.svg`;
+    return [fmt(a), fmt(b)];
+}
+
 export default function App() {
     const ws = useWebSocket();
     const [routeSessionId, setRouteSessionId] = useState<string | null>(() => getSessionIdFromPath(window.location.pathname));
     const [showSetup, setShowSetup] = useState(() => routeSessionId === null);
+    const [avatars, setAvatars] = useState<[string, string]>(() => pickAvatars());
 
     const handleStart = (config: SessionConfig, initialTitle: string) => {
         setRouteSessionId(null);
         setShowSetup(false);
+        setAvatars(pickAvatars());
         ws.start(config, initialTitle);
     };
 
@@ -145,6 +157,8 @@ export default function App() {
                         emptyMessageError={viewingSession ? null : ws.emptyMessageError}
                         config={viewingSession ? viewingSession.config : ws.config}
                         label={viewingSession ? getSessionDisplayTitle(viewingSession) : currentDisplayTitle}
+                        avatarA={avatars[0]}
+                        avatarB={avatars[1]}
                         onBack={handleGoHome}
                         onPause={viewingSession ? undefined : ws.pause}
                         onResume={viewingSession ? undefined : ws.resume}

@@ -439,9 +439,14 @@ input::placeholder {
 
 .preset-chips {
     display: flex;
-    flex-wrap: wrap;
     gap: 0.5rem;
     margin-top: 0.1rem;
+    overflow-x: auto;
+    padding-right: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    mask-image: linear-gradient(to right, black 0%, black calc(100% - 40px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 0%, black calc(100% - 40px), transparent 100%);
 }
 
 .preset-chip {
@@ -454,6 +459,8 @@ input::placeholder {
     font-weight: 500;
     cursor: pointer;
     transition: background 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .preset-chip:hover {
@@ -696,7 +703,7 @@ input::placeholder {
 .message-glyph {
     width: 2rem;
     height: 2rem;
-    border-radius: 999px;
+    border-radius: 10px;
     display: grid;
     place-items: center;
     flex-shrink: 0;
@@ -705,16 +712,25 @@ input::placeholder {
     border: 1.5px solid var(--border);
     background: var(--bg-secondary);
     color: var(--text);
+    overflow: hidden;
+}
+
+.message-glyph img {
+    width: 100%;
+    height: 100%;
+    display: block;
 }
 
 .chatbot-a .message-glyph {
-    background: var(--bg-secondary);
+    color: var(--chatbot-a);
+    background: transparent;
     border-color: var(--chatbot-a);
     box-shadow: 0 0 8px rgba(107, 154, 138, 0.2);
 }
 
 .chatbot-b .message-glyph {
-    background: var(--bg-secondary);
+    color: var(--chatbot-b);
+    background: transparent;
     border-color: var(--chatbot-b);
     box-shadow: 0 0 8px rgba(176, 122, 122, 0.2);
 }

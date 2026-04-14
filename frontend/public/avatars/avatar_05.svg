@@ -1,0 +1,20 @@
+<svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+  <rect width="72" height="72" rx="18" fill="currentColor" opacity="0.12"/>
+  <circle cx="36" cy="36" r="26" fill="currentColor" opacity="0.18"/>
+  <line x1="36" y1="36" x2="36"    y2="14"    stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="36" y1="36" x2="54.8"  y2="23.8"  stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="36" y1="36" x2="57.5"  y2="44.5"  stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="36" y1="36" x2="44.5"  y2="57.5"  stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="36" y1="36" x2="23"    y2="56.5"  stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="36" y1="36" x2="15"    y2="44"    stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="36" y1="36" x2="17.5"  y2="23"    stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="36"   cy="14"   r="3.2" fill="currentColor"/>
+  <circle cx="54.8" cy="23.8" r="3.2" fill="currentColor"/>
+  <circle cx="57.5" cy="44.5" r="3.2" fill="currentColor"/>
+  <circle cx="44.5" cy="57.5" r="3.2" fill="currentColor"/>
+  <circle cx="23"   cy="56.5" r="3.2" fill="currentColor"/>
+  <circle cx="15"   cy="44"   r="3.2" fill="currentColor"/>
+  <circle cx="17.5" cy="23"   r="3.2" fill="currentColor"/>
+  <circle cx="36" cy="36" r="11" fill="none" stroke="currentColor" stroke-width="1" opacity="0.35"/>
+  <circle cx="36" cy="36" r="4.5" fill="currentColor"/>
+</svg>
