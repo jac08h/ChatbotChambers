@@ -196,6 +196,20 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [presetError, setPresetError] = useState<string | null>(null);
     const [isSavingPreset, setIsSavingPreset] = useState(false);
 
+    const closeSavePresetDialog = (force = false) => {
+        if (!force && isSavingPreset) {
+            return;
+        }
+        setIsSavePresetOpen(false);
+        setPresetName("");
+        setPresetError(null);
+    };
+
+    const openSavePresetDialog = () => {
+        setPresetError(null);
+        setIsSavePresetOpen(true);
+    };
+
     useEffect(() => {
         let cancelled = false;
 
@@ -305,6 +319,19 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         }
     }, [modelB, modelsB, nameBManual]);
 
+    useEffect(() => {
+        if (!isSavePresetOpen) {
+            return;
+        }
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                closeSavePresetDialog();
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [isSavePresetOpen, isSavingPreset]);
+
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
 
     const buildConfig = (): SessionConfig => ({
@@ -344,13 +371,6 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         setPromptB(preset.system_prompt_b);
     };
 
-    const clearPreset = () => {
-        setSelectedPresetId(null);
-        setSharedPrompt("");
-        setPromptA("");
-        setPromptB("");
-    };
-
     const handleSavePreset = async () => {
         const trimmedPresetName = presetName.trim();
         if (!trimmedPresetName) {
@@ -375,9 +395,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             }
             const savedPreset: Preset = await response.json();
             setPresets((currentPresets) => [savedPreset, ...currentPresets]);
-            setSelectedPresetId(savedPreset.id);
-            setPresetName("");
-            setIsSavePresetOpen(false);
+            setSelectedPresetId(null);
+            closeSavePresetDialog(true);
         } catch {
             setPresetError("Failed to save preset.");
         } finally {
@@ -408,23 +427,13 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             <button
                                 type="button"
                                 className="preset-save-link"
-                                onClick={() => {
-                                    setPresetError(null);
-                                    setIsSavePresetOpen((open) => !open);
-                                }}
+                                onClick={openSavePresetDialog}
                                 disabled={!canStart || isSavingPreset}
                             >
                                 Save current config as preset
                             </button>
                         </div>
                         <div className="preset-chips" role="group">
-                            <button
-                                type="button"
-                                className={`preset-chip${selectedPresetId === null ? " preset-chip-active" : ""}`}
-                                onClick={clearPreset}
-                            >
-                                none
-                            </button>
                             {presets.map((preset) => (
                                 <button
                                     key={preset.id}
@@ -437,18 +446,37 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             ))}
                         </div>
                         {isSavePresetOpen && (
-                            <div className="preset-save-panel">
-                                <label className="field">
-                                    <span>Preset name</span>
-                                    <input
-                                        type="text"
-                                        value={presetName}
-                                        onChange={(event) => setPresetName(event.target.value)}
-                                        placeholder="Enter a preset name"
-                                    />
-                                </label>
-                                {presetError && <div className="preset-save-error">{presetError}</div>}
-                                <div className="preset-save-actions">
+                            <div className="preset-dialog-backdrop" onClick={closeSavePresetDialog}>
+                                <div
+                                    className="preset-dialog"
+                                    role="dialog"
+                                    aria-modal="true"
+                                    aria-labelledby="save-preset-title"
+                                    onClick={(event) => event.stopPropagation()}
+                                >
+                                    <div className="preset-dialog-header">
+                                        <h2 id="save-preset-title" className="preset-dialog-title">Save preset</h2>
+                                        <button
+                                            type="button"
+                                            className="preset-dialog-close"
+                                            onClick={closeSavePresetDialog}
+                                            disabled={isSavingPreset}
+                                            aria-label="Close save preset dialog"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                    <label className="field">
+                                        <span>Preset name</span>
+                                        <input
+                                            type="text"
+                                            value={presetName}
+                                            onChange={(event) => setPresetName(event.target.value)}
+                                            placeholder="Enter a preset name"
+                                        />
+                                    </label>
+                                    {presetError && <div className="preset-save-error">{presetError}</div>}
+                                    <div className="preset-save-actions">
                                     <button
                                         type="button"
                                         className="preset-save-confirm"
@@ -460,15 +488,12 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                     <button
                                         type="button"
                                         className="preset-save-cancel"
-                                        onClick={() => {
-                                            setIsSavePresetOpen(false);
-                                            setPresetName("");
-                                            setPresetError(null);
-                                        }}
+                                        onClick={closeSavePresetDialog}
                                         disabled={isSavingPreset}
                                     >
                                         Cancel
                                     </button>
+                                    </div>
                                 </div>
                             </div>
                         )}

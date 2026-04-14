@@ -86,6 +86,8 @@ describe("SetupForm", () => {
     it("shows preset selector when presets are available", async () => {
         render(<SetupForm onStart={vi.fn()} error={null} />)
         await waitFor(() => expect(screen.getByText("Debate")).toBeInTheDocument())
+        expect(screen.queryByRole("button", { name: "none" })).not.toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Debate" })).not.toHaveClass("preset-chip-active")
     })
 
     it("loading a preset fills shared and individual prompts", async () => {
@@ -152,10 +154,14 @@ describe("SetupForm", () => {
 
         await userEvent.type(screen.getByLabelText("Shared prompt"), "Shared preset prompt")
         await userEvent.click(screen.getByRole("button", { name: "Save current as preset" }))
+        expect(screen.getByRole("dialog", { name: "Save preset" })).toBeInTheDocument()
         await userEvent.type(screen.getByLabelText("Preset name"), "My saved preset")
         await userEvent.click(screen.getByRole("button", { name: "Save preset" }))
 
-        await waitFor(() => expect(screen.getByRole("button", { name: "My saved preset" })).toBeInTheDocument())
+        await waitFor(() => expect(screen.queryByRole("dialog", { name: "Save preset" })).not.toBeInTheDocument())
+        const savedPresetButton = screen.getByRole("button", { name: "My saved preset" })
+        expect(savedPresetButton).toBeInTheDocument()
+        expect(savedPresetButton).not.toHaveClass("preset-chip-active")
         expect(fetchMock).toHaveBeenCalledWith(
             apiUrl("/presets"),
             expect.objectContaining({

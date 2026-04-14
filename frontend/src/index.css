@@ -482,14 +482,62 @@ input::placeholder {
     font-style: italic;
 }
 
-.preset-save-panel {
+.preset-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgba(15, 14, 12, 0.72);
+    backdrop-filter: blur(10px);
+    z-index: 30;
+}
+
+.preset-dialog {
+    width: min(100%, 460px);
     display: flex;
     flex-direction: column;
+    gap: 0.9rem;
+    padding: 1.15rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(196, 149, 106, 0.2);
+    background: linear-gradient(180deg, rgba(28, 26, 23, 0.98), rgba(20, 18, 16, 0.98));
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.preset-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.9rem;
-    border-radius: var(--radius);
+}
+
+.preset-dialog-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.preset-dialog-close {
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
     border: 1px solid var(--border);
-    background: var(--bg-secondary);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.preset-dialog-close:hover:not(:disabled) {
+    border-color: rgba(196, 149, 106, 0.35);
+    color: var(--accent);
+    background: var(--accent-glow);
 }
 
 .preset-save-error {
