@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiUrl } from "../api";
 import { DEFAULT_CHATBOT_NAMES, type Provider, type SessionConfig } from "../hooks/useWebSocket";
 import { loadSettings, saveSettings } from "../settings";
 
@@ -64,7 +65,7 @@ function shortModelName(model: Model): string {
 }
 
 async function fetchModels(provider: Provider): Promise<Model[]> {
-    return fetch(`http://localhost:8001/models?provider=${provider}`)
+    return fetch(apiUrl(`/models?provider=${encodeURIComponent(provider)}`))
         .then((r) => r.json())
         .catch(() => []);
 }
@@ -193,10 +194,10 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
         async function initialize(): Promise<void> {
             const [providersData, presetsData, settings] = await Promise.all([
-                fetch("http://localhost:8001/providers")
+                fetch(apiUrl("/providers"))
                     .then((response) => response.json())
                     .catch(() => DEFAULT_PROVIDERS),
-                fetch("http://localhost:8001/presets")
+                fetch(apiUrl("/presets"))
                     .then((response) => response.json())
                     .catch(() => []),
                 loadSettings().catch(() => null),
@@ -312,16 +313,6 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         setPromptB("");
     };
 
-    const handlePresetClick = (presetId: string) => {
-        if (selectedPresetId === presetId) {
-            clearPreset();
-            return;
-        }
-        loadPreset(presetId).catch(() => {
-            setPresetError("Failed to load preset.");
-        });
-    };
-
     const handleSavePreset = async () => {
         const trimmedPresetName = presetName.trim();
         if (!trimmedPresetName) {
@@ -331,7 +322,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         setIsSavingPreset(true);
         setPresetError(null);
         try {
-            const response = await fetch("http://localhost:8001/presets", {
+            const response = await fetch(apiUrl("/presets"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

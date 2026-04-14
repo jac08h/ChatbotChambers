@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { apiUrl } from "../../api"
 import { SetupForm } from "../SetupForm"
 
 const mockModels = [
@@ -156,14 +157,14 @@ describe("SetupForm", () => {
 
         await waitFor(() => expect(screen.getByRole("button", { name: "My saved preset" })).toBeInTheDocument())
         expect(fetchMock).toHaveBeenCalledWith(
-            "http://localhost:8001/presets",
+            apiUrl("/presets"),
             expect.objectContaining({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
             })
         )
         const saveCall = fetchMock.mock.calls.find(
-            ([url, options]) => url === "http://localhost:8001/presets" && options?.method === "POST"
+            ([url, options]) => url === apiUrl("/presets") && options?.method === "POST"
         )
         expect(saveCall).toBeDefined()
         expect(JSON.parse(String(saveCall?.[1]?.body))).toMatchObject({

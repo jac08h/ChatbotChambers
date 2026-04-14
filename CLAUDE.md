@@ -1,4 +1,4 @@
-# LMParlor
+# ChatbotChambers
 
 Two chatbots talk to each other while the user watches. Browser UI, Python backend.
 
