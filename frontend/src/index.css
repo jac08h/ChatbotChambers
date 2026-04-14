@@ -359,6 +359,12 @@ label span {
     text-shadow: 0 0 10px rgba(176, 122, 122, 0.4);
 }
 
+.provider-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
 select,
 textarea,
 input[type="number"],

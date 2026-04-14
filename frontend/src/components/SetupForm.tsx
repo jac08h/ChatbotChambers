@@ -111,17 +111,21 @@ function ChatbotConfig({
                 <h3>{label}</h3>
             </div>
 
-            <label className="field">
-                <span>Provider</span>
-                <select
-                    value={provider}
-                    onChange={(event) => onProviderChange(event.target.value as Provider)}
-                >
+            <div className="field">
+                <span className="field-label">Provider</span>
+                <div className="provider-chips" role="group">
                     {providers.map((p) => (
-                        <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
+                        <button
+                            key={p}
+                            type="button"
+                            className={`preset-chip${provider === p ? " preset-chip-active" : ""}`}
+                            onClick={() => onProviderChange(p)}
+                        >
+                            {PROVIDER_LABELS[p]}
+                        </button>
                     ))}
-                </select>
-            </label>
+                </div>
+            </div>
 
             <label className="field">
                 <span>Model</span>
