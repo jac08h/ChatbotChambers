@@ -11,7 +11,7 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from lmparlor.engine import Generating, run_conversation
+from lmparlor.engine import EmptyMessage, Generating, run_conversation
 from lmparlor.models import (
     CLAUDE_CODE_MODELS,
     CODEX_MODELS,
@@ -313,6 +313,9 @@ async def _run_engine(
         async for event in run_conversation(config, api_key, pause_event, stop_event):
             if isinstance(event, Generating):
                 await ws.send_json({"type": "generating", "chatbot": event.chatbot})
+            elif isinstance(event, EmptyMessage):
+                pause_event.clear()
+                await ws.send_json({"type": "empty_message", "chatbot": event.chatbot})
             else:
                 last_message = event
                 messages.append(event.model_dump())
@@ -382,6 +385,8 @@ async def _run_listener(
             if msg_type == "pause":
                 pause_event.clear()
             elif msg_type == "resume":
+                pause_event.set()
+            elif msg_type == "retry":
                 pause_event.set()
             elif msg_type == "stop":
                 stop_event.set()
