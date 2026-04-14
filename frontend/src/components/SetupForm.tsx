@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiUrl } from "../api";
-import { DEFAULT_CHATBOT_NAMES, type Provider, type SessionConfig } from "../hooks/useWebSocket";
+import { type Provider, type SessionConfig } from "../hooks/useWebSocket";
 import { loadSettings, saveSettings } from "../settings";
 
 interface Model {
@@ -196,14 +196,14 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [presetError, setPresetError] = useState<string | null>(null);
     const [isSavingPreset, setIsSavingPreset] = useState(false);
 
-    const closeSavePresetDialog = (force = false) => {
-        if (!force && isSavingPreset) {
+    const closeSavePresetDialog = useCallback((forceClose = false) => {
+        if (!forceClose && isSavingPreset) {
             return;
         }
         setIsSavePresetOpen(false);
         setPresetName("");
         setPresetError(null);
-    };
+    }, [isSavingPreset]);
 
     const openSavePresetDialog = () => {
         setPresetError(null);
@@ -330,7 +330,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isSavePresetOpen, isSavingPreset]);
+    }, [closeSavePresetDialog, isSavePresetOpen]);
 
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
 
@@ -446,7 +446,15 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             ))}
                         </div>
                         {isSavePresetOpen && (
-                            <div className="preset-dialog-backdrop" onClick={closeSavePresetDialog}>
+                            <div
+                                className="preset-dialog-backdrop"
+                                role="presentation"
+                                onClick={() => {
+                                    if (!isSavingPreset) {
+                                        closeSavePresetDialog();
+                                    }
+                                }}
+                            >
                                 <div
                                     className="preset-dialog"
                                     role="dialog"
@@ -459,7 +467,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                         <button
                                             type="button"
                                             className="preset-dialog-close"
-                                            onClick={closeSavePresetDialog}
+                                            onClick={() => closeSavePresetDialog()}
                                             disabled={isSavingPreset}
                                             aria-label="Close save preset dialog"
                                         >
@@ -488,7 +496,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                     <button
                                         type="button"
                                         className="preset-save-cancel"
-                                        onClick={closeSavePresetDialog}
+                                        onClick={() => closeSavePresetDialog()}
                                         disabled={isSavingPreset}
                                     >
                                         Cancel

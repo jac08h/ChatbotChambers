@@ -135,8 +135,9 @@ describe("SetupForm", () => {
         await waitFor(() => expect(screen.getByDisplayValue("Saved shared prompt")).toBeInTheDocument())
         expect(screen.getByDisplayValue("Prompt A")).toBeInTheDocument()
         expect(screen.getByDisplayValue("Prompt B")).toBeInTheDocument()
-        expect(screen.getAllByRole("combobox")[0]).toHaveValue("codex")
-        expect(screen.getAllByRole("combobox")[1]).toHaveValue("model-2")
+        expect(screen.getAllByRole("button", { name: "Codex CLI" })[0]).toHaveClass("preset-chip-active")
+        expect(screen.getAllByRole("combobox")[0]).toHaveValue("model-2")
+        expect(screen.getAllByRole("combobox")[1]).toHaveValue("model-1")
 
         const advancedButtons = screen.getAllByRole("button", { name: /Advanced/ })
         await userEvent.click(advancedButtons[0])
@@ -153,7 +154,7 @@ describe("SetupForm", () => {
         await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).not.toBeDisabled())
 
         await userEvent.type(screen.getByLabelText("Shared prompt"), "Shared preset prompt")
-        await userEvent.click(screen.getByRole("button", { name: "Save current as preset" }))
+        await userEvent.click(screen.getByRole("button", { name: "Save current config as preset" }))
         expect(screen.getByRole("dialog", { name: "Save preset" })).toBeInTheDocument()
         await userEvent.type(screen.getByLabelText("Preset name"), "My saved preset")
         await userEvent.click(screen.getByRole("button", { name: "Save preset" }))
