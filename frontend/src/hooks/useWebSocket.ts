@@ -13,8 +13,8 @@ export interface ChatMessage {
 export type Provider = "openrouter" | "claude_code" | "codex";
 
 export const DEFAULT_CHATBOT_NAMES = {
-    a: "LM A",
-    b: "LM B",
+    a: "",
+    b: "",
 } as const;
 
 export interface ChatbotConfig {

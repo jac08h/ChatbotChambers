@@ -178,8 +178,10 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [modelsB, setModelsB] = useState<Model[]>([]);
     const [modelA, setModelA] = useState("");
     const [modelB, setModelB] = useState("");
-    const [nameA, setNameA] = useState<string>(DEFAULT_CHATBOT_NAMES.a);
-    const [nameB, setNameB] = useState<string>(DEFAULT_CHATBOT_NAMES.b);
+    const [nameA, setNameA] = useState<string>("");
+    const [nameB, setNameB] = useState<string>("");
+    const [nameAManual, setNameAManual] = useState(false);
+    const [nameBManual, setNameBManual] = useState(false);
     const [sharedPrompt, setSharedPrompt] = useState("");
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");
@@ -233,10 +235,21 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             setProviderB(initialProviderB);
             setModelsA(initialModelsA);
             setModelsB(initialModelsB);
-            setModelA(preferredModelId(initialModelsA, initialProviderA, settings?.chatbot_a.model ?? ""));
-            setModelB(preferredModelId(initialModelsB, initialProviderB, settings?.chatbot_b.model ?? ""));
-            setNameA(settings?.chatbot_a.name ?? DEFAULT_CHATBOT_NAMES.a);
-            setNameB(settings?.chatbot_b.name ?? DEFAULT_CHATBOT_NAMES.b);
+            const initialModelA = preferredModelId(initialModelsA, initialProviderA, settings?.chatbot_a.model ?? "");
+            const initialModelB = preferredModelId(initialModelsB, initialProviderB, settings?.chatbot_b.model ?? "");
+            setModelA(initialModelA);
+            setModelB(initialModelB);
+            const savedNameA = settings?.chatbot_a.name ?? "";
+            const savedNameB = settings?.chatbot_b.name ?? "";
+            const derivedNameA = shortModelName(initialModelsA.find((m) => m.id === initialModelA) ?? { id: initialModelA, name: initialModelA });
+            const derivedNameB = shortModelName(initialModelsB.find((m) => m.id === initialModelB) ?? { id: initialModelB, name: initialModelB });
+            const legacyNames = new Set(["LM A", "LM B"]);
+            const isManualA = savedNameA !== "" && savedNameA !== derivedNameA && !legacyNames.has(savedNameA);
+            const isManualB = savedNameB !== "" && savedNameB !== derivedNameB && !legacyNames.has(savedNameB);
+            setNameA(isManualA ? savedNameA : derivedNameA);
+            setNameB(isManualB ? savedNameB : derivedNameB);
+            setNameAManual(isManualA);
+            setNameBManual(isManualB);
             setSharedPrompt(settings?.shared_system_prompt ?? "");
             setPromptA(settings?.chatbot_a.system_prompt ?? "");
             setPromptB(settings?.chatbot_b.system_prompt ?? "");
@@ -270,6 +283,24 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         });
     }, [isInitialized, providerB]);
 
+    useEffect(() => {
+        if (!nameAManual && modelsA.length > 0 && modelA) {
+            const model = modelsA.find((m) => m.id === modelA);
+            if (model) {
+                setNameA(shortModelName(model));
+            }
+        }
+    }, [modelA, modelsA, nameAManual]);
+
+    useEffect(() => {
+        if (!nameBManual && modelsB.length > 0 && modelB) {
+            const model = modelsB.find((m) => m.id === modelB);
+            if (model) {
+                setNameB(shortModelName(model));
+            }
+        }
+    }, [modelB, modelsB, nameBManual]);
+
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
 
     const buildConfig = (): SessionConfig => ({
@@ -297,6 +328,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             setModelB(preferredModelId(presetModelsB, preset.config.chatbot_b.provider, preset.config.chatbot_b.model));
             setNameA(preset.config.chatbot_a.name);
             setNameB(preset.config.chatbot_b.name);
+            setNameAManual(true);
+            setNameBManual(true);
             setSharedPrompt(preset.config.shared_system_prompt);
             setPromptA(preset.config.chatbot_a.system_prompt);
             setPromptB(preset.config.chatbot_b.system_prompt);
@@ -456,7 +489,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             prompt={promptA}
                             onProviderChange={setProviderA}
                             onModelChange={setModelA}
-                            onNameChange={setNameA}
+                            onNameChange={(n) => { setNameA(n); setNameAManual(true); }}
                             onPromptChange={setPromptA}
                         />
                         <ChatbotConfig
@@ -470,7 +503,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             prompt={promptB}
                             onProviderChange={setProviderB}
                             onModelChange={setModelB}
-                            onNameChange={setNameB}
+                            onNameChange={(n) => { setNameB(n); setNameBManual(true); }}
                             onPromptChange={setPromptB}
                         />
                     </div>
