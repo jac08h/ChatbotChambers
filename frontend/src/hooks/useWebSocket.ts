@@ -272,6 +272,7 @@ export function useWebSocket(): WebSocketState {
     const pause = useCallback(() => {
         wsRef.current?.send(JSON.stringify({ type: "pause" }));
         setStatus("paused");
+        setGeneratingChatbot(null);
     }, []);
 
     const resume = useCallback(() => {
