@@ -4,7 +4,7 @@ function buildBaseUrl(): URL {
     if (configuredApiBaseUrl) {
         return new URL(configuredApiBaseUrl);
     }
-    return new URL(window.location.origin);
+    return new URL("http://localhost:8001");
 }
 
 export function apiUrl(path: string): string {

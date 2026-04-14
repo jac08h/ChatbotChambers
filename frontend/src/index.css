@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
 
 *, *::before, *::after {
     box-sizing: border-box;
@@ -16,11 +16,13 @@
     --accent-glow: rgba(196, 149, 106, 0.12);
     --chatbot-a: #6b9a8a;
     --chatbot-b: #b07a7a;
+    --font: "Inter", sans-serif;
+    --font-mono: "DejaVu Sans Mono", "Courier New", monospace;
     --radius: 12px;
     --radius-lg: 16px;
     --sidebar-width: 260px;
     color: var(--text);
-    font-family: "DejaVu Sans Mono", "Courier New", monospace;
+    font-family: var(--font);
     font-size: 15px;
     line-height: 1.6;
 }
@@ -119,7 +121,7 @@ button {
     background: none;
     border: none;
     padding: 0;
-    font-family: "DejaVu Sans Mono", "Courier New", monospace;
+    font-family: var(--font-mono);
     font-size: 1rem;
     font-weight: 600;
     color: var(--accent);
@@ -614,7 +616,7 @@ input::placeholder {
     background: none;
     border: none;
     color: var(--accent);
-    font-family: "DejaVu Sans Mono", "Courier New", monospace;
+    font-family: var(--font-mono);
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
@@ -625,7 +627,7 @@ input::placeholder {
     flex: 1;
     margin: 0;
     color: var(--text);
-    font-family: "DejaVu Sans Mono", "Courier New", monospace;
+    font-family: var(--font-mono);
     font-size: 1.15rem;
     font-weight: 600;
     text-align: center;
@@ -636,7 +638,7 @@ input::placeholder {
     border: 1px solid var(--accent);
     border-radius: 6px;
     color: var(--text);
-    font-family: "DejaVu Sans Mono", "Courier New", monospace;
+    font-family: var(--font-mono);
     font-size: 1.05rem;
     font-weight: 600;
     padding: 0.25rem 0.5rem;
