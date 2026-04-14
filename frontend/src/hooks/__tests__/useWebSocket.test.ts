@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { apiUrl } from "../../api"
 import {
     getSessionDisplayTitle,
     getSessionIdFromPath,
@@ -281,7 +282,7 @@ describe("useWebSocket", () => {
         act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
         expect(result.current.currentTitle).toBe("Named chat")
         expect(fetchMock).toHaveBeenCalledWith(
-            "http://localhost:8001/sessions/session-1",
+            apiUrl("/sessions/session-1"),
             expect.objectContaining({ method: "PATCH" }),
         )
     })

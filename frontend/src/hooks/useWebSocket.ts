@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { apiUrl, webSocketUrl } from "../api";
 
 export interface ChatMessage {
     chatbot: "a" | "b";
@@ -121,7 +122,7 @@ export function useWebSocket(): WebSocketState {
     const pendingInitialTitleRef = useRef<string | null>(null);
 
     const persistSessionTitle = useCallback((id: string, title: string) => {
-        fetch(`http://localhost:8001/sessions/${id}`, {
+        fetch(apiUrl(`/sessions/${id}`), {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ title }),
@@ -163,7 +164,7 @@ export function useWebSocket(): WebSocketState {
     }, []);
 
     useEffect(() => {
-        fetch("http://localhost:8001/sessions")
+        fetch(apiUrl("/sessions"))
             .then((r) => r.json())
             .then((sessions: SessionResponse[]) => {
                 setHistory(sessions.map(normalizeSession));
@@ -207,7 +208,7 @@ export function useWebSocket(): WebSocketState {
         setConfig(newConfig);
         setCurrentSessionId(null);
         setCurrentTitle(trimmedInitialTitle);
-        const ws = new WebSocket("ws://localhost:8001/ws");
+        const ws = new WebSocket(webSocketUrl("/ws"));
         wsRef.current = ws;
 
         ws.onopen = () => {
@@ -298,7 +299,7 @@ export function useWebSocket(): WebSocketState {
 
     const deleteSession = useCallback(async (id: string) => {
         try {
-            const response = await fetch(`http://localhost:8001/sessions/${id}`, {
+            const response = await fetch(apiUrl(`/sessions/${id}`), {
                 method: "DELETE",
             });
             if (!response.ok) {

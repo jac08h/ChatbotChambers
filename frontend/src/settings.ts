@@ -1,6 +1,7 @@
 import type { SessionConfig } from "./hooks/useWebSocket";
+import { apiUrl } from "./api";
 
-const SETTINGS_URL = "http://localhost:8001/settings";
+const SETTINGS_URL = apiUrl("/settings");
 
 export async function loadSettings(): Promise<SessionConfig | null> {
     const response = await fetch(SETTINGS_URL);

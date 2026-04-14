@@ -30,6 +30,11 @@ PRESETS_DIR = Path(os.environ.get("LMPARLOR_PRESETS_DIR", str(REPO_ROOT / ".cach
 SETTINGS_PATH = Path(os.environ.get("LMPARLOR_SETTINGS_PATH", str(REPO_ROOT / ".cache/settings.json")))
 SESSIONS_DIR = Path(os.environ.get("LMPARLOR_SESSIONS_DIR", str(REPO_ROOT / ".cache/sessions")))
 
+
+def _cors_origins_from_env() -> List[str]:
+    raw_value = os.environ.get("CHATBOTCHAMBERS_CORS_ORIGINS", "")
+    return [origin for origin in (item.strip() for item in raw_value.split(",")) if origin]
+
 def _new_session_id() -> str:
     return str(uuid4())
 
@@ -115,12 +120,14 @@ def _session_path(session_id: str) -> Path:
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+cors_origins = _cors_origins_from_env()
+if cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 @app.get("/presets")

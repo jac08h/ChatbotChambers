@@ -4,7 +4,7 @@ import shutil
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from lmparlor.main import _session_path, app
+from lmparlor.main import _cors_origins_from_env, _session_path, app
 from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS
 
 
@@ -16,6 +16,24 @@ async def test_get_models_default_returns_openrouter_models():
     data = response.json()
     ids = [m["id"] for m in data]
     assert all(model_id in ids for model_id, _ in MODELS)
+
+
+def test_cors_origins_from_env_empty(monkeypatch: pytest.MonkeyPatch):
+    """No CORS env var returns an empty allowlist."""
+    monkeypatch.delenv("CHATBOTCHAMBERS_CORS_ORIGINS", raising=False)
+    assert _cors_origins_from_env() == []
+
+
+def test_cors_origins_from_env_multiple(monkeypatch: pytest.MonkeyPatch):
+    """Comma-separated CORS origins are trimmed and preserved."""
+    monkeypatch.setenv(
+        "CHATBOTCHAMBERS_CORS_ORIGINS",
+        " http://localhost:5173 , https://chatbotchambers.example ",
+    )
+    assert _cors_origins_from_env() == [
+        "http://localhost:5173",
+        "https://chatbotchambers.example",
+    ]
 
 
 async def test_get_models_openrouter_explicit():
