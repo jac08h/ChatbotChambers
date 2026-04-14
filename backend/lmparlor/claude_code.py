@@ -3,7 +3,7 @@ from typing import List
 
 
 async def call_claude_code(model: str, system_prompt: str, messages: List[dict]) -> str:
-    prompt = _build_prompt(system_prompt, messages)
+    prompt = _build_prompt(messages)
     args = ["claude", "-p", "--model", model]
     if system_prompt:
         args += ["--system-prompt", system_prompt]
@@ -23,7 +23,7 @@ async def call_claude_code(model: str, system_prompt: str, messages: List[dict])
     return stdout.decode().strip()
 
 
-def _build_prompt(system_prompt: str, messages: List[dict]) -> str:
+def _build_prompt(messages: List[dict]) -> str:
     if not messages:
         return "(conversation starts)"
     parts = []

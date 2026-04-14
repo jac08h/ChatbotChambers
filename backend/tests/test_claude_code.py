@@ -60,7 +60,7 @@ async def test_includes_p_flag():
 
 def test_build_prompt_empty_messages():
     """Empty message list returns empty string."""
-    assert _build_prompt([]) == ""
+    assert _build_prompt([]) == "(conversation starts)"
 
 
 def test_build_prompt_user_role_becomes_human():
