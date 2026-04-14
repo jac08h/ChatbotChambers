@@ -65,7 +65,8 @@ function shortModelName(model: Model): string {
 }
 
 async function fetchModels(provider: Provider): Promise<Model[]> {
-    return fetch(apiUrl(`/models?provider=${encodeURIComponent(provider)}`))
+    const searchParams = new URLSearchParams({ provider });
+    return fetch(apiUrl(`/models?${searchParams.toString()}`))
         .then((r) => r.json())
         .catch(() => []);
 }

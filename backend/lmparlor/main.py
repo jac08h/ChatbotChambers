@@ -33,7 +33,7 @@ SESSIONS_DIR = Path(os.environ.get("LMPARLOR_SESSIONS_DIR", str(REPO_ROOT / ".ca
 
 def _cors_origins_from_env() -> List[str]:
     raw_value = os.environ.get("CHATBOTCHAMBERS_CORS_ORIGINS", "")
-    return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
+    return [origin for origin in (item.strip() for item in raw_value.split(",")) if origin]
 
 def _new_session_id() -> str:
     return str(uuid4())
