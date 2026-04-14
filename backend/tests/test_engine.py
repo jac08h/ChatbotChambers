@@ -12,8 +12,9 @@ async def collect(config: SessionConfig, mock_key: str = "test-key") -> List[Uni
     pause = asyncio.Event()
     pause.set()
     stop = asyncio.Event()
+    cancel = asyncio.Event()
     events = []
-    async for event in run_conversation(config, mock_key, pause, stop):
+    async for event in run_conversation(config, mock_key, pause, stop, cancel):
         events.append(event)
     return events
 
@@ -65,8 +66,9 @@ async def test_stop_event_terminates(mock_openrouter: AsyncMock, session_config:
     pause.set()
     stop = asyncio.Event()
     stop.set()
+    cancel = asyncio.Event()
     events = []
-    async for event in run_conversation(session_config, "key", pause, stop):
+    async for event in run_conversation(session_config, "key", pause, stop, cancel):
         events.append(event)
     assert events == []
 
@@ -198,3 +200,116 @@ def test_build_messages_role_assignment_for_other():
     result = _build_messages(history, "b", {"a": "A", "b": "B"})
     assert result[0]["role"] == "user"
     assert result[1]["role"] == "assistant"
+
+
+async def test_cancel_event_stops_inflight_generation(
+    mock_openrouter: AsyncMock, session_config: SessionConfig
+):
+    """Setting cancel_event during LLM call cancels it and discards the message."""
+    pause = asyncio.Event()
+    pause.set()
+    stop = asyncio.Event()
+    cancel = asyncio.Event()
+
+    call_count = 0
+
+    async def slow_then_fast(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            await asyncio.sleep(10)
+            return ("Should not appear", "")
+        elif call_count == 2:
+            return ("After resume", "")
+        else:
+            return ("/leave", "")
+
+    mock_openrouter.side_effect = slow_then_fast
+
+    async def cancel_after_delay():
+        await asyncio.sleep(0.1)
+        pause.clear()
+        cancel.set()
+        await asyncio.sleep(0.1)
+        pause.set()
+
+    asyncio.create_task(cancel_after_delay())
+
+    events: List[Union[Generating, Message]] = []
+    async for event in run_conversation(session_config, "key", pause, stop, cancel):
+        events.append(event)
+
+    messages = [e for e in events if isinstance(e, Message)]
+    assert all(m.content != "Should not appear" for m in messages)
+
+
+async def test_stop_cancels_inflight_generation(
+    mock_openrouter: AsyncMock, session_config: SessionConfig
+):
+    """Setting stop+cancel during LLM call cancels it immediately."""
+    pause = asyncio.Event()
+    pause.set()
+    stop = asyncio.Event()
+    cancel = asyncio.Event()
+
+    async def hang(*args, **kwargs):
+        await asyncio.sleep(100)
+        return ("Never", "")
+
+    mock_openrouter.side_effect = hang
+
+    async def stop_after_delay():
+        await asyncio.sleep(0.1)
+        stop.set()
+        pause.set()
+        cancel.set()
+
+    asyncio.create_task(stop_after_delay())
+
+    events: List[Union[Generating, Message]] = []
+    async for event in run_conversation(session_config, "key", pause, stop, cancel):
+        events.append(event)
+
+    messages = [e for e in events if isinstance(e, Message)]
+    assert len(messages) == 0
+
+
+async def test_pause_retries_same_chatbot(
+    mock_openrouter: AsyncMock, session_config: SessionConfig
+):
+    """After pause cancels generation, resume retries the same chatbot."""
+    pause = asyncio.Event()
+    pause.set()
+    stop = asyncio.Event()
+    cancel = asyncio.Event()
+
+    call_count = 0
+
+    async def slow_then_leave(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            await asyncio.sleep(10)
+            return ("Should be cancelled", "")
+        else:
+            return ("/leave", "")
+
+    mock_openrouter.side_effect = slow_then_leave
+
+    async def pause_then_resume():
+        await asyncio.sleep(0.1)
+        pause.clear()
+        cancel.set()
+        await asyncio.sleep(0.1)
+        pause.set()
+
+    asyncio.create_task(pause_then_resume())
+
+    events: List[Union[Generating, Message]] = []
+    async for event in run_conversation(session_config, "key", pause, stop, cancel):
+        events.append(event)
+
+    generating_events = [e for e in events if isinstance(e, Generating)]
+    assert len(generating_events) == 2
+    assert generating_events[0].chatbot == "a"
+    assert generating_events[1].chatbot == "a"
