@@ -4,7 +4,7 @@ import shutil
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from lmparlor.main import app
+from lmparlor.main import _session_path, app
 from lmparlor.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS
 
 
@@ -343,6 +343,15 @@ async def test_patch_sessions_returns_404_for_missing_session(monkeypatch: pytes
     assert response.status_code == 404
 
 
+def test_session_path_rejects_path_traversal(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """Session ids with traversal characters are rejected before path resolution."""
+    sessions_dir = tmp_path / "sessions"
+    monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
+
+    with pytest.raises(ValueError, match="Invalid session id"):
+        _session_path("../../etc/passwd")
+
+
 async def test_patch_sessions_rejects_empty_label(monkeypatch: pytest.MonkeyPatch, tmp_path):
     """PATCH /sessions/{id} returns 422 when label is empty."""
     sessions_dir = tmp_path / "sessions"
@@ -363,6 +372,19 @@ async def test_patch_sessions_rejects_empty_label(monkeypatch: pytest.MonkeyPatc
         response = await client.patch("/sessions/test-session", json={"title": "  "})
 
     assert response.status_code == 422
+
+
+async def test_patch_sessions_rejects_invalid_session_id(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """PATCH /sessions/{id} returns 422 for invalid session ids."""
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.patch("/sessions/%2E%2E", json={"title": "New Title"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Invalid session id"
 
 
 async def test_get_sessions_maps_legacy_label_to_title(monkeypatch: pytest.MonkeyPatch, tmp_path):
@@ -411,3 +433,16 @@ async def test_delete_sessions_returns_404_for_missing_session(monkeypatch: pyte
         response = await client.delete("/sessions/nonexistent")
 
     assert response.status_code == 404
+
+
+async def test_delete_sessions_rejects_invalid_session_id(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """DELETE /sessions/{id} returns 422 for invalid session ids."""
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr("lmparlor.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.delete("/sessions/%2E%2E")
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Invalid session id"

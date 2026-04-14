@@ -23,6 +23,7 @@ from lmparlor.models import (
 )
 
 PRESET_ID_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
+SESSION_ID_PATTERN = r"[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*"
 REPO_ROOT = Path(__file__).parent.parent.parent
 DEFAULT_PRESETS_DIR = Path(__file__).parent / "presets"
 PRESETS_DIR = Path(os.environ.get("LMPARLOR_PRESETS_DIR", str(REPO_ROOT / ".cache/presets")))
@@ -99,6 +100,16 @@ def _preset_path(preset_id: str) -> Path:
     path = (presets_root / (preset_id + ".json")).resolve()
     if path.parent != presets_root:
         raise ValueError("Invalid preset path")
+    return path
+
+
+def _session_path(session_id: str) -> Path:
+    if re.fullmatch(SESSION_ID_PATTERN, session_id) is None:
+        raise ValueError("Invalid session id")
+    sessions_root = SESSIONS_DIR.resolve()
+    path = (sessions_root / (session_id + ".json")).resolve()
+    if path.parent != sessions_root:
+        raise ValueError("Invalid session path")
     return path
 
 logger = logging.getLogger(__name__)
@@ -202,7 +213,10 @@ def get_sessions() -> List[dict]:
 
 @app.patch("/sessions/{session_id}")
 def rename_session(session_id: str, request: RenameRequest) -> dict:
-    path = SESSIONS_DIR / ("%s.json" % session_id)
+    try:
+        path = _session_path(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid session id") from exc
     if not path.exists():
         raise HTTPException(status_code=404, detail="Session not found")
     try:
@@ -220,7 +234,10 @@ def rename_session(session_id: str, request: RenameRequest) -> dict:
 
 @app.delete("/sessions/{session_id}", status_code=204)
 def delete_session(session_id: str) -> None:
-    path = SESSIONS_DIR / ("%s.json" % session_id)
+    try:
+        path = _session_path(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid session id") from exc
     if not path.exists():
         raise HTTPException(status_code=404, detail="Session not found")
     try:
@@ -339,7 +356,7 @@ def _save_session(
 ) -> None:
     try:
         SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
-        path = SESSIONS_DIR / ("%s.json" % session_id)
+        path = _session_path(session_id)
         data = {
             "id": session_id,
             "title": None,
