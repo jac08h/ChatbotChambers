@@ -17,7 +17,6 @@ interface ConversationViewProps {
     label?: string | null;
     avatarA?: string;
     avatarB?: string;
-    onBack?: () => void;
     onPause?: () => void;
     onResume?: () => void;
     onRetry?: () => void;
@@ -50,7 +49,6 @@ export function ConversationView({
     label,
     avatarA,
     avatarB,
-    onBack,
     onPause,
     onResume,
     onRetry,
@@ -213,9 +211,9 @@ export function ConversationView({
 function MessageBubble({ message, avatar }: { message: ChatMessage; avatar?: string }) {
     return (
         <div className={`message-row chatbot-${message.chatbot}`}>
-            <div className="message-glyph">
+            <div className={`message-glyph${avatar ? " has-avatar" : ""}`}>
                 {avatar
-                    ? <img src={avatar} width="32" height="32" alt="" />
+                    ? <AvatarGlyph avatar={avatar} />
                     : message.name.trim().charAt(0).toUpperCase() || "?"}
             </div>
             <div className="message-bubble">
@@ -238,9 +236,9 @@ function MessageBubble({ message, avatar }: { message: ChatMessage; avatar?: str
 function GeneratingBubble({ chatbot, name, avatar }: { chatbot: "a" | "b"; name: string; avatar?: string }) {
     return (
         <div className={`message-row chatbot-${chatbot}`}>
-            <div className="message-glyph">
+            <div className={`message-glyph${avatar ? " has-avatar" : ""}`}>
                 {avatar
-                    ? <img src={avatar} width="32" height="32" alt="" />
+                    ? <AvatarGlyph avatar={avatar} />
                     : name.trim().charAt(0).toUpperCase() || "?"}
             </div>
             <div className="message-bubble generating">
@@ -252,6 +250,19 @@ function GeneratingBubble({ chatbot, name, avatar }: { chatbot: "a" | "b"; name:
                 </div>
             </div>
         </div>
+    );
+}
+
+function AvatarGlyph({ avatar }: { avatar: string }) {
+    return (
+        <span
+            aria-hidden="true"
+            className="message-avatar"
+            style={{
+                WebkitMaskImage: `url(${avatar})`,
+                maskImage: `url(${avatar})`,
+            }}
+        />
     );
 }
 

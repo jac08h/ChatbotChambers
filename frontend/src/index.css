@@ -14,6 +14,10 @@
     --text-dim: #6b6050;
     --accent: #c4956a;
     --accent-glow: rgba(196, 149, 106, 0.12);
+    --avatar-a: #c4956a;
+    --avatar-a-glow: rgba(196, 149, 106, 0.28);
+    --avatar-b: #7d98db;
+    --avatar-b-glow: rgba(125, 152, 219, 0.28);
     --chatbot-a: #6b9a8a;
     --chatbot-b: #b07a7a;
     --font: "Inter", sans-serif;
@@ -715,10 +719,34 @@ input::placeholder {
     overflow: hidden;
 }
 
-.message-glyph img {
+.message-glyph.has-avatar {
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.message-avatar {
     width: 100%;
     height: 100%;
     display: block;
+    background: currentColor;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: contain;
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+}
+
+.chatbot-a .message-glyph.has-avatar {
+    color: var(--avatar-a);
+    background: transparent;
+    box-shadow: 0 0 8px var(--avatar-a-glow);
+}
+
+.chatbot-b .message-glyph.has-avatar {
+    color: var(--avatar-b);
+    background: transparent;
+    box-shadow: 0 0 8px var(--avatar-b-glow);
 }
 
 .chatbot-a .message-glyph {

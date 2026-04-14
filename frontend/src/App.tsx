@@ -159,7 +159,6 @@ export default function App() {
                         label={viewingSession ? getSessionDisplayTitle(viewingSession) : currentDisplayTitle}
                         avatarA={avatars[0]}
                         avatarB={avatars[1]}
-                        onBack={handleGoHome}
                         onPause={viewingSession ? undefined : ws.pause}
                         onResume={viewingSession ? undefined : ws.resume}
                         onRetry={viewingSession ? undefined : ws.retry}
