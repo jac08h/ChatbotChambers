@@ -374,36 +374,36 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
                 <form onSubmit={handleSubmit} className="setup-form">
                     <div className="field">
-                        <div className="preset-header">
+                        <label className="field">
                             <span className="field-label">Preset</span>
-                            <button
-                                type="button"
-                                className="preset-save-btn"
-                                onClick={() => {
-                                    setPresetError(null);
-                                    setIsSavePresetOpen((open) => !open);
+                            <select
+                                value={selectedPresetId ?? ""}
+                                onChange={(event) => {
+                                    const val = event.target.value;
+                                    if (!val) {
+                                        clearPreset();
+                                    } else {
+                                        loadPreset(val).catch(() => setPresetError("Failed to load preset."));
+                                    }
                                 }}
-                                disabled={!canStart || isSavingPreset}
                             >
-                                Save current as preset
-                            </button>
-                        </div>
-                        {presets.length > 0 ? (
-                            <div className="preset-chips">
+                                <option value="">— none —</option>
                                 {presets.map((preset) => (
-                                    <button
-                                        key={preset.id}
-                                        type="button"
-                                        className={`preset-chip ${selectedPresetId === preset.id ? "preset-chip-active" : ""}`}
-                                        onClick={() => handlePresetClick(preset.id)}
-                                    >
-                                        {preset.name}
-                                    </button>
+                                    <option key={preset.id} value={preset.id}>{preset.name}</option>
                                 ))}
-                            </div>
-                        ) : (
-                            <div className="preset-empty">No saved presets yet</div>
-                        )}
+                            </select>
+                        </label>
+                        <button
+                            type="button"
+                            className="preset-save-link"
+                            onClick={() => {
+                                setPresetError(null);
+                                setIsSavePresetOpen((open) => !open);
+                            }}
+                            disabled={!canStart || isSavingPreset}
+                        >
+                            Save current config as preset
+                        </button>
                         {isSavePresetOpen && (
                             <div className="preset-save-panel">
                                 <label className="field">
@@ -441,16 +441,6 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             </div>
                         )}
                     </div>
-
-                    <label className="field">
-                        <span>Conversation name</span>
-                        <input
-                            type="text"
-                            value={conversationTitle}
-                            onChange={(event) => setConversationTitle(event.target.value)}
-                            placeholder="Optional"
-                        />
-                    </label>
 
                     <label className="field">
                         <span>Shared prompt</span>
@@ -493,10 +483,22 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                         />
                     </div>
 
-                    <div className="setup-actions">
-                        <button type="submit" className="start-btn" disabled={!canStart}>
-                            Start conversation
-                        </button>
+                    <div className="setup-bottom">
+                        <label className="field">
+                            <span>Conversation name</span>
+                            <input
+                                type="text"
+                                value={conversationTitle}
+                                onChange={(event) => setConversationTitle(event.target.value)}
+                                placeholder="Optional"
+                            />
+                        </label>
+
+                        <div className="setup-actions">
+                            <button type="submit" className="start-btn" disabled={!canStart}>
+                                Start conversation
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

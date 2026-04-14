@@ -81,11 +81,6 @@ export function ConversationView({
     return (
         <div className="conversation-container">
             <div className="conversation-header">
-                {onBack && (
-                    <button className="conversation-app-title" onClick={onBack} type="button">
-                        ChatbotChambers
-                    </button>
-                )}
                 {label && (
                     editing ? (
                         <input
@@ -220,7 +215,6 @@ function GeneratingBubble({ chatbot, name }: { chatbot: "a" | "b"; name: string 
             <div className="message-bubble generating">
                 <div className="message-meta">
                     <span className="sender-label">{name}</span>
-                    <span className="model-label">composing</span>
                 </div>
                 <div className="typing-dots">
                     <span /><span /><span />
