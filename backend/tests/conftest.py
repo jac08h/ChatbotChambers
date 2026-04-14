@@ -48,6 +48,11 @@ def stop_event() -> asyncio.Event:
 
 
 @pytest.fixture
+def cancel_event() -> asyncio.Event:
+    return asyncio.Event()
+
+
+@pytest.fixture
 def mock_openrouter(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     mock = AsyncMock(return_value=("Hello!", ""))
     monkeypatch.setattr("lmparlor.engine.call_openrouter", mock)
