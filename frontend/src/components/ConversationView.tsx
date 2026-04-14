@@ -12,11 +12,13 @@ interface ConversationViewProps {
     generatingChatbot: "a" | "b" | null;
     doneReason: string | null;
     error: string | null;
+    emptyMessageError?: "a" | "b" | null;
     config: SessionConfig | null;
     label?: string | null;
     onBack?: () => void;
     onPause?: () => void;
     onResume?: () => void;
+    onRetry?: () => void;
     onNewConversation?: () => void;
     onRenameSession?: (label: string) => void;
     onDeleteSession?: () => void;
@@ -41,11 +43,13 @@ export function ConversationView({
     generatingChatbot,
     doneReason,
     error,
+    emptyMessageError,
     config,
     label,
     onBack,
     onPause,
     onResume,
+    onRetry,
     onNewConversation,
     onRenameSession,
     onDeleteSession,
@@ -156,6 +160,13 @@ export function ConversationView({
                     />
                 )}
 
+                {emptyMessageError && (
+                    <div className="empty-message-banner">
+                        <span className="empty-message-icon">⚠</span>
+                        <span>The model returned an empty response. You can retry or stop the conversation.</span>
+                    </div>
+                )}
+
                 {status === "done" && doneReason && (
                     <div className="done-banner">{doneLabel(doneReason, config)}</div>
                 )}
@@ -172,8 +183,11 @@ export function ConversationView({
                     {status === "running" && onPause && (
                         <button className="control-btn" onClick={onPause} type="button">Pause</button>
                     )}
-                    {status === "paused" && onResume && (
+                    {status === "paused" && !emptyMessageError && onResume && (
                         <button className="control-btn" onClick={onResume} type="button">Resume</button>
+                    )}
+                    {status === "paused" && emptyMessageError && onRetry && (
+                        <button className="control-btn control-btn-retry" onClick={onRetry} type="button">Retry</button>
                     )}
                 </div>
             )}

@@ -52,6 +52,7 @@ export interface WebSocketState {
     generatingChatbot: "a" | "b" | null;
     doneReason: string | null;
     error: string | null;
+    emptyMessageError: "a" | "b" | null;
     config: SessionConfig | null;
     currentSessionId: string | null;
     currentTitle: string | null;
@@ -59,6 +60,7 @@ export interface WebSocketState {
     start: (config: SessionConfig, initialTitle?: string | null) => void;
     pause: () => void;
     resume: () => void;
+    retry: () => void;
     reset: () => void;
     renameCurrentSession: (title: string) => void;
     renameSession: (id: string, title: string) => void;
@@ -110,6 +112,7 @@ export function useWebSocket(): WebSocketState {
     const [generatingChatbot, setGeneratingChatbot] = useState<"a" | "b" | null>(null);
     const [doneReason, setDoneReason] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [emptyMessageError, setEmptyMessageError] = useState<"a" | "b" | null>(null);
     const [config, setConfig] = useState<SessionConfig | null>(null);
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
     const [currentTitle, setCurrentTitle] = useState<string | null>(null);
@@ -153,6 +156,7 @@ export function useWebSocket(): WebSocketState {
         setGeneratingChatbot(null);
         setDoneReason(null);
         setError(null);
+        setEmptyMessageError(null);
         setConfig(null);
         setCurrentSessionId(null);
         setCurrentTitle(null);
@@ -205,6 +209,7 @@ export function useWebSocket(): WebSocketState {
         setGeneratingChatbot(null);
         setDoneReason(null);
         setError(null);
+        setEmptyMessageError(null);
         setConfig(newConfig);
         setCurrentSessionId(null);
         setCurrentTitle(trimmedInitialTitle);
@@ -229,12 +234,18 @@ export function useWebSocket(): WebSocketState {
                 }
             } else if (data.type === "generating") {
                 setGeneratingChatbot(data.chatbot);
+                setEmptyMessageError(null);
             } else if (data.type === "message") {
                 setGeneratingChatbot(null);
                 messagesRef.current = [...messagesRef.current, data.data];
                 setMessages((prev) => [...prev, data.data]);
+            } else if (data.type === "empty_message") {
+                setGeneratingChatbot(null);
+                setEmptyMessageError(data.chatbot);
+                setStatus("paused");
             } else if (data.type === "done") {
                 setGeneratingChatbot(null);
+                setEmptyMessageError(null);
                 const reason = data.reason === "leave" && data.chatbot
                     ? `leave:${data.chatbot}`
                     : data.reason;
@@ -265,6 +276,12 @@ export function useWebSocket(): WebSocketState {
 
     const resume = useCallback(() => {
         wsRef.current?.send(JSON.stringify({ type: "resume" }));
+        setStatus("running");
+    }, []);
+
+    const retry = useCallback(() => {
+        wsRef.current?.send(JSON.stringify({ type: "retry" }));
+        setEmptyMessageError(null);
         setStatus("running");
     }, []);
 
@@ -323,6 +340,7 @@ export function useWebSocket(): WebSocketState {
         generatingChatbot,
         doneReason,
         error,
+        emptyMessageError,
         config,
         currentSessionId,
         currentTitle,
@@ -330,6 +348,7 @@ export function useWebSocket(): WebSocketState {
         start,
         pause,
         resume,
+        retry,
         reset,
         renameCurrentSession,
         renameSession,

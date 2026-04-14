@@ -142,11 +142,13 @@ export default function App() {
                         generatingChatbot={viewingSession ? null : ws.generatingChatbot}
                         doneReason={viewingSession ? viewingSession.doneReason : ws.doneReason}
                         error={viewingSession ? viewingSession.error : ws.error}
+                        emptyMessageError={viewingSession ? null : ws.emptyMessageError}
                         config={viewingSession ? viewingSession.config : ws.config}
                         label={viewingSession ? getSessionDisplayTitle(viewingSession) : currentDisplayTitle}
                         onBack={handleGoHome}
                         onPause={viewingSession ? undefined : ws.pause}
                         onResume={viewingSession ? undefined : ws.resume}
+                        onRetry={viewingSession ? undefined : ws.retry}
                         onNewConversation={viewingSession || ws.status !== "done" ? undefined : handleNewChat}
                         onRenameSession={
                             viewingSession
