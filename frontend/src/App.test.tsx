@@ -115,10 +115,10 @@ describe("App", () => {
 
         expect(document.documentElement.dataset.theme).toBe("dark")
 
-        await userEvent.click(screen.getByRole("button", { name: "Switch to light mode" }))
+        await userEvent.click(screen.getByRole("button", { name: "Theme: Dark" }))
 
         expect(document.documentElement.dataset.theme).toBe("light")
         expect(window.localStorage.getItem("chatbotchambers-theme")).toBe("light")
-        expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Theme: Light" })).toBeInTheDocument()
     })
 })

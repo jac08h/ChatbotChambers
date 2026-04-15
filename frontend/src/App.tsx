@@ -186,9 +186,10 @@ export default function App() {
             <button
                 className="theme-toggle"
                 onClick={() => setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark")}
+                title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
                 type="button"
             >
-                {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                {theme === "dark" ? "Theme: Dark" : "Theme: Light"}
             </button>
             <Sidebar
                 currentSession={currentSession}
