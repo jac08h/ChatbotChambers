@@ -1061,7 +1061,7 @@ input::placeholder {
 }
 
 .thinking-block[open] {
-    background: rgba(156, 163, 175, 0.08);
+    background: var(--accent-glow);
 }
 
 .thinking-block summary {
@@ -1246,7 +1246,7 @@ input::placeholder {
     }
 
     ::selection {
-        background: rgba(74, 80, 96, 0.2);
+        background: var(--accent-glow);
     }
 }
 
