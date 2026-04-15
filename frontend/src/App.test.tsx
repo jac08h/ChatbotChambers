@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import App from "./App"
@@ -75,5 +75,36 @@ describe("App", () => {
         mockWebSocketState = createWebSocketState({ history: [archivedSession] })
         render(<App />)
         expect(screen.getByRole("heading", { name: "abcd1234" })).toBeInTheDocument()
+    })
+
+    it("confirms before deleting an archived conversation", async () => {
+        const deleteSession = vi.fn(async () => true)
+        mockWebSocketState = createWebSocketState({ history: [archivedSession], deleteSession })
+        render(<App />)
+
+        await userEvent.click(screen.getByRole("button", { name: "Conversation options for abcd1234" }))
+        await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }))
+
+        expect(screen.getByRole("dialog", { name: "Delete conversation" })).toBeInTheDocument()
+        await userEvent.click(screen.getByRole("button", { name: "Delete" }))
+
+        await waitFor(() => expect(deleteSession).toHaveBeenCalledWith(archivedSession.id))
+    })
+
+    it("renames an archived conversation through the rename dialog", async () => {
+        const renameSession = vi.fn()
+        mockWebSocketState = createWebSocketState({ history: [archivedSession], renameSession })
+        render(<App />)
+
+        await userEvent.click(screen.getByRole("button", { name: "Conversation options for abcd1234" }))
+        await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
+
+        expect(screen.getByRole("dialog", { name: "Rename chat" })).toBeInTheDocument()
+        const input = screen.getByDisplayValue("abcd1234")
+        await userEvent.clear(input)
+        await userEvent.type(input, "Renamed chat")
+        await userEvent.click(screen.getByRole("button", { name: "Save" }))
+
+        await waitFor(() => expect(renameSession).toHaveBeenCalledWith(archivedSession.id, "Renamed chat"))
     })
 })

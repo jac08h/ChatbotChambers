@@ -62,10 +62,7 @@ describe("Sidebar", () => {
 
         await userEvent.click(screen.getByRole("button", { name: "Conversation options for 12345678" }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
-        const input = screen.getByDisplayValue("12345678")
-        await userEvent.clear(input)
-        await userEvent.type(input, "Renamed conversation{enter}")
-        expect(onRenameSession).toHaveBeenCalledWith(history[0].id, "Renamed conversation")
+        expect(onRenameSession).toHaveBeenCalledWith(expect.objectContaining({ id: history[0].id }))
 
         await userEvent.click(screen.getByRole("button", { name: "Conversation options for 12345678" }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }))

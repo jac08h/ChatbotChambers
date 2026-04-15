@@ -209,6 +209,57 @@ async def test_post_presets_writes_file_and_returns_body(monkeypatch: pytest.Mon
     assert json.loads((presets_dir / "my-preset.json").read_text()) == payload
 
 
+async def test_patch_presets_renames_existing_preset(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """PATCH /presets/{id} renames a persisted preset without changing its id."""
+    presets_dir = tmp_path / ".cache" / "presets"
+    presets_dir.mkdir(parents=True, exist_ok=True)
+    preset_path = presets_dir / "my-preset.json"
+    preset_path.write_text(json.dumps({
+        "name": "My preset",
+        "config": {
+            "chatbot_a": {
+                "name": "Alpha",
+                "model": "model-a",
+                "system_prompt": "Prompt A",
+                "provider": "openrouter",
+            },
+            "chatbot_b": {
+                "name": "Beta",
+                "model": "model-b",
+                "system_prompt": "Prompt B",
+                "provider": "claude_code",
+            },
+            "shared_system_prompt": "Shared prompt",
+        },
+    }))
+    monkeypatch.setattr("lmparlor.main.DEFAULT_PRESETS_DIR", tmp_path / "unused-defaults")
+    monkeypatch.setattr("lmparlor.main.PRESETS_DIR", presets_dir)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.patch("/presets/my-preset", json={"name": "Renamed preset"})
+
+    assert response.status_code == 200
+    assert response.json()["id"] == "my-preset"
+    assert response.json()["name"] == "Renamed preset"
+    assert json.loads(preset_path.read_text())["name"] == "Renamed preset"
+
+
+async def test_delete_presets_removes_existing_preset(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """DELETE /presets/{id} removes a persisted preset from .cache/presets."""
+    presets_dir = tmp_path / ".cache" / "presets"
+    presets_dir.mkdir(parents=True, exist_ok=True)
+    preset_path = presets_dir / "my-preset.json"
+    preset_path.write_text(json.dumps({"name": "My preset"}))
+    monkeypatch.setattr("lmparlor.main.DEFAULT_PRESETS_DIR", tmp_path / "unused-defaults")
+    monkeypatch.setattr("lmparlor.main.PRESETS_DIR", presets_dir)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.delete("/presets/my-preset")
+
+    assert response.status_code == 204
+    assert not preset_path.exists()
+
+
 async def test_get_settings_returns_empty_object_when_missing(monkeypatch: pytest.MonkeyPatch, tmp_path):
     """GET /settings returns an empty object when no file has been saved yet."""
     monkeypatch.setattr("lmparlor.main.SETTINGS_PATH", tmp_path / ".cache" / "settings.json")

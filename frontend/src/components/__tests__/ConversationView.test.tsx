@@ -50,7 +50,7 @@ describe("ConversationView", () => {
                 generatingChatbot="a"
             />
         )
-        expect(screen.getByText("composing")).toBeInTheDocument()
+        expect(document.querySelector(".message-bubble.generating")).not.toBeNull()
     })
 
     it("shows done banner when status is done", () => {
@@ -208,9 +208,6 @@ describe("ConversationView", () => {
         )
         await userEvent.click(screen.getByRole("button", { name: "Conversation options" }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
-        const input = screen.getByDisplayValue("Original name")
-        await userEvent.clear(input)
-        await userEvent.type(input, "Renamed{enter}")
-        expect(onRenameSession).toHaveBeenCalledWith("Renamed")
+        expect(onRenameSession).toHaveBeenCalledOnce()
     })
 })

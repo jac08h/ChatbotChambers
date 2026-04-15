@@ -11,7 +11,16 @@ const mockModels = [
 
 const mockProviders = { openrouter: true, claude_code: false, codex: false }
 
-const mockPresets = [
+interface MockPreset {
+    id: string
+    name: string
+    shared_system_prompt: string
+    system_prompt_a: string
+    system_prompt_b: string
+    config?: unknown
+}
+
+const mockPresets: MockPreset[] = [
     {
         id: "debate",
         name: "Debate",
@@ -26,10 +35,12 @@ function createFetchMock({
     settings = {},
     providers = mockProviders,
 }: {
-    presets?: unknown[]
+    presets?: MockPreset[]
     settings?: unknown
     providers?: typeof mockProviders
 } = {}) {
+    let currentPresets = [...presets]
+
     return vi.fn((url: string, options?: RequestInit) => {
         if (url.includes("/settings") && options?.method === "POST") {
             return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
@@ -42,20 +53,39 @@ function createFetchMock({
         }
         if (url.includes("/presets") && options?.method === "POST") {
             const body = JSON.parse(String(options.body))
+            const savedPreset = {
+                id: "saved-preset",
+                name: body.name,
+                shared_system_prompt: body.config.shared_system_prompt,
+                system_prompt_a: body.config.chatbot_a.system_prompt,
+                system_prompt_b: body.config.chatbot_b.system_prompt,
+                config: body.config,
+            }
+            currentPresets = [savedPreset, ...currentPresets]
             return Promise.resolve({
                 ok: true,
-                json: () => Promise.resolve({
-                    id: "saved-preset",
-                    name: body.name,
-                    shared_system_prompt: body.config.shared_system_prompt,
-                    system_prompt_a: body.config.chatbot_a.system_prompt,
-                    system_prompt_b: body.config.chatbot_b.system_prompt,
-                    config: body.config,
-                }),
+                json: () => Promise.resolve(savedPreset),
             })
         }
+        if (url.includes("/presets/") && options?.method === "PATCH") {
+            const presetId = url.split("/").at(-1)
+            const body = JSON.parse(String(options.body))
+            currentPresets = currentPresets.map((preset) => (
+                preset.id === presetId ? { ...preset, name: body.name } : preset
+            ))
+            const renamedPreset = currentPresets.find((preset) => preset.id === presetId)
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(renamedPreset),
+            })
+        }
+        if (url.includes("/presets/") && options?.method === "DELETE") {
+            const presetId = url.split("/").at(-1)
+            currentPresets = currentPresets.filter((preset) => preset.id !== presetId)
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+        }
         if (url.includes("/presets")) {
-            return Promise.resolve({ ok: true, json: () => Promise.resolve(presets) })
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(currentPresets) })
         }
         if (url.includes("/models")) {
             return Promise.resolve({ ok: true, json: () => Promise.resolve(mockModels) })
@@ -70,6 +100,7 @@ beforeEach(() => {
 
 afterEach(() => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
 })
 
 describe("SetupForm", () => {
@@ -86,6 +117,8 @@ describe("SetupForm", () => {
     it("shows preset selector when presets are available", async () => {
         render(<SetupForm onStart={vi.fn()} error={null} />)
         await waitFor(() => expect(screen.getByText("Debate")).toBeInTheDocument())
+        expect(screen.queryByRole("button", { name: "none" })).not.toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Debate" })).not.toHaveClass("preset-chip-active")
     })
 
     it("loading a preset fills shared and individual prompts", async () => {
@@ -133,8 +166,9 @@ describe("SetupForm", () => {
         await waitFor(() => expect(screen.getByDisplayValue("Saved shared prompt")).toBeInTheDocument())
         expect(screen.getByDisplayValue("Prompt A")).toBeInTheDocument()
         expect(screen.getByDisplayValue("Prompt B")).toBeInTheDocument()
-        expect(screen.getAllByRole("combobox")[0]).toHaveValue("codex")
-        expect(screen.getAllByRole("combobox")[1]).toHaveValue("model-2")
+        expect(screen.getAllByRole("button", { name: "Codex CLI" })[0]).toHaveClass("preset-chip-active")
+        expect(screen.getAllByRole("combobox")[0]).toHaveValue("model-2")
+        expect(screen.getAllByRole("combobox")[1]).toHaveValue("model-1")
 
         const advancedButtons = screen.getAllByRole("button", { name: /Advanced/ })
         await userEvent.click(advancedButtons[0])
@@ -151,11 +185,15 @@ describe("SetupForm", () => {
         await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).not.toBeDisabled())
 
         await userEvent.type(screen.getByLabelText("Shared prompt"), "Shared preset prompt")
-        await userEvent.click(screen.getByRole("button", { name: "Save current as preset" }))
+        await userEvent.click(screen.getByRole("button", { name: "Save current config as preset" }))
+        expect(screen.getByRole("dialog", { name: "Save preset" })).toBeInTheDocument()
         await userEvent.type(screen.getByLabelText("Preset name"), "My saved preset")
         await userEvent.click(screen.getByRole("button", { name: "Save preset" }))
 
-        await waitFor(() => expect(screen.getByRole("button", { name: "My saved preset" })).toBeInTheDocument())
+        await waitFor(() => expect(screen.queryByRole("dialog", { name: "Save preset" })).not.toBeInTheDocument())
+        const savedPresetButton = screen.getByRole("button", { name: "My saved preset" })
+        expect(savedPresetButton).toBeInTheDocument()
+        expect(savedPresetButton).not.toHaveClass("preset-chip-active")
         expect(fetchMock).toHaveBeenCalledWith(
             apiUrl("/presets"),
             expect.objectContaining({
@@ -173,6 +211,44 @@ describe("SetupForm", () => {
                 shared_system_prompt: "Shared preset prompt",
             },
         })
+    })
+
+    it("renames and deletes presets through the preset menu", async () => {
+        const fetchMock = createFetchMock()
+        vi.stubGlobal("fetch", fetchMock)
+
+        render(<SetupForm onStart={vi.fn()} error={null} />)
+        await waitFor(() => expect(screen.getByRole("button", { name: "Debate" })).toBeInTheDocument())
+
+        await userEvent.click(screen.getByRole("button", { name: "Preset options for Debate" }))
+        await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
+        expect(screen.getByRole("dialog", { name: "Rename preset" })).toBeInTheDocument()
+        const input = screen.getByDisplayValue("Debate")
+        await userEvent.clear(input)
+        await userEvent.type(input, "Renamed preset")
+        await userEvent.click(screen.getByRole("button", { name: "Save" }))
+
+        await waitFor(() => expect(screen.getByRole("button", { name: "Renamed preset" })).toBeInTheDocument())
+        expect(fetchMock).toHaveBeenCalledWith(
+            apiUrl("/presets/debate"),
+            expect.objectContaining({
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+            })
+        )
+
+        await userEvent.click(screen.getByRole("button", { name: "Preset options for Renamed preset" }))
+        await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }))
+        expect(screen.getByRole("dialog", { name: "Delete preset" })).toBeInTheDocument()
+        await userEvent.click(screen.getByRole("button", { name: "Delete" }))
+
+        await waitFor(() => expect(screen.queryByRole("button", { name: "Renamed preset" })).not.toBeInTheDocument())
+        expect(fetchMock).toHaveBeenCalledWith(
+            apiUrl("/presets/debate"),
+            expect.objectContaining({
+                method: "DELETE",
+            })
+        )
     })
 
     it("submit calls onStart with correct SessionConfig shape", async () => {

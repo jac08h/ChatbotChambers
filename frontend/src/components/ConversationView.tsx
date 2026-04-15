@@ -21,7 +21,7 @@ interface ConversationViewProps {
     onResume?: () => void;
     onRetry?: () => void;
     onNewConversation?: () => void;
-    onRenameSession?: (label: string) => void;
+    onRenameSession?: () => void;
     onDeleteSession?: () => void;
 }
 
@@ -57,57 +57,20 @@ export function ConversationView({
     onDeleteSession,
 }: ConversationViewProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const [editing, setEditing] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
-    const [editValue, setEditValue] = useState("");
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, generatingChatbot, status]);
 
-    useEffect(() => {
-        if (editing) {
-            inputRef.current?.focus();
-            inputRef.current?.select();
-        }
-    }, [editing]);
-
     const showControls = (status === "running" || status === "paused") && (onPause || onResume);
     const hasSessionActions = Boolean(onRenameSession || onDeleteSession);
-
-    const handleCommitEdit = () => {
-        const trimmed = editValue.trim();
-        if (trimmed && onRenameSession) {
-            onRenameSession(trimmed);
-        }
-        setEditing(false);
-    };
 
     return (
         <div className="conversation-container">
             <div className="conversation-header">
                 {label && (
-                    editing ? (
-                        <input
-                            ref={inputRef}
-                            className="conversation-title-input"
-                            value={editValue}
-                            onChange={(event) => setEditValue(event.target.value)}
-                            onBlur={handleCommitEdit}
-                            onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                    handleCommitEdit();
-                                }
-                                if (event.key === "Escape") {
-                                    setEditing(false);
-                                }
-                            }}
-                            autoFocus
-                        />
-                    ) : (
-                        <h1 className="conversation-title">{label}</h1>
-                    )
+                    <h1 className="conversation-title">{label}</h1>
                 )}
                 {hasSessionActions && (
                     <div className="conversation-actions">
@@ -125,9 +88,8 @@ export function ConversationView({
                                     <button
                                         className="conversation-menu-item"
                                         onClick={() => {
-                                            setEditValue(label ?? "");
-                                            setEditing(true);
                                             setMenuOpen(false);
+                                            onRenameSession();
                                         }}
                                         type="button"
                                         role="menuitem"

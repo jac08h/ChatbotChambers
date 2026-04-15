@@ -54,6 +54,10 @@ class RenameRequest(BaseModel):
     title: str
 
 
+class PresetRenameRequest(BaseModel):
+    name: str
+
+
 class PresetCreateRequest(BaseModel):
     name: str
     config: SessionConfig

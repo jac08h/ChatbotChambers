@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiUrl } from "../api";
 import { type Provider, type SessionConfig } from "../hooks/useWebSocket";
 import { loadSettings, saveSettings } from "../settings";
+import { ConfirmationDialog } from "./ConfirmationDialog";
+import { RenameDialog } from "./RenameDialog";
 
 interface Model {
     id: string;
@@ -171,6 +173,81 @@ function ChatbotConfig({
     );
 }
 
+interface PresetListItemProps {
+    preset: Preset;
+    isActive: boolean;
+    isBusy: boolean;
+    onSelect: () => void;
+    onRename: () => void;
+    onDelete: () => Promise<void>;
+}
+
+function PresetListItem({
+    preset,
+    isActive,
+    isBusy,
+    onSelect,
+    onRename,
+    onDelete,
+}: PresetListItemProps) {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    return (
+        <div className="preset-item">
+            <div className={`preset-chip preset-chip-with-menu${isActive ? " preset-chip-active" : ""}`}>
+                <button
+                    type="button"
+                    className="preset-chip-label"
+                    onClick={onSelect}
+                    disabled={isBusy}
+                >
+                    {preset.name}
+                </button>
+                <button
+                    type="button"
+                    className="preset-chip-menu-btn"
+                    onClick={() => setIsMenuOpen((open) => !open)}
+                    aria-label={`Preset options for ${preset.name}`}
+                    title="Preset options"
+                    disabled={isBusy}
+                >
+                    ⋯
+                </button>
+            </div>
+            <div className="preset-item-actions">
+                {isMenuOpen && (
+                    <div className="preset-menu" role="menu">
+                        <button
+                            type="button"
+                            className="preset-menu-item"
+                            role="menuitem"
+                            onClick={() => {
+                                setIsMenuOpen(false);
+                                onRename();
+                            }}
+                            disabled={isBusy}
+                        >
+                            Rename
+                        </button>
+                        <button
+                            type="button"
+                            className="preset-menu-item preset-menu-item-danger"
+                            role="menuitem"
+                            onClick={() => {
+                                setIsMenuOpen(false);
+                                void onDelete();
+                            }}
+                            disabled={isBusy}
+                        >
+                            Delete
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function SetupForm({ onStart, error }: SetupFormProps) {
     const [providers, setProviders] = useState<Providers>(DEFAULT_PROVIDERS);
     const [presets, setPresets] = useState<Preset[]>([]);
@@ -193,8 +270,26 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [isInitialized, setIsInitialized] = useState(false);
     const [isSavePresetOpen, setIsSavePresetOpen] = useState(false);
     const [presetName, setPresetName] = useState("");
-    const [presetError, setPresetError] = useState<string | null>(null);
+    const [savePresetError, setSavePresetError] = useState<string | null>(null);
+    const [presetActionError, setPresetActionError] = useState<string | null>(null);
     const [isSavingPreset, setIsSavingPreset] = useState(false);
+    const [activePresetMutationId, setActivePresetMutationId] = useState<string | null>(null);
+    const [presetPendingDelete, setPresetPendingDelete] = useState<Preset | null>(null);
+    const [presetPendingRename, setPresetPendingRename] = useState<Preset | null>(null);
+
+    const closeSavePresetDialog = useCallback((forceClose = false) => {
+        if (!forceClose && isSavingPreset) {
+            return;
+        }
+        setIsSavePresetOpen(false);
+        setPresetName("");
+        setSavePresetError(null);
+    }, [isSavingPreset]);
+
+    const openSavePresetDialog = () => {
+        setSavePresetError(null);
+        setIsSavePresetOpen(true);
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -305,6 +400,19 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         }
     }, [modelB, modelsB, nameBManual]);
 
+    useEffect(() => {
+        if (!isSavePresetOpen) {
+            return;
+        }
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                closeSavePresetDialog();
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [closeSavePresetDialog, isSavePresetOpen]);
+
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
 
     const buildConfig = (): SessionConfig => ({
@@ -314,6 +422,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     });
 
     const loadPreset = async (id: string) => {
+        setPresetActionError(null);
         const preset = presets.find((item) => item.id === id);
         if (!preset) {
             return;
@@ -344,21 +453,15 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         setPromptB(preset.system_prompt_b);
     };
 
-    const clearPreset = () => {
-        setSelectedPresetId(null);
-        setSharedPrompt("");
-        setPromptA("");
-        setPromptB("");
-    };
-
     const handleSavePreset = async () => {
         const trimmedPresetName = presetName.trim();
         if (!trimmedPresetName) {
-            setPresetError("Enter a preset name.");
+            setSavePresetError("Enter a preset name.");
             return;
         }
         setIsSavingPreset(true);
-        setPresetError(null);
+        setSavePresetError(null);
+        setPresetActionError(null);
         try {
             const response = await fetch(apiUrl("/presets"), {
                 method: "POST",
@@ -375,13 +478,65 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             }
             const savedPreset: Preset = await response.json();
             setPresets((currentPresets) => [savedPreset, ...currentPresets]);
-            setSelectedPresetId(savedPreset.id);
-            setPresetName("");
-            setIsSavePresetOpen(false);
+            setSelectedPresetId(null);
+            closeSavePresetDialog(true);
         } catch {
-            setPresetError("Failed to save preset.");
+            setSavePresetError("Failed to save preset.");
         } finally {
             setIsSavingPreset(false);
+        }
+    };
+
+    const handleRenamePreset = async (presetId: string, nextName: string): Promise<boolean> => {
+        setActivePresetMutationId(presetId);
+        setPresetActionError(null);
+        try {
+            const response = await fetch(apiUrl(`/presets/${presetId}`), {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ name: nextName }),
+            });
+            if (!response.ok) {
+                throw new Error("Failed to rename preset");
+            }
+            const renamedPreset: Preset = await response.json();
+            setPresets((currentPresets) => currentPresets.map((preset) => (
+                preset.id === presetId ? renamedPreset : preset
+            )));
+            setPresetPendingRename(null);
+            return true;
+        } catch {
+            setPresetActionError("Failed to rename preset.");
+            return false;
+        } finally {
+            setActivePresetMutationId(null);
+        }
+    };
+
+    const handleDeletePreset = async (): Promise<void> => {
+        if (!presetPendingDelete) {
+            return;
+        }
+        setActivePresetMutationId(presetPendingDelete.id);
+        setPresetActionError(null);
+        try {
+            const response = await fetch(apiUrl(`/presets/${presetPendingDelete.id}`), {
+                method: "DELETE",
+            });
+            if (!response.ok) {
+                throw new Error("Failed to delete preset");
+            }
+            setPresets((currentPresets) => currentPresets.filter((item) => item.id !== presetPendingDelete.id));
+            if (selectedPresetId === presetPendingDelete.id) {
+                setSelectedPresetId(null);
+            }
+            setPresetPendingDelete(null);
+        } catch {
+            setPresetActionError("Failed to delete preset.");
+        } finally {
+            setActivePresetMutationId(null);
         }
     };
 
@@ -408,67 +563,83 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             <button
                                 type="button"
                                 className="preset-save-link"
-                                onClick={() => {
-                                    setPresetError(null);
-                                    setIsSavePresetOpen((open) => !open);
-                                }}
+                                onClick={openSavePresetDialog}
                                 disabled={!canStart || isSavingPreset}
                             >
                                 Save current config as preset
                             </button>
                         </div>
                         <div className="preset-chips" role="group">
-                            <button
-                                type="button"
-                                className={`preset-chip${selectedPresetId === null ? " preset-chip-active" : ""}`}
-                                onClick={clearPreset}
-                            >
-                                none
-                            </button>
                             {presets.map((preset) => (
-                                <button
+                                <PresetListItem
                                     key={preset.id}
-                                    type="button"
-                                    className={`preset-chip${selectedPresetId === preset.id ? " preset-chip-active" : ""}`}
-                                    onClick={() => loadPreset(preset.id).catch(() => setPresetError("Failed to load preset."))}
-                                >
-                                    {preset.name}
-                                </button>
+                                    preset={preset}
+                                    isActive={selectedPresetId === preset.id}
+                                    isBusy={activePresetMutationId === preset.id}
+                                    onSelect={() => loadPreset(preset.id).catch(() => setPresetActionError("Failed to load preset."))}
+                                    onRename={() => setPresetPendingRename(preset)}
+                                    onDelete={async () => setPresetPendingDelete(preset)}
+                                />
                             ))}
                         </div>
+                        {presetActionError && <div className="preset-save-error">{presetActionError}</div>}
                         {isSavePresetOpen && (
-                            <div className="preset-save-panel">
-                                <label className="field">
-                                    <span>Preset name</span>
-                                    <input
-                                        type="text"
-                                        value={presetName}
-                                        onChange={(event) => setPresetName(event.target.value)}
-                                        placeholder="Enter a preset name"
-                                    />
-                                </label>
-                                {presetError && <div className="preset-save-error">{presetError}</div>}
-                                <div className="preset-save-actions">
-                                    <button
-                                        type="button"
-                                        className="preset-save-confirm"
-                                        onClick={handleSavePreset}
-                                        disabled={isSavingPreset}
-                                    >
-                                        {isSavingPreset ? "Saving…" : "Save preset"}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="preset-save-cancel"
-                                        onClick={() => {
-                                            setIsSavePresetOpen(false);
-                                            setPresetName("");
-                                            setPresetError(null);
-                                        }}
-                                        disabled={isSavingPreset}
-                                    >
-                                        Cancel
-                                    </button>
+                            <div
+                                className="preset-dialog-backdrop"
+                                role="presentation"
+                                onClick={() => {
+                                    if (!isSavingPreset) {
+                                        closeSavePresetDialog();
+                                    }
+                                }}
+                            >
+                                <div
+                                    className="preset-dialog"
+                                    role="dialog"
+                                    aria-modal="true"
+                                    aria-labelledby="save-preset-title"
+                                    onClick={(event) => event.stopPropagation()}
+                                >
+                                    <div className="preset-dialog-header">
+                                        <h2 id="save-preset-title" className="preset-dialog-title">Save preset</h2>
+                                        <button
+                                            type="button"
+                                            className="preset-dialog-close"
+                                            onClick={() => closeSavePresetDialog()}
+                                            disabled={isSavingPreset}
+                                            aria-label="Close save preset dialog"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                    <label className="field">
+                                        <span>Preset name</span>
+                                        <input
+                                            type="text"
+                                            value={presetName}
+                                            onChange={(event) => setPresetName(event.target.value)}
+                                            placeholder="Enter a preset name"
+                                        />
+                                    </label>
+                                    {savePresetError && <div className="preset-save-error">{savePresetError}</div>}
+                                    <div className="preset-save-actions">
+                                        <button
+                                            type="button"
+                                            className="preset-save-confirm"
+                                            onClick={handleSavePreset}
+                                            disabled={isSavingPreset}
+                                        >
+                                            {isSavingPreset ? "Saving…" : "Save preset"}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="preset-save-cancel"
+                                            onClick={() => closeSavePresetDialog()}
+                                            disabled={isSavingPreset}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -533,6 +704,36 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                         </div>
                     </div>
                 </form>
+                <ConfirmationDialog
+                    isOpen={presetPendingDelete !== null}
+                    title="Delete preset"
+                    message={presetPendingDelete ? `Delete preset "${presetPendingDelete.name}"?` : ""}
+                    confirmLabel="Delete"
+                    isConfirming={activePresetMutationId !== null}
+                    onConfirm={() => { void handleDeletePreset(); }}
+                    onCancel={() => {
+                        if (activePresetMutationId === null) {
+                            setPresetPendingDelete(null);
+                        }
+                    }}
+                />
+                <RenameDialog
+                    key={presetPendingRename?.id ?? "preset-rename-closed"}
+                    isOpen={presetPendingRename !== null}
+                    title="Rename preset"
+                    initialValue={presetPendingRename?.name ?? ""}
+                    isSaving={activePresetMutationId !== null}
+                    onConfirm={(value) => {
+                        if (presetPendingRename) {
+                            void handleRenamePreset(presetPendingRename.id, value);
+                        }
+                    }}
+                    onCancel={() => {
+                        if (activePresetMutationId === null) {
+                            setPresetPendingRename(null);
+                        }
+                    }}
+                />
             </div>
         </div>
     );

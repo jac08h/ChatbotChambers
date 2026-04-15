@@ -17,6 +17,7 @@ from lmparlor.models import (
     CODEX_MODELS,
     MODELS,
     PresetCreateRequest,
+    PresetRenameRequest,
     RenameRequest,
     SessionConfig,
     Settings,
@@ -159,6 +160,44 @@ def save_preset(request: PresetCreateRequest) -> dict:
     except OSError as exc:
         logger.exception("Failed to save preset %s", preset_name)
         raise HTTPException(status_code=500, detail="Failed to save preset") from exc
+
+
+@app.patch("/presets/{preset_id}")
+def rename_preset(preset_id: str, request: PresetRenameRequest) -> dict:
+    try:
+        path = _preset_path(preset_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid preset id") from exc
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Preset not found")
+    try:
+        data = json.loads(path.read_text())
+        new_name = request.name.strip()
+        if not new_name:
+            raise HTTPException(status_code=422, detail="name must not be empty")
+        data["name"] = new_name
+        path.write_text(json.dumps(data))
+        return _normalize_preset_data(preset_id, data)
+    except HTTPException:
+        raise
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.exception("Failed to rename preset %s", preset_id)
+        raise HTTPException(status_code=500, detail="Failed to rename preset") from exc
+
+
+@app.delete("/presets/{preset_id}", status_code=204)
+def delete_preset(preset_id: str) -> None:
+    try:
+        path = _preset_path(preset_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid preset id") from exc
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Preset not found")
+    try:
+        path.unlink()
+    except OSError as exc:
+        logger.exception("Failed to delete preset %s", preset_id)
+        raise HTTPException(status_code=500, detail="Failed to delete preset") from exc
 
 
 @app.get("/providers")
