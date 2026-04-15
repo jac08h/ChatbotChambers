@@ -28,7 +28,7 @@ pnpm dev   # starts on http://localhost:5173
 
 - Backend owns all conversation logic. Frontend just displays.
 - WebSockets between backend and frontend.
-- Three LLM providers: `openrouter` (via OpenAI SDK), `claude_code` (CLI subprocess), `codex` (CLI subprocess).
+- Three LLM providers: `openrouter` (via OpenAI SDK), `claude_code` (CLI subprocess), `codex` (CLI subprocess). Provider modules live in `backend/app/providers/`.
 - No persistence — in-memory only.
 - No streaming — complete messages appear after generation.
 - Thinking blocks (`<think>` tags) are stripped from OpenRouter responses before being shown or passed to the other chatbot.
@@ -39,10 +39,12 @@ pnpm dev   # starts on http://localhost:5173
 backend/app/
     main.py        FastAPI app, WebSocket endpoint, GET /models, GET /providers, GET /presets
     engine.py      Async generator conversation loop
-    openrouter.py  OpenRouter API client, strips <think> tags
-    claude_code.py Claude CLI subprocess client
-    codex_cli.py   Codex CLI subprocess client
     models.py      Pydantic models + hardcoded model lists
+    providers/
+        base.py        Abstract base class for providers
+        openrouter.py  OpenRouter API client, strips <think> tags
+        claude_code.py Claude CLI subprocess client
+        codex_cli.py   Codex CLI subprocess client
 ```
 
 ## WebSocket Protocol
