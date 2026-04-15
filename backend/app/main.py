@@ -22,6 +22,9 @@ from app.models import (
     SessionConfig,
     Settings,
 )
+from app.providers.mock import MOCK_MODELS, reset_mock_state
+
+MOCK_PROVIDER_ENABLED = os.environ.get("MOCK_PROVIDER", "") == "1"
 
 PRESET_ID_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SESSION_ID_PATTERN = r"[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*"
@@ -202,16 +205,21 @@ def delete_preset(preset_id: str) -> None:
 
 @app.get("/providers")
 def get_providers() -> dict:
-    return {
+    providers = {
         "openrouter": True,
         "claude_code": shutil.which("claude") is not None,
         "codex": shutil.which("codex") is not None,
     }
+    if MOCK_PROVIDER_ENABLED:
+        providers["mock"] = True
+    return providers
 
 
 @app.get("/models")
 def get_models(provider: str = "openrouter") -> List[dict]:
-    if provider == "claude_code":
+    if provider == "mock":
+        model_list = MOCK_MODELS
+    elif provider == "claude_code":
         model_list = CLAUDE_CODE_MODELS
     elif provider == "codex":
         model_list = CODEX_MODELS
@@ -311,6 +319,13 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         await ws.send_json({"type": "error", "message": "OPENROUTER_API_KEY not set"})
         await ws.close()
         return
+
+    uses_mock = (
+        config.chatbot_a.provider == "mock"
+        or config.chatbot_b.provider == "mock"
+    )
+    if uses_mock:
+        reset_mock_state()
 
     session_id = _new_session_id()
     await ws.send_json({"type": "session_id", "id": session_id})
