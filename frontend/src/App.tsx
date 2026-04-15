@@ -189,7 +189,7 @@ export default function App() {
                 onClick={() => setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark")}
                 type="button"
             >
-                {theme === "dark" ? "Light mode" : "Dark mode"}
+                {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             </button>
             <Sidebar
                 currentSession={currentSession}
