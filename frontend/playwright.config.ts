@@ -22,13 +22,13 @@ export default defineConfig({
     ],
     webServer: [
         {
-            command: `MOCK_PROVIDER=1 CHATBOTCHAMBERS_CORS_ORIGINS=http://localhost:${FRONTEND_PORT} uv run --project ../backend uvicorn app.main:app --port ${BACKEND_PORT}`,
+            command: `cd ../backend && MOCK_PROVIDER=1 CHATBOTCHAMBERS_CORS_ORIGINS=http://localhost:${FRONTEND_PORT} uv run uvicorn app.main:app --port ${BACKEND_PORT}`,
             port: BACKEND_PORT,
             reuseExistingServer: true,
             timeout: 30_000,
         },
         {
-            command: "pnpm dev",
+            command: "npx vite",
             port: FRONTEND_PORT,
             reuseExistingServer: true,
             timeout: 30_000,

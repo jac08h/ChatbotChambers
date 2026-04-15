@@ -64,6 +64,7 @@ test.describe("Conversation Flow (mock provider)", () => {
         await expect(senderLabel).not.toHaveText("");
 
         const modelLabel = firstMessage.locator(".model-label");
+        await firstMessage.hover();
         await expect(modelLabel).toBeVisible();
         await expect(modelLabel).toContainText("mock/");
     });
