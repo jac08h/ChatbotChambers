@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { getSessionDisplayTitle, type ArchivedSession } from "../hooks/useWebSocket";
 
 interface SessionSummary {
@@ -14,7 +14,7 @@ interface SidebarProps {
     onNewChat: () => void;
     onSelectCurrentConversation: () => void;
     onSelectSession: (session: ArchivedSession) => void;
-    onRenameSession: (sessionId: string, title: string) => void;
+    onRenameSession: (session: SessionSummary) => void;
     onDeleteSession: (session: SessionSummary) => void;
     selectedSessionId: string | null;
     hasCurrentConversation: boolean;
@@ -25,7 +25,7 @@ interface SidebarHistoryItemProps {
     session: SessionSummary;
     isActive: boolean;
     onSelect: () => void;
-    onRename: (title: string) => void;
+    onRename: () => void;
     onDelete: () => void;
 }
 
@@ -61,7 +61,7 @@ export function Sidebar({
                         session={currentSession}
                         isActive={isCurrentConversationSelected}
                         onSelect={onSelectCurrentConversation}
-                        onRename={(title) => onRenameSession(currentSession.id, title)}
+                        onRename={() => onRenameSession(currentSession)}
                         onDelete={() => onDeleteSession(currentSession)}
                     />
                 )}
@@ -71,7 +71,7 @@ export function Sidebar({
                         session={session}
                         isActive={selectedSessionId === session.id}
                         onSelect={() => onSelectSession(session)}
-                        onRename={(title) => onRenameSession(session.id, title)}
+                        onRename={() => onRenameSession(session)}
                         onDelete={() => onDeleteSession(session)}
                     />
                 ))}
@@ -93,60 +93,18 @@ function SidebarHistoryItem({
     onRename,
     onDelete,
 }: SidebarHistoryItemProps) {
-    const [isEditing, setIsEditing] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [editValue, setEditValue] = useState(getSessionDisplayTitle(session));
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        setEditValue(getSessionDisplayTitle(session));
-    }, [session]);
-
-    useEffect(() => {
-        if (isEditing) {
-            inputRef.current?.focus();
-            inputRef.current?.select();
-        }
-    }, [isEditing]);
-
-    const handleCommitRename = () => {
-        const trimmedValue = editValue.trim();
-        if (trimmedValue) {
-            onRename(trimmedValue);
-        }
-        setIsEditing(false);
-    };
 
     return (
         <div className="sidebar-history-item">
-            {isEditing ? (
-                <input
-                    ref={inputRef}
-                    className="sidebar-item sidebar-item-input"
-                    value={editValue}
-                    onChange={(event) => setEditValue(event.target.value)}
-                    onBlur={handleCommitRename}
-                    onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                            handleCommitRename();
-                        }
-                        if (event.key === "Escape") {
-                            setEditValue(getSessionDisplayTitle(session));
-                            setIsEditing(false);
-                        }
-                    }}
-                    aria-label={`Rename conversation ${getSessionDisplayTitle(session)}`}
-                />
-            ) : (
-                <button
-                    className={`sidebar-item${isActive ? " sidebar-item-active" : ""}`}
-                    onClick={onSelect}
-                    type="button"
-                    title={getSessionDisplayTitle(session)}
-                >
-                    {getSessionDisplayTitle(session)}
-                </button>
-            )}
+            <button
+                className={`sidebar-item${isActive ? " sidebar-item-active" : ""}`}
+                onClick={onSelect}
+                type="button"
+                title={getSessionDisplayTitle(session)}
+            >
+                {getSessionDisplayTitle(session)}
+            </button>
             <div className="sidebar-item-actions">
                 <button
                     className="sidebar-menu-btn"
@@ -162,9 +120,8 @@ function SidebarHistoryItem({
                         <button
                             className="sidebar-menu-item"
                             onClick={() => {
-                                setEditValue(getSessionDisplayTitle(session));
-                                setIsEditing(true);
                                 setIsMenuOpen(false);
+                                onRename();
                             }}
                             type="button"
                             role="menuitem"

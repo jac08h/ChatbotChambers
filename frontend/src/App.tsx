@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { ConfirmationDialog } from "./components/ConfirmationDialog";
+import { RenameDialog } from "./components/RenameDialog";
 import { ConversationView } from "./components/ConversationView";
 import { SetupForm } from "./components/SetupForm";
 import { Sidebar } from "./components/Sidebar";
@@ -26,6 +28,10 @@ export default function App() {
     const [routeSessionId, setRouteSessionId] = useState<string | null>(() => getSessionIdFromPath(window.location.pathname));
     const [showSetup, setShowSetup] = useState(() => routeSessionId === null);
     const [avatars, setAvatars] = useState<[string, string]>(() => pickAvatars());
+    const [pendingDeleteSession, setPendingDeleteSession] = useState<Pick<ArchivedSession, "id" | "title"> | null>(null);
+    const [isDeletingSession, setIsDeletingSession] = useState(false);
+    const [pendingRenameSession, setPendingRenameSession] = useState<Pick<ArchivedSession, "id" | "title"> | null>(null);
+    const [isRenamingSession, setIsRenamingSession] = useState(false);
 
     const handleStart = (config: SessionConfig, initialTitle: string) => {
         setRouteSessionId(null);
@@ -62,19 +68,29 @@ export default function App() {
         setRouteSessionId(session.id);
     };
 
-    const handleDeleteSession = async (session: Pick<ArchivedSession, "id" | "title">) => {
-        const confirmed = window.confirm(`Delete conversation "${getSessionDisplayTitle(session)}"?`);
-        if (!confirmed) {
+    const handleDeleteSession = (session: Pick<ArchivedSession, "id" | "title">) => {
+        setPendingDeleteSession(session);
+    };
+
+    const handleRequestRenameSession = (session: Pick<ArchivedSession, "id" | "title">) => {
+        setPendingRenameSession(session);
+    };
+
+    const handleConfirmDeleteSession = async () => {
+        if (!pendingDeleteSession) {
             return;
         }
-        const deleted = await ws.deleteSession(session.id);
+        setIsDeletingSession(true);
+        const deleted = await ws.deleteSession(pendingDeleteSession.id);
+        setIsDeletingSession(false);
         if (!deleted) {
             return;
         }
-        if (routeSessionId === session.id || ws.currentSessionId === session.id) {
+        if (routeSessionId === pendingDeleteSession.id || ws.currentSessionId === pendingDeleteSession.id) {
             setShowSetup(true);
             setRouteSessionId(null);
         }
+        setPendingDeleteSession(null);
     };
 
     const handleRenameSession = (sessionId: string, title: string) => {
@@ -83,6 +99,16 @@ export default function App() {
             return;
         }
         ws.renameSession(sessionId, title);
+    };
+
+    const handleConfirmRenameSession = async (title: string) => {
+        if (!pendingRenameSession) {
+            return;
+        }
+        setIsRenamingSession(true);
+        handleRenameSession(pendingRenameSession.id, title);
+        setIsRenamingSession(false);
+        setPendingRenameSession(null);
     };
 
     const viewingSession = routeSessionId
@@ -141,7 +167,7 @@ export default function App() {
                 onSelectCurrentConversation={handleSelectCurrentConversation}
                 onSelectSession={handleSelectSession}
                 onDeleteSession={handleDeleteSession}
-                onRenameSession={handleRenameSession}
+                onRenameSession={handleRequestRenameSession}
                 selectedSessionId={routeSessionId}
                 hasCurrentConversation={hasCurrentConversation}
                 isCurrentConversationSelected={showCurrentConversation}
@@ -159,15 +185,16 @@ export default function App() {
                         label={viewingSession ? getSessionDisplayTitle(viewingSession) : currentDisplayTitle}
                         avatarA={avatars[0]}
                         avatarB={avatars[1]}
-                        onBack={handleGoHome}
                         onPause={viewingSession ? undefined : ws.pause}
                         onResume={viewingSession ? undefined : ws.resume}
                         onRetry={viewingSession ? undefined : ws.retry}
                         onNewConversation={viewingSession || ws.status !== "done" ? undefined : handleNewChat}
                         onRenameSession={
                             viewingSession
-                                ? (label) => ws.renameSession(viewingSession.id, label)
-                                : ws.renameCurrentSession
+                                ? () => handleRequestRenameSession(viewingSession)
+                                : currentSession
+                                    ? () => handleRequestRenameSession(currentSession)
+                                    : undefined
                         }
                         onDeleteSession={
                             viewingSession
@@ -180,6 +207,32 @@ export default function App() {
                 ) : (
                     <SetupForm onStart={handleStart} error={ws.error} />
                 )}
+                <ConfirmationDialog
+                    isOpen={pendingDeleteSession !== null}
+                    title="Delete conversation"
+                    message={pendingDeleteSession ? `Delete conversation "${getSessionDisplayTitle(pendingDeleteSession)}"?` : ""}
+                    confirmLabel="Delete"
+                    isConfirming={isDeletingSession}
+                    onConfirm={() => { void handleConfirmDeleteSession(); }}
+                    onCancel={() => {
+                        if (!isDeletingSession) {
+                            setPendingDeleteSession(null);
+                        }
+                    }}
+                />
+                <RenameDialog
+                    key={pendingRenameSession?.id ?? "rename-session-closed"}
+                    isOpen={pendingRenameSession !== null}
+                    title="Rename chat"
+                    initialValue={pendingRenameSession ? getSessionDisplayTitle(pendingRenameSession) : ""}
+                    isSaving={isRenamingSession}
+                    onConfirm={(value) => { void handleConfirmRenameSession(value); }}
+                    onCancel={() => {
+                        if (!isRenamingSession) {
+                            setPendingRenameSession(null);
+                        }
+                    }}
+                />
             </div>
         </div>
     );
