@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from lmparlor.models import ChatbotConfig, SessionConfig
+from app.models import ChatbotConfig, SessionConfig
 
 
 @pytest.fixture
@@ -55,19 +55,19 @@ def cancel_event() -> asyncio.Event:
 @pytest.fixture
 def mock_openrouter(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     mock = AsyncMock(return_value=("Hello!", ""))
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", mock)
+    monkeypatch.setattr("app.engine.call_openrouter", mock)
     return mock
 
 
 @pytest.fixture
 def mock_claude_code(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     mock = AsyncMock(return_value="Hello from Claude!")
-    monkeypatch.setattr("lmparlor.engine.call_claude_code", mock)
+    monkeypatch.setattr("app.engine.call_claude_code", mock)
     return mock
 
 
 @pytest.fixture
 def mock_codex(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     mock = AsyncMock(return_value="Hello from Codex!")
-    monkeypatch.setattr("lmparlor.engine.call_codex", mock)
+    monkeypatch.setattr("app.engine.call_codex", mock)
     return mock

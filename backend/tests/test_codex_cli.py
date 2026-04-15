@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from lmparlor.codex_cli import _build_prompt, call_codex
+from app.providers.codex_cli import _build_prompt, call_codex
 
 
 def make_mock_process(stdout: bytes = b"response\n", stderr: bytes = b"") -> MagicMock:

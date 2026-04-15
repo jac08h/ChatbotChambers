@@ -11,8 +11,8 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from lmparlor.engine import EmptyMessage, Generating, run_conversation
-from lmparlor.models import (
+from app.engine import EmptyMessage, Generating, run_conversation
+from app.models import (
     CLAUDE_CODE_MODELS,
     CODEX_MODELS,
     MODELS,

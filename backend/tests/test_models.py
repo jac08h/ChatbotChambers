@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from lmparlor.models import ChatbotConfig, Message, RenameRequest, SessionConfig
+from app.models import ChatbotConfig, Message, RenameRequest, SessionConfig
 
 
 def test_chatbot_config_valid_providers():

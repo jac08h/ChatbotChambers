@@ -2,10 +2,10 @@ import asyncio
 from pathlib import Path
 from typing import AsyncGenerator, Dict, List, Literal, Tuple, Union
 
-from lmparlor.claude_code import call_claude_code
-from lmparlor.codex_cli import call_codex
-from lmparlor.models import ChatbotConfig, Message, SessionConfig
-from lmparlor.openrouter import call_openrouter
+from app.providers.claude_code import call_claude_code
+from app.providers.codex_cli import call_codex
+from app.models import ChatbotConfig, Message, SessionConfig
+from app.providers.openrouter import call_openrouter
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
