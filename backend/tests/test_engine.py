@@ -113,7 +113,7 @@ async def test_mixed_providers_dispatches_correctly(
 
 
 async def test_history_role_perspective(mock_openrouter: AsyncMock, session_config: SessionConfig):
-    """When B speaks, A's messages appear as 'user' and B's prior messages as 'assistant'."""
+    """All messages are 'assistant' in the role assignment."""
     responses = [("A says hi", ""), ("B replies", ""), ("A again", ""), ("/leave", "")]
     mock_openrouter.side_effect = responses
 
@@ -122,12 +122,12 @@ async def test_history_role_perspective(mock_openrouter: AsyncMock, session_conf
     third_call_args = mock_openrouter.call_args_list[2]
     messages_arg = third_call_args.kwargs.get("messages") or third_call_args.args[2]
     roles = [m["role"] for m in messages_arg]
-    assert roles == ["assistant", "user"]
+    assert roles == ["assistant", "assistant"]
 
     fourth_call_args = mock_openrouter.call_args_list[3]
     messages_arg = fourth_call_args.kwargs.get("messages") or fourth_call_args.args[2]
     roles = [m["role"] for m in messages_arg]
-    assert roles == ["user", "assistant", "user"]
+    assert roles == ["assistant", "assistant", "assistant"]
 
 
 async def test_message_name_populated(mock_openrouter: AsyncMock, session_config: SessionConfig):
@@ -186,19 +186,19 @@ def test_build_messages_name_prepended():
 
 
 def test_build_messages_role_assignment_for_speaker():
-    """Own messages are 'assistant', other's messages are 'user'."""
+    """All messages are 'assistant' regardless of speaker."""
     history = [("a", "msg1"), ("b", "msg2"), ("a", "msg3")]
     result = _build_messages(history, "a", {"a": "A", "b": "B"})
     assert result[0]["role"] == "assistant"
-    assert result[1]["role"] == "user"
+    assert result[1]["role"] == "assistant"
     assert result[2]["role"] == "assistant"
 
 
 def test_build_messages_role_assignment_for_other():
-    """From B's perspective, A's messages are 'user' and B's are 'assistant'."""
+    """All messages are 'assistant' regardless of speaker."""
     history = [("a", "msg1"), ("b", "msg2")]
     result = _build_messages(history, "b", {"a": "A", "b": "B"})
-    assert result[0]["role"] == "user"
+    assert result[0]["role"] == "assistant"
     assert result[1]["role"] == "assistant"
 
 

@@ -1,1 +1,1 @@
-You are LM A.
+You are Assistant A.

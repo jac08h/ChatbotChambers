@@ -150,7 +150,6 @@ def _build_messages(
 ) -> List[dict]:
     messages = []
     for speaker, content in history:
-        role = "assistant" if speaker == chatbot_id else "user"
         label = labels[speaker]
-        messages.append({"role": role, "content": "%s: %s" % (label, content)})
+        messages.append({"role": "assistant", "content": "%s: %s" % (label, content)})
     return messages
