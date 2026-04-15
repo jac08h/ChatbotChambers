@@ -23,6 +23,7 @@ interface Providers {
     openrouter: boolean;
     claude_code: boolean;
     codex: boolean;
+    mock?: boolean;
 }
 
 interface SetupFormProps {
@@ -34,6 +35,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
     openrouter: "OpenRouter",
     claude_code: "Claude Code",
     codex: "Codex CLI",
+    mock: "Mock",
 };
 const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-flash-lite-preview";
 const DEFAULT_PROVIDERS: Providers = {

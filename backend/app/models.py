@@ -35,7 +35,7 @@ class ChatbotConfig(BaseModel):
     name: str
     model: str
     system_prompt: str
-    provider: Literal["openrouter", "claude_code", "codex"] = "openrouter"
+    provider: Literal["openrouter", "claude_code", "codex", "mock"] = "openrouter"
 
 
 class SessionConfig(BaseModel):

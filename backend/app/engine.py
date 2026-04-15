@@ -4,6 +4,7 @@ from typing import AsyncGenerator, Dict, List, Literal, Tuple, Union
 
 from app.providers.claude_code import call_claude_code
 from app.providers.codex_cli import call_codex
+from app.providers.mock import call_mock
 from app.models import ChatbotConfig, Message, SessionConfig
 from app.providers.openrouter import call_openrouter
 
@@ -115,7 +116,13 @@ async def _call_llm(
     messages: List[dict],
     api_key: str,
 ) -> Tuple[str, str]:
-    if chatbot_config.provider == "claude_code":
+    if chatbot_config.provider == "mock":
+        return await call_mock(
+            model=chatbot_config.model,
+            system_prompt=system_prompt,
+            messages=messages,
+        )
+    elif chatbot_config.provider == "claude_code":
         content = await call_claude_code(
             model=chatbot_config.model,
             system_prompt=system_prompt,
