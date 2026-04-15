@@ -184,7 +184,6 @@ export default function App() {
     return (
         <div className="app-shell">
             <button
-                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
                 className="theme-toggle"
                 onClick={() => setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark")}
                 type="button"
