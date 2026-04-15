@@ -56,6 +56,8 @@ function createWebSocketState(overrides: Partial<WebSocketState> = {}): WebSocke
 describe("App", () => {
     beforeEach(() => {
         window.history.pushState({}, "", "/")
+        window.localStorage.clear()
+        delete document.documentElement.dataset.theme
         mockWebSocketState = createWebSocketState()
     })
 
@@ -106,5 +108,17 @@ describe("App", () => {
         await userEvent.click(screen.getByRole("button", { name: "Save" }))
 
         await waitFor(() => expect(renameSession).toHaveBeenCalledWith(archivedSession.id, "Renamed chat"))
+    })
+
+    it("toggles the theme and persists the selection", async () => {
+        render(<App />)
+
+        expect(document.documentElement.dataset.theme).toBe("dark")
+
+        await userEvent.click(screen.getByRole("button", { name: "Switch to light theme" }))
+
+        expect(document.documentElement.dataset.theme).toBe("light")
+        expect(window.localStorage.getItem("chatbotchambers-theme")).toBe("light")
+        expect(screen.getByRole("button", { name: "Switch to dark theme" })).toBeInTheDocument()
     })
 })

@@ -14,6 +14,9 @@ import {
 } from "./hooks/useWebSocket";
 
 const AVATAR_COUNT = 8;
+const THEME_STORAGE_KEY = "chatbotchambers-theme";
+
+type Theme = "dark" | "light";
 
 function pickAvatars(): [string, string] {
     const a = Math.floor(Math.random() * AVATAR_COUNT) + 1;
@@ -23,11 +26,28 @@ function pickAvatars(): [string, string] {
     return [fmt(a), fmt(b)];
 }
 
+function isTheme(value: string | null): value is Theme {
+    return value === "dark" || value === "light";
+}
+
+function systemTheme(): Theme {
+    if (window.matchMedia?.("(prefers-color-scheme: light)").matches) {
+        return "light";
+    }
+    return "dark";
+}
+
+function initialTheme(): Theme {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return isTheme(storedTheme) ? storedTheme : systemTheme();
+}
+
 export default function App() {
     const ws = useWebSocket();
     const [routeSessionId, setRouteSessionId] = useState<string | null>(() => getSessionIdFromPath(window.location.pathname));
     const [showSetup, setShowSetup] = useState(() => routeSessionId === null);
     const [avatars, setAvatars] = useState<[string, string]>(() => pickAvatars());
+    const [theme, setTheme] = useState<Theme>(() => initialTheme());
     const [pendingDeleteSession, setPendingDeleteSession] = useState<Pick<ArchivedSession, "id" | "title"> | null>(null);
     const [isDeletingSession, setIsDeletingSession] = useState(false);
     const [pendingRenameSession, setPendingRenameSession] = useState<Pick<ArchivedSession, "id" | "title"> | null>(null);
@@ -156,8 +176,21 @@ export default function App() {
         }
     }, [showSetup, viewingSession, ws.currentSessionId]);
 
+    useEffect(() => {
+        document.documentElement.dataset.theme = theme;
+        window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    }, [theme]);
+
     return (
         <div className="app-shell">
+            <button
+                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+                className="theme-toggle"
+                onClick={() => setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark")}
+                type="button"
+            >
+                {theme === "dark" ? "Light mode" : "Dark mode"}
+            </button>
             <Sidebar
                 currentSession={currentSession}
                 history={ws.history}
