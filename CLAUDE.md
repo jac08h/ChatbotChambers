@@ -70,10 +70,18 @@ uv run pytest tests/                          # all tests
 uv run pytest tests/ -m "not integration"    # unit tests only
 ```
 
-**Frontend** (from `frontend/`):
+**Frontend unit tests** (from `frontend/`):
 ```bash
 pnpm test
 ```
+
+**Frontend e2e tests** (from `frontend/`):
+```bash
+pnpm install  # if not already done
+pnpm test:e2e
+```
+
+E2E tests automatically start both backend (with `MOCK_PROVIDER=1`) and frontend. Use `--headed` flag to see the browser.
 
 ## Coding Conventions
 
