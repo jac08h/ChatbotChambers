@@ -188,7 +188,7 @@ describe("SetupForm", () => {
         await userEvent.click(screen.getByRole("button", { name: "Save current config as preset" }))
         expect(screen.getByRole("dialog", { name: "Save preset" })).toBeInTheDocument()
         await userEvent.type(screen.getByLabelText("Preset name"), "My saved preset")
-        await userEvent.click(screen.getByRole("button", { name: "Save preset" }))
+        await userEvent.click(screen.getByRole("button", { name: "Save" }))
 
         await waitFor(() => expect(screen.queryByRole("dialog", { name: "Save preset" })).not.toBeInTheDocument())
         const savedPresetButton = screen.getByRole("button", { name: "My saved preset" })

@@ -731,97 +731,9 @@ input::placeholder {
     cursor: not-allowed;
 }
 
-.preset-dialog-backdrop {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1.5rem;
-    z-index: 30;
-}
-
-.preset-dialog {
-    width: min(100%, 460px);
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-    padding: 1.15rem;
-    border-radius: var(--radius-lg);
-    border: 1px solid rgba(196, 149, 106, 0.2);
-    background: linear-gradient(180deg, rgba(28, 26, 23, 0.98), rgba(20, 18, 16, 0.98));
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
-}
-
-.preset-dialog-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-}
-
-.preset-dialog-title {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.preset-dialog-close {
-    width: 2rem;
-    height: 2rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-dim);
-    cursor: pointer;
-    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
-}
-
-.preset-dialog-close:hover:not(:disabled) {
-    border-color: rgba(196, 149, 106, 0.35);
-    color: var(--accent);
-    background: var(--accent-glow);
-}
-
 .preset-save-error {
     color: #d99a9a;
     font-size: 0.82rem;
-}
-
-.preset-save-actions {
-    display: flex;
-    gap: 0.65rem;
-}
-
-.preset-save-confirm,
-.preset-save-cancel {
-    padding: 0.45rem 0.9rem;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text);
-    cursor: pointer;
-    transition: background 150ms ease, border-color 150ms ease, opacity 150ms ease;
-}
-
-.preset-save-confirm {
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-.preset-save-confirm:hover:not(:disabled),
-.preset-save-cancel:hover:not(:disabled) {
-    background: var(--accent-glow);
-}
-
-.preset-save-confirm:disabled,
-.preset-save-cancel:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
 }
 
 .advanced-toggle {

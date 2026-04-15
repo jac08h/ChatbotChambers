@@ -585,7 +585,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                         {presetActionError && <div className="preset-save-error">{presetActionError}</div>}
                         {isSavePresetOpen && (
                             <div
-                                className="preset-dialog-backdrop"
+                                className="rename-dialog-backdrop"
                                 role="presentation"
                                 onClick={() => {
                                     if (!isSavingPreset) {
@@ -594,50 +594,40 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                 }}
                             >
                                 <div
-                                    className="preset-dialog"
+                                    className="rename-dialog"
                                     role="dialog"
                                     aria-modal="true"
                                     aria-labelledby="save-preset-title"
                                     onClick={(event) => event.stopPropagation()}
                                 >
-                                    <div className="preset-dialog-header">
-                                        <h2 id="save-preset-title" className="preset-dialog-title">Save preset</h2>
-                                        <button
-                                            type="button"
-                                            className="preset-dialog-close"
-                                            onClick={() => closeSavePresetDialog()}
-                                            disabled={isSavingPreset}
-                                            aria-label="Close save preset dialog"
-                                        >
-                                            ×
-                                        </button>
+                                    <div className="rename-dialog-header">
+                                        <h2 id="save-preset-title" className="rename-dialog-title">Save preset</h2>
                                     </div>
-                                    <label className="field">
-                                        <span>Preset name</span>
-                                        <input
-                                            type="text"
-                                            value={presetName}
-                                            onChange={(event) => setPresetName(event.target.value)}
-                                            placeholder="Enter a preset name"
-                                        />
-                                    </label>
+                                    <input
+                                        type="text"
+                                        className="rename-dialog-input"
+                                        aria-label="Preset name"
+                                        value={presetName}
+                                        onChange={(event) => setPresetName(event.target.value)}
+                                        placeholder="Enter a preset name"
+                                    />
                                     {savePresetError && <div className="preset-save-error">{savePresetError}</div>}
-                                    <div className="preset-save-actions">
+                                    <div className="rename-dialog-actions">
                                         <button
                                             type="button"
-                                            className="preset-save-confirm"
-                                            onClick={handleSavePreset}
-                                            disabled={isSavingPreset}
-                                        >
-                                            {isSavingPreset ? "Saving…" : "Save preset"}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="preset-save-cancel"
+                                            className="rename-dialog-cancel"
                                             onClick={() => closeSavePresetDialog()}
                                             disabled={isSavingPreset}
                                         >
                                             Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="rename-dialog-confirm"
+                                            onClick={handleSavePreset}
+                                            disabled={isSavingPreset}
+                                        >
+                                            {isSavingPreset ? "Saving…" : "Save"}
                                         </button>
                                     </div>
                                 </div>
