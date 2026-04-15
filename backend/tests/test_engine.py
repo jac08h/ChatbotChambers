@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from lmparlor.engine import Generating, _build_messages, _build_system_prompt, run_conversation
-from lmparlor.models import ChatbotConfig, Message, SessionConfig
+from app.engine import Generating, _build_messages, _build_system_prompt, run_conversation
+from app.models import ChatbotConfig, Message, SessionConfig
 
 
 async def collect(config: SessionConfig, mock_key: str = "test-key") -> List[Union[Generating, Message]]:
@@ -98,8 +98,8 @@ async def test_mixed_providers_dispatches_correctly(
     session_config.chatbot_b.provider = "claude_code"
     mock_or = AsyncMock(return_value=("From OR", ""))
     mock_cc = AsyncMock(return_value="From CC")
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", mock_or)
-    monkeypatch.setattr("lmparlor.engine.call_claude_code", mock_cc)
+    monkeypatch.setattr("app.engine.call_openrouter", mock_or)
+    monkeypatch.setattr("app.engine.call_claude_code", mock_cc)
 
     mock_or.side_effect = [("From OR", "")]
     mock_cc.side_effect = ["/leave"]
@@ -153,14 +153,14 @@ async def test_turn_number_increments(mock_openrouter: AsyncMock, session_config
 def test_build_system_prompt_all_parts():
     """All non-empty parts are joined with double newlines."""
     result = _build_system_prompt("preamble", "shared", "individual")
-    from lmparlor.engine import PREAMBLE
+    from app.engine import PREAMBLE
     assert result == "\n\n".join([PREAMBLE, "preamble", "shared", "individual"])
 
 
 def test_build_system_prompt_empty_parts_excluded():
     """Empty shared and individual prompts are excluded from the result."""
     result = _build_system_prompt("preamble", "", "")
-    from lmparlor.engine import PREAMBLE
+    from app.engine import PREAMBLE
     assert result == "\n\n".join([PREAMBLE, "preamble"])
     assert "  " not in result
 
@@ -168,7 +168,7 @@ def test_build_system_prompt_empty_parts_excluded():
 def test_build_system_prompt_whitespace_trimmed():
     """Whitespace-only prompts are excluded."""
     result = _build_system_prompt("preamble", "   ", "\t")
-    from lmparlor.engine import PREAMBLE
+    from app.engine import PREAMBLE
     assert result == "\n\n".join([PREAMBLE, "preamble"])
 
 

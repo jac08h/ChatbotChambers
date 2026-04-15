@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi.testclient import TestClient
 
-from lmparlor.main import app
+from app.main import app
 
 pytestmark = pytest.mark.integration
 
@@ -39,7 +39,7 @@ def test_full_conversation_flow(monkeypatch: pytest.MonkeyPatch):
     """Start message triggers generating/message/done sequence."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(
-        "lmparlor.engine.call_openrouter",
+        "app.engine.call_openrouter",
         AsyncMock(side_effect=[("Hello!", ""), ("/leave", "")]),
     )
 
@@ -57,7 +57,7 @@ def test_full_conversation_flow(monkeypatch: pytest.MonkeyPatch):
 def test_done_reason_leave(monkeypatch: pytest.MonkeyPatch):
     """When chatbot responds /leave, done reason is 'leave'."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", AsyncMock(return_value=("/leave", "")))
+    monkeypatch.setattr("app.engine.call_openrouter", AsyncMock(return_value=("/leave", "")))
 
     client = TestClient(app)
     with client.websocket_connect("/ws") as ws:
@@ -72,7 +72,7 @@ def test_done_reason_leave(monkeypatch: pytest.MonkeyPatch):
 def test_stop_command_accepted_without_error(monkeypatch: pytest.MonkeyPatch):
     """Sending stop command does not produce an error response."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr("lmparlor.engine.call_openrouter", AsyncMock(return_value=("Hello!", "")))
+    monkeypatch.setattr("app.engine.call_openrouter", AsyncMock(return_value=("Hello!", "")))
 
     client = TestClient(app)
     with client.websocket_connect("/ws") as ws:
@@ -113,7 +113,7 @@ def test_message_data_shape(monkeypatch: pytest.MonkeyPatch):
     """Message events contain all expected fields in 'data'."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(
-        "lmparlor.engine.call_openrouter",
+        "app.engine.call_openrouter",
         AsyncMock(side_effect=[("Hi!", "thinking"), ("/leave", "")]),
     )
 
@@ -133,7 +133,7 @@ def test_generating_events_indicate_correct_chatbot(monkeypatch: pytest.MonkeyPa
     """Generating events carry the chatbot id ('a' or 'b')."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(
-        "lmparlor.engine.call_openrouter",
+        "app.engine.call_openrouter",
         AsyncMock(side_effect=[("Hi!", ""), ("/leave", "")]),
     )
 

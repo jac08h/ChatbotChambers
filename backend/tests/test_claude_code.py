@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from lmparlor.claude_code import _build_prompt, call_claude_code
+from app.claude_code import _build_prompt, call_claude_code
 
 
 def make_mock_process(stdout: bytes = b"response\n", stderr: bytes = b"") -> MagicMock:

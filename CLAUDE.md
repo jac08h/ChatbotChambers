@@ -15,7 +15,7 @@ frontend/  React + TypeScript + Vite, managed with pnpm
 ```bash
 cd backend
 export OPENROUTER_API_KEY="sk-or-..."
-uv run uvicorn lmparlor.main:app --reload --port 8001
+uv run uvicorn app.main:app --reload --port 8001
 ```
 
 **Frontend** (from repo root):
@@ -36,7 +36,7 @@ pnpm dev   # starts on http://localhost:5173
 ## Backend Structure
 
 ```
-backend/lmparlor/
+backend/app/
     main.py        FastAPI app, WebSocket endpoint, GET /models, GET /providers, GET /presets
     engine.py      Async generator conversation loop
     openrouter.py  OpenRouter API client, strips <think> tags
