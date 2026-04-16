@@ -116,15 +116,16 @@ describe("SetupForm", () => {
 
     it("shows preset selector when presets are available", async () => {
         render(<SetupForm onStart={vi.fn()} error={null} />)
-        await waitFor(() => expect(screen.getByText("Debate")).toBeInTheDocument())
-        expect(screen.queryByRole("button", { name: "none" })).not.toBeInTheDocument()
-        expect(screen.getByRole("button", { name: "Debate" })).not.toHaveClass("preset-chip-active")
+        const presetSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
+        const options = Array.from((presetSelect as HTMLSelectElement).options).map((o) => o.text)
+        expect(options).toContain("Debate")
+        expect((presetSelect as HTMLSelectElement).value).toBe("")
     })
 
     it("loading a preset fills shared and individual prompts", async () => {
         render(<SetupForm onStart={vi.fn()} error={null} />)
-        await waitFor(() => screen.getByText("Debate"))
-        await userEvent.click(screen.getByRole("button", { name: "Debate" }))
+        const presetSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
+        await userEvent.selectOptions(presetSelect, "debate")
         expect(screen.getByDisplayValue("You are debating.")).toBeInTheDocument()
         expect(screen.getByDisplayValue("You argue for.")).toBeInTheDocument()
         expect(screen.getByDisplayValue("You argue against.")).toBeInTheDocument()
@@ -160,15 +161,15 @@ describe("SetupForm", () => {
         }))
 
         render(<SetupForm onStart={vi.fn()} error={null} />)
-        await waitFor(() => screen.getByText("Full preset"))
-        await userEvent.click(screen.getByRole("button", { name: "Full preset" }))
+        const presetSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
+        await userEvent.selectOptions(presetSelect, "full-preset")
 
         await waitFor(() => expect(screen.getByDisplayValue("Saved shared prompt")).toBeInTheDocument())
         expect(screen.getByDisplayValue("Prompt A")).toBeInTheDocument()
         expect(screen.getByDisplayValue("Prompt B")).toBeInTheDocument()
         expect(screen.getAllByRole("button", { name: "Codex CLI" })[0]).toHaveClass("preset-chip-active")
-        expect(screen.getAllByRole("combobox")[0]).toHaveValue("model-2")
-        expect(screen.getAllByRole("combobox")[1]).toHaveValue("model-1")
+        expect(screen.getAllByRole("combobox")[1]).toHaveValue("model-2")
+        expect(screen.getAllByRole("combobox")[2]).toHaveValue("model-1")
 
         const advancedButtons = screen.getAllByRole("button", { name: /Advanced/ })
         await userEvent.click(advancedButtons[0])
@@ -185,15 +186,15 @@ describe("SetupForm", () => {
         await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).not.toBeDisabled())
 
         await userEvent.type(screen.getByLabelText("Shared prompt"), "Shared preset prompt")
-        await userEvent.click(screen.getByRole("button", { name: "Save current config as preset" }))
+        await userEvent.click(screen.getByRole("button", { name: "Save as preset" }))
         expect(screen.getByRole("dialog", { name: "Save preset" })).toBeInTheDocument()
         await userEvent.type(screen.getByLabelText("Preset name"), "My saved preset")
         await userEvent.click(screen.getByRole("button", { name: "Save" }))
 
         await waitFor(() => expect(screen.queryByRole("dialog", { name: "Save preset" })).not.toBeInTheDocument())
-        const savedPresetButton = screen.getByRole("button", { name: "My saved preset" })
-        expect(savedPresetButton).toBeInTheDocument()
-        expect(savedPresetButton).not.toHaveClass("preset-chip-active")
+        const presetSelect = screen.getAllByRole("combobox")[0]
+        const options = Array.from((presetSelect as HTMLSelectElement).options).map((o) => o.text)
+        expect(options).toContain("My saved preset")
         expect(fetchMock).toHaveBeenCalledWith(
             apiUrl("/presets"),
             expect.objectContaining({
@@ -213,22 +214,25 @@ describe("SetupForm", () => {
         })
     })
 
-    it("renames and deletes presets through the preset menu", async () => {
+    it("renames and deletes presets through the preset actions", async () => {
         const fetchMock = createFetchMock()
         vi.stubGlobal("fetch", fetchMock)
 
         render(<SetupForm onStart={vi.fn()} error={null} />)
-        await waitFor(() => expect(screen.getByRole("button", { name: "Debate" })).toBeInTheDocument())
+        const presetSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
+        await userEvent.selectOptions(presetSelect, "debate")
 
-        await userEvent.click(screen.getByRole("button", { name: "Preset options for Debate" }))
-        await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
+        await userEvent.click(screen.getByRole("button", { name: "Rename" }))
         expect(screen.getByRole("dialog", { name: "Rename preset" })).toBeInTheDocument()
-        const input = screen.getByDisplayValue("Debate")
+        const input = screen.getByRole("dialog", { name: "Rename preset" }).querySelector("input")!
         await userEvent.clear(input)
         await userEvent.type(input, "Renamed preset")
         await userEvent.click(screen.getByRole("button", { name: "Save" }))
 
-        await waitFor(() => expect(screen.getByRole("button", { name: "Renamed preset" })).toBeInTheDocument())
+        await waitFor(() => {
+            const opts = Array.from((presetSelect as HTMLSelectElement).options).map((o) => o.text)
+            expect(opts).toContain("Renamed preset")
+        })
         expect(fetchMock).toHaveBeenCalledWith(
             apiUrl("/presets/debate"),
             expect.objectContaining({
@@ -237,12 +241,14 @@ describe("SetupForm", () => {
             })
         )
 
-        await userEvent.click(screen.getByRole("button", { name: "Preset options for Renamed preset" }))
-        await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }))
-        expect(screen.getByRole("dialog", { name: "Delete preset" })).toBeInTheDocument()
         await userEvent.click(screen.getByRole("button", { name: "Delete" }))
+        expect(screen.getByRole("dialog", { name: "Delete preset" })).toBeInTheDocument()
+        await userEvent.click(screen.getAllByRole("button", { name: "Delete" }).find((btn) => btn.closest(".confirmation-dialog"))!)
 
-        await waitFor(() => expect(screen.queryByRole("button", { name: "Renamed preset" })).not.toBeInTheDocument())
+        await waitFor(() => {
+            const opts = Array.from((presetSelect as HTMLSelectElement).options).map((o) => o.text)
+            expect(opts).not.toContain("Renamed preset")
+        })
         expect(fetchMock).toHaveBeenCalledWith(
             apiUrl("/presets/debate"),
             expect.objectContaining({

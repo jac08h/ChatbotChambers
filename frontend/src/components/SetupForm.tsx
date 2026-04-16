@@ -83,6 +83,7 @@ interface ChatbotConfigProps {
     provider: Provider;
     model: string;
     name: string;
+    defaultName: string;
     prompt: string;
     onProviderChange: (p: Provider) => void;
     onModelChange: (m: string) => void;
@@ -98,6 +99,7 @@ function ChatbotConfig({
     provider,
     model,
     name,
+    defaultName,
     prompt,
     onProviderChange,
     onModelChange,
@@ -167,86 +169,12 @@ function ChatbotConfig({
                         type="text"
                         value={name}
                         onChange={(event) => onNameChange(event.target.value)}
+                        placeholder={defaultName}
                         tabIndex={expanded ? 0 : -1}
                     />
                 </label>
             </div>
         </section>
-    );
-}
-
-interface PresetListItemProps {
-    preset: Preset;
-    isActive: boolean;
-    isBusy: boolean;
-    onSelect: () => void;
-    onRename: () => void;
-    onDelete: () => Promise<void>;
-}
-
-function PresetListItem({
-    preset,
-    isActive,
-    isBusy,
-    onSelect,
-    onRename,
-    onDelete,
-}: PresetListItemProps) {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-    return (
-        <div className="preset-item">
-            <div className={`preset-chip preset-chip-with-menu${isActive ? " preset-chip-active" : ""}`}>
-                <button
-                    type="button"
-                    className="preset-chip-label"
-                    onClick={onSelect}
-                    disabled={isBusy}
-                >
-                    {preset.name}
-                </button>
-                <button
-                    type="button"
-                    className="preset-chip-menu-btn"
-                    onClick={() => setIsMenuOpen((open) => !open)}
-                    aria-label={`Preset options for ${preset.name}`}
-                    title="Preset options"
-                    disabled={isBusy}
-                >
-                    ⋯
-                </button>
-            </div>
-            <div className="preset-item-actions">
-                {isMenuOpen && (
-                    <div className="preset-menu" role="menu">
-                        <button
-                            type="button"
-                            className="preset-menu-item"
-                            role="menuitem"
-                            onClick={() => {
-                                setIsMenuOpen(false);
-                                onRename();
-                            }}
-                            disabled={isBusy}
-                        >
-                            Rename
-                        </button>
-                        <button
-                            type="button"
-                            className="preset-menu-item preset-menu-item-danger"
-                            role="menuitem"
-                            onClick={() => {
-                                setIsMenuOpen(false);
-                                void onDelete();
-                            }}
-                            disabled={isBusy}
-                        >
-                            Delete
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
     );
 }
 
@@ -347,8 +275,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             const legacyNames = new Set(["LM A", "LM B"]);
             const isManualA = savedNameA !== "" && savedNameA !== derivedNameA && !legacyNames.has(savedNameA);
             const isManualB = savedNameB !== "" && savedNameB !== derivedNameB && !legacyNames.has(savedNameB);
-            setNameA(isManualA ? savedNameA : derivedNameA);
-            setNameB(isManualB ? savedNameB : derivedNameB);
+            setNameA(isManualA ? savedNameA : "");
+            setNameB(isManualB ? savedNameB : "");
             setNameAManual(isManualA);
             setNameBManual(isManualB);
             setSharedPrompt(settings?.shared_system_prompt ?? "");
@@ -385,20 +313,14 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     }, [isInitialized, providerB]);
 
     useEffect(() => {
-        if (!nameAManual && modelsA.length > 0 && modelA) {
-            const model = modelsA.find((m) => m.id === modelA);
-            if (model) {
-                setNameA(shortModelName(model));
-            }
+        if (!nameAManual) {
+            setNameA("");
         }
     }, [modelA, modelsA, nameAManual]);
 
     useEffect(() => {
-        if (!nameBManual && modelsB.length > 0 && modelB) {
-            const model = modelsB.find((m) => m.id === modelB);
-            if (model) {
-                setNameB(shortModelName(model));
-            }
+        if (!nameBManual) {
+            setNameB("");
         }
     }, [modelB, modelsB, nameBManual]);
 
@@ -417,9 +339,18 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
 
+    const defaultNameA = (() => {
+        const model = modelsA.find((m) => m.id === modelA);
+        return model ? shortModelName(model) : modelA;
+    })();
+    const defaultNameB = (() => {
+        const model = modelsB.find((m) => m.id === modelB);
+        return model ? shortModelName(model) : modelB;
+    })();
+
     const buildConfig = (): SessionConfig => ({
-        chatbot_a: { name: nameA, model: modelA, system_prompt: promptA, provider: providerA },
-        chatbot_b: { name: nameB, model: modelB, system_prompt: promptB, provider: providerB },
+        chatbot_a: { name: nameA || defaultNameA, model: modelA, system_prompt: promptA, provider: providerA },
+        chatbot_b: { name: nameB || defaultNameB, model: modelB, system_prompt: promptB, provider: providerB },
         shared_system_prompt: sharedPrompt,
     });
 
@@ -439,12 +370,20 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             setProviderB(preset.config.chatbot_b.provider);
             setModelsA(presetModelsA);
             setModelsB(presetModelsB);
-            setModelA(preferredModelId(presetModelsA, preset.config.chatbot_a.provider, preset.config.chatbot_a.model));
-            setModelB(preferredModelId(presetModelsB, preset.config.chatbot_b.provider, preset.config.chatbot_b.model));
-            setNameA(preset.config.chatbot_a.name);
-            setNameB(preset.config.chatbot_b.name);
-            setNameAManual(true);
-            setNameBManual(true);
+            const presetModelA = preferredModelId(presetModelsA, preset.config.chatbot_a.provider, preset.config.chatbot_a.model);
+            const presetModelB = preferredModelId(presetModelsB, preset.config.chatbot_b.provider, preset.config.chatbot_b.model);
+            setModelA(presetModelA);
+            setModelB(presetModelB);
+            const presetDerivedNameA = shortModelName(presetModelsA.find((m) => m.id === presetModelA) ?? { id: presetModelA, name: presetModelA });
+            const presetDerivedNameB = shortModelName(presetModelsB.find((m) => m.id === presetModelB) ?? { id: presetModelB, name: presetModelB });
+            const presetNameA = preset.config.chatbot_a.name;
+            const presetNameB = preset.config.chatbot_b.name;
+            const isPresetManualA = presetNameA !== "" && presetNameA !== presetDerivedNameA;
+            const isPresetManualB = presetNameB !== "" && presetNameB !== presetDerivedNameB;
+            setNameA(isPresetManualA ? presetNameA : "");
+            setNameB(isPresetManualB ? presetNameB : "");
+            setNameAManual(isPresetManualA);
+            setNameBManual(isPresetManualB);
             setSharedPrompt(preset.config.shared_system_prompt);
             setPromptA(preset.config.chatbot_a.system_prompt);
             setPromptB(preset.config.chatbot_b.system_prompt);
@@ -542,6 +481,18 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         }
     };
 
+    const handleClearAll = () => {
+        setSelectedPresetId(null);
+        setSharedPrompt("");
+        setPromptA("");
+        setPromptB("");
+        setNameA("");
+        setNameB("");
+        setNameAManual(false);
+        setNameBManual(false);
+        setConversationTitle("");
+    };
+
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         const config = buildConfig();
@@ -562,28 +513,74 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                     <div className="field">
                         <div className="preset-header">
                             <span className="field-label">Preset</span>
-                            <button
-                                type="button"
-                                className="preset-save-link"
-                                onClick={openSavePresetDialog}
-                                disabled={!canStart || isSavingPreset}
-                            >
-                                Save current config as preset
-                            </button>
+                            <div className="preset-header-actions">
+                                {selectedPresetId && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            className="preset-action-link"
+                                            onClick={() => {
+                                                const preset = presets.find((p) => p.id === selectedPresetId);
+                                                if (preset) {
+                                                    setPresetPendingRename(preset);
+                                                }
+                                            }}
+                                            disabled={activePresetMutationId !== null}
+                                        >
+                                            Rename
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="preset-action-link preset-action-link-danger"
+                                            onClick={() => {
+                                                const preset = presets.find((p) => p.id === selectedPresetId);
+                                                if (preset) {
+                                                    setPresetPendingDelete(preset);
+                                                }
+                                            }}
+                                            disabled={activePresetMutationId !== null}
+                                        >
+                                            Delete
+                                        </button>
+                                    </>
+                                )}
+                                <button
+                                    type="button"
+                                    className="preset-save-link"
+                                    onClick={openSavePresetDialog}
+                                    disabled={!canStart || isSavingPreset}
+                                >
+                                    Save as preset
+                                </button>
+                                <button
+                                    type="button"
+                                    className="preset-action-link preset-action-link-clear"
+                                    onClick={handleClearAll}
+                                    title="Clear all prompts and names"
+                                >
+                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                                        <path d="M2 4h12M5.33 4V2.67a1.33 1.33 0 011.34-1.34h2.66a1.33 1.33 0 011.34 1.34V4M12.67 4v9.33a1.33 1.33 0 01-1.34 1.34H4.67a1.33 1.33 0 01-1.34-1.34V4" />
+                                    </svg>
+                                    Clear all
+                                </button>
+                            </div>
                         </div>
-                        <div className="preset-chips" role="group">
+                        <select
+                            value={selectedPresetId ?? ""}
+                            onChange={(event) => {
+                                const id = event.target.value;
+                                if (id) {
+                                    loadPreset(id).catch(() => setPresetActionError("Failed to load preset."));
+                                } else {
+                                    setSelectedPresetId(null);
+                                }
+                            }}
+                        >
+                            <option value="">None</option>
                             {presets.map((preset) => (
-                                <PresetListItem
-                                    key={preset.id}
-                                    preset={preset}
-                                    isActive={selectedPresetId === preset.id}
-                                    isBusy={activePresetMutationId === preset.id}
-                                    onSelect={() => loadPreset(preset.id).catch(() => setPresetActionError("Failed to load preset."))}
-                                    onRename={() => setPresetPendingRename(preset)}
-                                    onDelete={async () => setPresetPendingDelete(preset)}
-                                />
+                                <option key={preset.id} value={preset.id}>{preset.name}</option>
                             ))}
-                        </div>
+                        </select>
                         {presetActionError && <div className="preset-save-error">{presetActionError}</div>}
                         {isSavePresetOpen && (
                             <div
@@ -656,10 +653,11 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             provider={providerA}
                             model={modelA}
                             name={nameA}
+                            defaultName={defaultNameA}
                             prompt={promptA}
                             onProviderChange={setProviderA}
                             onModelChange={setModelA}
-                            onNameChange={(n) => { setNameA(n); setNameAManual(true); }}
+                            onNameChange={(n) => { setNameA(n); setNameAManual(n !== ""); }}
                             onPromptChange={setPromptA}
                         />
                         <ChatbotConfig
@@ -670,10 +668,11 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             provider={providerB}
                             model={modelB}
                             name={nameB}
+                            defaultName={defaultNameB}
                             prompt={promptB}
                             onProviderChange={setProviderB}
                             onModelChange={setModelB}
-                            onNameChange={(n) => { setNameB(n); setNameBManual(true); }}
+                            onNameChange={(n) => { setNameB(n); setNameBManual(n !== ""); }}
                             onPromptChange={setPromptB}
                         />
                     </div>

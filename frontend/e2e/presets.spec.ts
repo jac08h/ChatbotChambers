@@ -6,17 +6,16 @@ test.describe("Preset CRUD", () => {
         await page.waitForSelector(".setup-form");
     });
 
-    test("Presets list loads on page open", async ({ page }) => {
-        const presetGroup = page.locator(".preset-chips");
-        await expect(presetGroup).toBeVisible();
-        const presetItems = presetGroup.locator(".preset-item");
-        const count = await presetItems.count();
-        expect(count).toBeGreaterThan(0);
+    test("Presets dropdown loads on page open", async ({ page }) => {
+        const presetSelect = page.locator(".setup-form .field").first().locator("select");
+        await expect(presetSelect).toBeVisible();
+        const optionCount = await presetSelect.locator("option").count();
+        expect(optionCount).toBeGreaterThan(1);
     });
 
     test("Loading a preset populates the form", async ({ page }) => {
-        const firstPreset = page.locator(".preset-chips .preset-item .preset-chip-label").first();
-        await firstPreset.click();
+        const presetSelect = page.locator(".setup-form .field").first().locator("select");
+        await presetSelect.selectOption({ index: 1 });
 
         const sharedPrompt = page.locator("textarea").first();
         await expect(sharedPrompt).not.toHaveValue("");
@@ -43,8 +42,8 @@ test.describe("Preset CRUD", () => {
 
         await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
-        const newPresetChip = page.locator(".preset-chip-label", { hasText: uniqueName });
-        await expect(newPresetChip).toBeVisible();
+        const presetSelect = page.locator(".setup-form .field").first().locator("select");
+        await expect(presetSelect.locator("option", { hasText: uniqueName })).toBeAttached();
     });
 
     test("Preset name required to save", async ({ page }) => {
@@ -68,7 +67,7 @@ test.describe("Preset CRUD", () => {
         await expect(error).toHaveText("Enter a preset name.");
     });
 
-    test("Renaming a preset updates the chip label", async ({ page }) => {
+    test("Renaming a preset updates the dropdown option", async ({ page }) => {
         const sectionA = page.locator(".chatbot-config.side-a");
         const sectionB = page.locator(".chatbot-config.side-b");
         await sectionA.locator(".provider-chips button", { hasText: "Mock" }).click();
@@ -85,9 +84,11 @@ test.describe("Preset CRUD", () => {
         await dialog.locator("button", { hasText: "Save" }).click();
         await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
-        const presetItem = page.locator(".preset-item", { has: page.locator(".preset-chip-label", { hasText: originalName }) });
-        await presetItem.locator(".preset-chip-menu-btn").click();
-        await presetItem.locator('[role="menuitem"]', { hasText: "Rename" }).click();
+        const presetSelect = page.locator(".setup-form .field").first().locator("select");
+        await presetSelect.selectOption({ label: originalName });
+
+        const renameBtn = page.locator(".preset-action-link", { hasText: "Rename" });
+        await renameBtn.click();
 
         const renameDialog = page.locator('[role="dialog"]');
         await expect(renameDialog).toBeVisible();
@@ -98,13 +99,15 @@ test.describe("Preset CRUD", () => {
         await renameDialog.locator("button", { hasText: "Save" }).click();
 
         await expect(renameDialog).not.toBeVisible({ timeout: 5000 });
-        await expect(page.locator(".preset-chip-label", { hasText: renamedName })).toBeVisible();
+        await expect(presetSelect.locator("option", { hasText: renamedName })).toBeAttached();
     });
 
     test("Rename dialog requires non-empty name", async ({ page }) => {
-        const firstPresetItem = page.locator(".preset-chips .preset-item").first();
-        await firstPresetItem.locator(".preset-chip-menu-btn").click();
-        await firstPresetItem.locator('[role="menuitem"]', { hasText: "Rename" }).click();
+        const presetSelect = page.locator(".setup-form .field").first().locator("select");
+        await presetSelect.selectOption({ index: 1 });
+
+        const renameBtn = page.locator(".preset-action-link", { hasText: "Rename" });
+        await renameBtn.click();
 
         const renameDialog = page.locator('[role="dialog"]');
         await expect(renameDialog).toBeVisible();
@@ -116,7 +119,7 @@ test.describe("Preset CRUD", () => {
         await expect(saveButton).toBeDisabled();
     });
 
-    test("Deleting a preset removes it from list", async ({ page }) => {
+    test("Deleting a preset removes it from dropdown", async ({ page }) => {
         const sectionA = page.locator(".chatbot-config.side-a");
         const sectionB = page.locator(".chatbot-config.side-b");
         await sectionA.locator(".provider-chips button", { hasText: "Mock" }).click();
@@ -131,31 +134,33 @@ test.describe("Preset CRUD", () => {
         await dialog.locator("button", { hasText: "Save" }).click();
         await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
-        const presetItem = page.locator(".preset-item", { has: page.locator(".preset-chip-label", { hasText: deleteName }) });
-        await expect(presetItem).toBeVisible();
+        const presetSelect = page.locator(".setup-form .field").first().locator("select");
+        await presetSelect.selectOption({ label: deleteName });
 
-        await presetItem.locator(".preset-chip-menu-btn").click();
-        await presetItem.locator('[role="menuitem"]', { hasText: "Delete" }).click();
+        const deleteBtn = page.locator(".preset-action-link-danger", { hasText: "Delete" });
+        await deleteBtn.click();
 
         const confirmDialog = page.locator(".confirmation-dialog");
         await expect(confirmDialog).toBeVisible();
         await confirmDialog.locator("button", { hasText: "Delete" }).click();
 
-        await expect(page.locator(".preset-chip-label", { hasText: deleteName })).not.toBeVisible({ timeout: 5000 });
+        await expect(presetSelect.locator("option", { hasText: deleteName })).not.toBeAttached({ timeout: 5000 });
     });
 
     test("Cancelling delete does not remove preset", async ({ page }) => {
-        const firstPresetItem = page.locator(".preset-chips .preset-item").first();
-        const presetName = await firstPresetItem.locator(".preset-chip-label").textContent();
+        const presetSelect = page.locator(".setup-form .field").first().locator("select");
+        const firstOption = presetSelect.locator("option").nth(1);
+        const presetName = await firstOption.textContent();
+        await presetSelect.selectOption({ index: 1 });
 
-        await firstPresetItem.locator(".preset-chip-menu-btn").click();
-        await firstPresetItem.locator('[role="menuitem"]', { hasText: "Delete" }).click();
+        const deleteBtn = page.locator(".preset-action-link-danger", { hasText: "Delete" });
+        await deleteBtn.click();
 
         const confirmDialog = page.locator(".confirmation-dialog");
         await expect(confirmDialog).toBeVisible();
         await confirmDialog.locator("button", { hasText: "Cancel" }).click();
 
         await expect(confirmDialog).not.toBeVisible({ timeout: 5000 });
-        await expect(page.locator(".preset-chip-label", { hasText: presetName! })).toBeVisible();
+        await expect(presetSelect.locator("option", { hasText: presetName! })).toBeAttached();
     });
 });
