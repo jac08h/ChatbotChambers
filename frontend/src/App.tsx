@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ConfirmationDialog } from "./components/ConfirmationDialog";
 import { RenameDialog } from "./components/RenameDialog";
 import { ConversationView } from "./components/ConversationView";
@@ -13,18 +13,12 @@ import {
     useWebSocket,
 } from "./hooks/useWebSocket";
 
-const AVATAR_COUNT = 8;
+const AVATAR_A = "/avatars/avatar_01.svg";
+const AVATAR_B = "/avatars/avatar_01r.svg";
 const THEME_STORAGE_KEY = "chatbotchambers-theme";
+const COLLAPSE_BREAKPOINT = 768;
 
 type Theme = "dark" | "light";
-
-function pickAvatars(): [string, string] {
-    const a = Math.floor(Math.random() * AVATAR_COUNT) + 1;
-    let b = Math.floor(Math.random() * (AVATAR_COUNT - 1)) + 1;
-    if (b >= a) b += 1;
-    const fmt = (n: number) => `/avatars/avatar_${String(n).padStart(2, "0")}.svg`;
-    return [fmt(a), fmt(b)];
-}
 
 function isTheme(value: string | null): value is Theme {
     return value === "dark" || value === "light";
@@ -46,17 +40,18 @@ export default function App() {
     const ws = useWebSocket();
     const [routeSessionId, setRouteSessionId] = useState<string | null>(() => getSessionIdFromPath(window.location.pathname));
     const [showSetup, setShowSetup] = useState(() => routeSessionId === null);
-    const [avatars, setAvatars] = useState<[string, string]>(() => pickAvatars());
     const [theme, setTheme] = useState<Theme>(() => initialTheme());
     const [pendingDeleteSession, setPendingDeleteSession] = useState<Pick<ArchivedSession, "id" | "title"> | null>(null);
     const [isDeletingSession, setIsDeletingSession] = useState(false);
     const [pendingRenameSession, setPendingRenameSession] = useState<Pick<ArchivedSession, "id" | "title"> | null>(null);
     const [isRenamingSession, setIsRenamingSession] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.innerWidth < COLLAPSE_BREAKPOINT);
+    const [pendingDeleteAll, setPendingDeleteAll] = useState(false);
+    const [isDeletingAll, setIsDeletingAll] = useState(false);
 
     const handleStart = (config: SessionConfig, initialTitle: string) => {
         setRouteSessionId(null);
         setShowSetup(false);
-        setAvatars(pickAvatars());
         ws.start(config, initialTitle);
     };
 
@@ -181,8 +176,37 @@ export default function App() {
         window.localStorage.setItem(THEME_STORAGE_KEY, theme);
     }, [theme]);
 
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < COLLAPSE_BREAKPOINT) {
+                setIsSidebarCollapsed(true);
+            }
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    const handleToggleCollapse = useCallback(() => {
+        setIsSidebarCollapsed((prev) => !prev);
+    }, []);
+
+    const handleDeleteAllSessions = () => {
+        setPendingDeleteAll(true);
+    };
+
+    const handleConfirmDeleteAll = async () => {
+        setIsDeletingAll(true);
+        const deleted = await ws.deleteAllSessions();
+        setIsDeletingAll(false);
+        if (deleted) {
+            setShowSetup(true);
+            setRouteSessionId(null);
+        }
+        setPendingDeleteAll(false);
+    };
+
     return (
-        <div className="app-shell">
+        <div className={`app-shell${isSidebarCollapsed ? " sidebar-collapsed-layout" : ""}`}>
             <Sidebar
                 currentSession={currentSession}
                 history={ws.history}
@@ -192,12 +216,15 @@ export default function App() {
                 onSelectCurrentConversation={handleSelectCurrentConversation}
                 onSelectSession={handleSelectSession}
                 onDeleteSession={handleDeleteSession}
+                onDeleteAllSessions={handleDeleteAllSessions}
                 onRenameSession={handleRequestRenameSession}
                 selectedSessionId={routeSessionId}
                 hasCurrentConversation={hasCurrentConversation}
                 isCurrentConversationSelected={showCurrentConversation}
                 theme={theme}
                 onToggleTheme={() => setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark")}
+                isCollapsed={isSidebarCollapsed}
+                onToggleCollapse={handleToggleCollapse}
             />
             <div className="main-panel">
                 {showConversation ? (
@@ -210,8 +237,8 @@ export default function App() {
                         emptyMessageError={viewingSession ? null : ws.emptyMessageError}
                         config={viewingSession ? viewingSession.config : ws.config}
                         label={viewingSession ? getSessionDisplayTitle(viewingSession) : currentDisplayTitle}
-                        avatarA={avatars[0]}
-                        avatarB={avatars[1]}
+                        avatarA={AVATAR_A}
+                        avatarB={AVATAR_B}
                         onPause={viewingSession ? undefined : ws.pause}
                         onResume={viewingSession ? undefined : ws.resume}
                         onRetry={viewingSession ? undefined : ws.retry}
@@ -257,6 +284,19 @@ export default function App() {
                     onCancel={() => {
                         if (!isRenamingSession) {
                             setPendingRenameSession(null);
+                        }
+                    }}
+                />
+                <ConfirmationDialog
+                    isOpen={pendingDeleteAll}
+                    title="Delete all conversations"
+                    message="Delete all conversations? This cannot be undone."
+                    confirmLabel="Delete all"
+                    isConfirming={isDeletingAll}
+                    onConfirm={() => { void handleConfirmDeleteAll(); }}
+                    onCancel={() => {
+                        if (!isDeletingAll) {
+                            setPendingDeleteAll(false);
                         }
                     }}
                 />

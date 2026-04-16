@@ -5,14 +5,21 @@ from typing import AsyncGenerator, Dict, List, Literal, Tuple, Union
 from app.providers.claude_code import call_claude_code
 from app.providers.codex_cli import call_codex
 from app.providers.mock import call_mock
-from app.models import ChatbotConfig, Message, SessionConfig
+from app.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, ChatbotConfig, Message, SessionConfig
 from app.providers.openrouter import call_openrouter
+from app.providers.mock import MOCK_MODELS
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 PREAMBLE = (PROMPTS_DIR / "preamble.md").read_text().strip()
 PREAMBLE_A = (PROMPTS_DIR / "preamble_a.md").read_text().strip()
 PREAMBLE_B = (PROMPTS_DIR / "preamble_b.md").read_text().strip()
+
+ALL_MODELS = dict(MODELS + CLAUDE_CODE_MODELS + CODEX_MODELS + MOCK_MODELS)
+
+
+def _resolve_model_name(model_id: str) -> str:
+    return ALL_MODELS.get(model_id, "")
 
 
 class Generating:
@@ -97,6 +104,7 @@ async def run_conversation(
                     chatbot=chatbot_id,
                     name=chatbot_config.name,
                     model=chatbot_config.model,
+                    model_name=_resolve_model_name(chatbot_config.model),
                     content=content,
                     turn=turn,
                     thinking=thinking,
@@ -142,6 +150,7 @@ async def _call_llm(
             system_prompt=system_prompt,
             messages=messages,
             api_key=api_key,
+            enable_thinking=chatbot_config.enable_thinking,
         )
 
 

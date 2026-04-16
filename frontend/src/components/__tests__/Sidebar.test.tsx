@@ -32,14 +32,17 @@ describe("Sidebar", () => {
                 onSelectSession={vi.fn()}
                 onRenameSession={vi.fn()}
                 onDeleteSession={vi.fn()}
+                onDeleteAllSessions={vi.fn()}
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
                 theme="dark"
                 onToggleTheme={vi.fn()}
+                isCollapsed={false}
+                onToggleCollapse={vi.fn()}
             />
         )
-        expect(screen.getByRole("button", { name: "12345678" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "mild-jade-123" })).toBeInTheDocument()
     })
 
     it("renames and deletes through the conversation menu", async () => {
@@ -56,20 +59,128 @@ describe("Sidebar", () => {
                 onSelectSession={vi.fn()}
                 onRenameSession={onRenameSession}
                 onDeleteSession={onDeleteSession}
+                onDeleteAllSessions={vi.fn()}
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
                 theme="dark"
                 onToggleTheme={vi.fn()}
+                isCollapsed={false}
+                onToggleCollapse={vi.fn()}
             />
         )
 
-        await userEvent.click(screen.getByRole("button", { name: "Conversation options for 12345678" }))
+        await userEvent.click(screen.getByRole("button", { name: "Conversation options for mild-jade-123" }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
         expect(onRenameSession).toHaveBeenCalledWith(expect.objectContaining({ id: history[0].id }))
 
-        await userEvent.click(screen.getByRole("button", { name: "Conversation options for 12345678" }))
+        await userEvent.click(screen.getByRole("button", { name: "Conversation options for mild-jade-123" }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }))
         expect(onDeleteSession).toHaveBeenCalledWith(expect.objectContaining({ id: history[0].id }))
+    })
+
+    it("toggles sidebar collapse when button is clicked", async () => {
+        const onToggleCollapse = vi.fn()
+        render(
+            <Sidebar
+                currentSession={null}
+                history={history}
+                currentLabel={null}
+                onHome={vi.fn()}
+                onNewChat={vi.fn()}
+                onSelectCurrentConversation={vi.fn()}
+                onSelectSession={vi.fn()}
+                onRenameSession={vi.fn()}
+                onDeleteSession={vi.fn()}
+                onDeleteAllSessions={vi.fn()}
+                selectedSessionId={null}
+                hasCurrentConversation={false}
+                isCurrentConversationSelected={false}
+                theme="dark"
+                onToggleTheme={vi.fn()}
+                isCollapsed={false}
+                onToggleCollapse={onToggleCollapse}
+            />
+        )
+        await userEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }))
+        expect(onToggleCollapse).toHaveBeenCalledOnce()
+    })
+
+    it("hides history items when collapsed", () => {
+        render(
+            <Sidebar
+                currentSession={null}
+                history={history}
+                currentLabel={null}
+                onHome={vi.fn()}
+                onNewChat={vi.fn()}
+                onSelectCurrentConversation={vi.fn()}
+                onSelectSession={vi.fn()}
+                onRenameSession={vi.fn()}
+                onDeleteSession={vi.fn()}
+                onDeleteAllSessions={vi.fn()}
+                selectedSessionId={null}
+                hasCurrentConversation={false}
+                isCurrentConversationSelected={false}
+                theme="dark"
+                onToggleTheme={vi.fn()}
+                isCollapsed={true}
+                onToggleCollapse={vi.fn()}
+            />
+        )
+        expect(screen.queryByRole("button", { name: "mild-jade-123" })).not.toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument()
+    })
+
+    it("shows delete all button when history is not empty", () => {
+        render(
+            <Sidebar
+                currentSession={null}
+                history={history}
+                currentLabel={null}
+                onHome={vi.fn()}
+                onNewChat={vi.fn()}
+                onSelectCurrentConversation={vi.fn()}
+                onSelectSession={vi.fn()}
+                onRenameSession={vi.fn()}
+                onDeleteSession={vi.fn()}
+                onDeleteAllSessions={vi.fn()}
+                selectedSessionId={null}
+                hasCurrentConversation={false}
+                isCurrentConversationSelected={false}
+                theme="dark"
+                onToggleTheme={vi.fn()}
+                isCollapsed={false}
+                onToggleCollapse={vi.fn()}
+            />
+        )
+        expect(screen.getByRole("button", { name: "Delete all conversations" })).toBeInTheDocument()
+    })
+
+    it("calls onDeleteAllSessions when delete all is clicked", async () => {
+        const onDeleteAllSessions = vi.fn()
+        render(
+            <Sidebar
+                currentSession={null}
+                history={history}
+                currentLabel={null}
+                onHome={vi.fn()}
+                onNewChat={vi.fn()}
+                onSelectCurrentConversation={vi.fn()}
+                onSelectSession={vi.fn()}
+                onRenameSession={vi.fn()}
+                onDeleteSession={vi.fn()}
+                onDeleteAllSessions={onDeleteAllSessions}
+                selectedSessionId={null}
+                hasCurrentConversation={false}
+                isCurrentConversationSelected={false}
+                theme="dark"
+                onToggleTheme={vi.fn()}
+                isCollapsed={false}
+                onToggleCollapse={vi.fn()}
+            />
+        )
+        await userEvent.click(screen.getByRole("button", { name: "Delete all conversations" }))
+        expect(onDeleteAllSessions).toHaveBeenCalledOnce()
     })
 })

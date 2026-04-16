@@ -5,6 +5,7 @@ export interface ChatMessage {
     chatbot: "a" | "b";
     name: string;
     model: string;
+    model_name: string;
     content: string;
     turn: number;
     thinking: string;
@@ -22,6 +23,7 @@ export interface ChatbotConfig {
     model: string;
     system_prompt: string;
     provider: Provider;
+    enable_thinking?: boolean;
 }
 
 export interface SessionConfig {
@@ -65,6 +67,7 @@ export interface WebSocketState {
     renameCurrentSession: (title: string) => void;
     renameSession: (id: string, title: string) => void;
     deleteSession: (id: string) => Promise<boolean>;
+    deleteAllSessions: () => Promise<boolean>;
 }
 
 interface SessionResponse {
@@ -77,12 +80,38 @@ interface SessionResponse {
     error: string | null;
 }
 
-export function getSessionSlug(id: string): string {
-    return id.split("-")[0] || id;
+const SLUG_ADJECTIVES = [
+    "amber", "blue", "bold", "calm", "cool", "dark", "deep", "fair", "fast",
+    "glad", "gold", "gray", "keen", "kind", "lush", "mild", "pale", "pure",
+    "rare", "rich", "sage", "slim", "soft", "tall", "tidy", "warm", "wild",
+    "wise", "bold", "dusk", "dawn", "free",
+];
+
+const SLUG_NOUNS = [
+    "arch", "bay", "bell", "bird", "cape", "cave", "dale", "dune", "elm",
+    "fern", "fox", "glen", "hawk", "haze", "iris", "jade", "lake", "leaf",
+    "lynx", "mesa", "moth", "oak", "pear", "pine", "pond", "reef", "rose",
+    "sage", "seal", "tide", "vale", "wren",
+];
+
+function hashCode(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash);
+}
+
+export function generateSlug(id: string): string {
+    const h = hashCode(id);
+    const adj = SLUG_ADJECTIVES[h % SLUG_ADJECTIVES.length];
+    const noun = SLUG_NOUNS[(h >>> 8) % SLUG_NOUNS.length];
+    const suffix = id.replace(/-/g, "").slice(0, 3);
+    return `${adj}-${noun}-${suffix}`;
 }
 
 export function getSessionDisplayTitle(session: Pick<ArchivedSession, "id" | "title">): string {
-    return session.title ?? getSessionSlug(session.id);
+    return session.title ?? generateSlug(session.id);
 }
 
 export function getSessionPath(id: string): string {
@@ -335,6 +364,24 @@ export function useWebSocket(): WebSocketState {
         }
     }, [clearConversationState]);
 
+    const deleteAllSessions = useCallback(async () => {
+        try {
+            const response = await fetch(apiUrl("/sessions"), {
+                method: "DELETE",
+            });
+            if (!response.ok) {
+                console.error("Delete all failed:", response.status, response.statusText);
+                return false;
+            }
+            setHistory([]);
+            clearConversationState();
+            return true;
+        } catch (deleteError) {
+            console.error("Delete all error:", deleteError);
+            return false;
+        }
+    }, [clearConversationState]);
+
     return {
         messages,
         status,
@@ -354,5 +401,6 @@ export function useWebSocket(): WebSocketState {
         renameCurrentSession,
         renameSession,
         deleteSession,
+        deleteAllSessions,
     };
 }

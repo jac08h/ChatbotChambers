@@ -323,6 +323,45 @@ button {
     font-style: italic;
 }
 
+.sidebar-delete-all {
+    width: 100%;
+    margin-top: auto;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--danger-border);
+    background: transparent;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-align: center;
+    transition: background 150ms ease, border-color 150ms ease;
+}
+
+.sidebar-delete-all:hover {
+    background: var(--danger-bg);
+}
+
+.sidebar-brand-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.sidebar-collapsed {
+    padding: 0.75rem 0.35rem;
+    align-items: center;
+}
+
+.sidebar-collapsed .sidebar-brand {
+    justify-content: center;
+    padding: 0.35rem 0 0.65rem;
+}
+
+.sidebar-collapsed-layout {
+    --sidebar-width: 48px;
+}
+
 .setup-page {
     min-height: 100svh;
     display: flex;
@@ -333,7 +372,7 @@ button {
 
 .setup-landing {
     width: 100%;
-    max-width: 1000px;
+    max-width: 1200px;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
@@ -894,6 +933,27 @@ input::placeholder {
 
 .advanced-fields-hidden {
     display: none;
+}
+
+.thinking-toggle-field {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.thinking-toggle-field input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    accent-color: var(--accent);
+}
+
+.thinking-toggle-field input[type="checkbox"]:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.thinking-toggle-field input[type="checkbox"]:disabled + span {
+    opacity: 0.5;
 }
 
 .setup-bottom {

@@ -299,6 +299,18 @@ def delete_session(session_id: str) -> None:
         raise HTTPException(status_code=500, detail="Failed to delete session") from exc
 
 
+@app.delete("/sessions", status_code=204)
+def delete_all_sessions() -> None:
+    if not SESSIONS_DIR.exists():
+        return
+    try:
+        for path in SESSIONS_DIR.glob("*.json"):
+            path.unlink()
+    except OSError as exc:
+        logger.exception("Failed to delete all sessions")
+        raise HTTPException(status_code=500, detail="Failed to delete all sessions") from exc
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     await ws.accept()

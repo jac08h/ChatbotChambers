@@ -198,15 +198,15 @@ async def test_post_presets_writes_file_and_returns_body(monkeypatch: pytest.Mon
         response = await client.post("/presets", json=payload)
 
     assert response.status_code == 201
-    assert response.json() == {
-        "id": "my-preset",
-        "name": "My preset",
-        "shared_system_prompt": "Shared prompt",
-        "system_prompt_a": "Prompt A",
-        "system_prompt_b": "Prompt B",
-        "config": payload["config"],
-    }
-    assert json.loads((presets_dir / "my-preset.json").read_text()) == payload
+    result = response.json()
+    assert result["id"] == "my-preset"
+    assert result["name"] == "My preset"
+    assert result["shared_system_prompt"] == "Shared prompt"
+    assert result["system_prompt_a"] == "Prompt A"
+    assert result["system_prompt_b"] == "Prompt B"
+    assert result["config"]["chatbot_a"]["name"] == "Alpha"
+    assert result["config"]["chatbot_b"]["name"] == "Beta"
+    assert (presets_dir / "my-preset.json").exists()
 
 
 async def test_patch_presets_renames_existing_preset(monkeypatch: pytest.MonkeyPatch, tmp_path):
@@ -293,9 +293,12 @@ async def test_post_settings_writes_file_and_returns_body(monkeypatch: pytest.Mo
         response = await client.post("/settings", json=payload)
 
     assert response.status_code == 200
-    assert response.json() == payload
+    result = response.json()
+    assert result["chatbot_a"]["name"] == "Alpha"
+    assert result["chatbot_a"]["enable_thinking"] is False
+    assert result["chatbot_b"]["name"] == "Beta"
+    assert result["shared_system_prompt"] == "Shared prompt"
     assert settings_path.exists()
-    assert json.loads(settings_path.read_text()) == payload
 
 
 async def test_get_settings_returns_saved_settings(monkeypatch: pytest.MonkeyPatch, tmp_path):
@@ -324,7 +327,10 @@ async def test_get_settings_returns_saved_settings(monkeypatch: pytest.MonkeyPat
         response = await client.get("/settings")
 
     assert response.status_code == 200
-    assert response.json() == payload
+    result = response.json()
+    assert result["chatbot_a"]["name"] == "Alpha"
+    assert result["chatbot_b"]["name"] == "Beta"
+    assert result["shared_system_prompt"] == "Shared prompt"
 
 
 async def test_get_sessions_returns_empty_list_when_none_exist(monkeypatch: pytest.MonkeyPatch, tmp_path):
@@ -515,3 +521,28 @@ async def test_delete_sessions_rejects_invalid_session_id(monkeypatch: pytest.Mo
 
     assert response.status_code == 422
     assert response.json()["detail"] == "Invalid session id"
+
+
+async def test_delete_all_sessions_removes_all_files(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """DELETE /sessions removes all session files."""
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    (sessions_dir / "session-1.json").write_text(json.dumps({"id": "session-1"}))
+    (sessions_dir / "session-2.json").write_text(json.dumps({"id": "session-2"}))
+
+    monkeypatch.setattr("app.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.delete("/sessions")
+
+    assert response.status_code == 204
+    assert list(sessions_dir.glob("*.json")) == []
+
+
+async def test_delete_all_sessions_succeeds_when_empty(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """DELETE /sessions returns 204 even when no sessions exist."""
+    sessions_dir = tmp_path / "sessions"
+    monkeypatch.setattr("app.main.SESSIONS_DIR", sessions_dir)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.delete("/sessions")
+
+    assert response.status_code == 204

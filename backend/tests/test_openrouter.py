@@ -100,3 +100,27 @@ async def test_uses_correct_api_key(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         from app.providers.openrouter import call_openrouter
         await call_openrouter("model", "sys", [], "my-secret-key")
     assert captured["api_key"] == "my-secret-key"
+
+
+async def test_enable_thinking_passes_reasoning_param(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """When enable_thinking=True, reasoning param is passed to the API call."""
+    monkeypatch.setattr("app.providers.openrouter.LOGS_DIR", tmp_path)
+    mock_client = make_mock_client("Hi")
+    with patch("app.providers.openrouter.AsyncOpenAI", return_value=mock_client):
+        from app.providers.openrouter import call_openrouter
+        await call_openrouter("model", "sys", [], "key", enable_thinking=True)
+
+    call_kwargs = mock_client.chat.completions.create.call_args
+    assert call_kwargs.kwargs.get("extra_body") == {"reasoning": {"effort": "high"}}
+
+
+async def test_disable_thinking_omits_reasoning_param(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """When enable_thinking=False (default), no reasoning param is passed."""
+    monkeypatch.setattr("app.providers.openrouter.LOGS_DIR", tmp_path)
+    mock_client = make_mock_client("Hi")
+    with patch("app.providers.openrouter.AsyncOpenAI", return_value=mock_client):
+        from app.providers.openrouter import call_openrouter
+        await call_openrouter("model", "sys", [], "key", enable_thinking=False)
+
+    call_kwargs = mock_client.chat.completions.create.call_args
+    assert "extra_body" not in call_kwargs.kwargs
