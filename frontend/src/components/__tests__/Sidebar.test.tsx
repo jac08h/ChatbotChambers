@@ -35,6 +35,8 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
+                theme="dark"
+                onToggleTheme={vi.fn()}
             />
         )
         expect(screen.getByRole("button", { name: "12345678" })).toBeInTheDocument()
@@ -57,6 +59,8 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
+                theme="dark"
+                onToggleTheme={vi.fn()}
             />
         )
 

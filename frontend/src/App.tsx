@@ -183,14 +183,6 @@ export default function App() {
 
     return (
         <div className="app-shell">
-            <button
-                className="theme-toggle"
-                onClick={() => setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark")}
-                title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-                type="button"
-            >
-                {theme === "dark" ? "Theme: Dark" : "Theme: Light"}
-            </button>
             <Sidebar
                 currentSession={currentSession}
                 history={ws.history}
@@ -204,6 +196,8 @@ export default function App() {
                 selectedSessionId={routeSessionId}
                 hasCurrentConversation={hasCurrentConversation}
                 isCurrentConversationSelected={showCurrentConversation}
+                theme={theme}
+                onToggleTheme={() => setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark")}
             />
             <div className="main-panel">
                 {showConversation ? (

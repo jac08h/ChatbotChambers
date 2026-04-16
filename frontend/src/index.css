@@ -14,10 +14,12 @@
     --text-dim: #5c6370;
     --accent: #9ca3af;
     --accent-glow: rgba(156, 163, 175, 0.10);
-    --chatbot-a: #9ca3af;
-    --chatbot-a-glow: rgba(156, 163, 175, 0.12);
-    --chatbot-b: #6b7280;
-    --chatbot-b-glow: rgba(107, 114, 128, 0.12);
+    --chatbot-a: #7eb8d4;
+    --chatbot-a-glow: rgba(126, 184, 212, 0.12);
+    --chatbot-a-bg: rgba(126, 184, 212, 0.07);
+    --chatbot-b: #c8956a;
+    --chatbot-b-glow: rgba(200, 149, 106, 0.12);
+    --chatbot-b-bg: rgba(200, 149, 106, 0.07);
     --danger: #d99a9a;
     --danger-bg: rgba(200, 100, 100, 0.08);
     --danger-border: rgba(200, 100, 100, 0.25);
@@ -52,10 +54,12 @@ html {
     --text-dim: #8b919c;
     --accent: #4a5060;
     --accent-glow: rgba(74, 80, 96, 0.06);
-    --chatbot-a: #4a5060;
-    --chatbot-a-glow: rgba(74, 80, 96, 0.08);
-    --chatbot-b: #6b7280;
-    --chatbot-b-glow: rgba(107, 114, 128, 0.08);
+    --chatbot-a: #3a7fa0;
+    --chatbot-a-glow: rgba(58, 127, 160, 0.10);
+    --chatbot-a-bg: rgba(58, 127, 160, 0.06);
+    --chatbot-b: #a0622a;
+    --chatbot-b-glow: rgba(160, 98, 42, 0.10);
+    --chatbot-b-bg: rgba(160, 98, 42, 0.06);
     --danger: #b94a48;
     --danger-bg: rgba(185, 74, 72, 0.06);
     --danger-border: rgba(185, 74, 72, 0.20);
@@ -126,28 +130,23 @@ button {
 }
 
 .theme-toggle {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    z-index: 40;
-    padding: 0.45rem 0.8rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0.2rem;
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
-    backdrop-filter: blur(14px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: color 150ms ease, background 150ms ease;
+    flex-shrink: 0;
 }
 
 .theme-toggle:hover {
-    background: var(--bg-secondary);
-    border-color: var(--accent);
     color: var(--text);
+    background: var(--bg-secondary);
 }
 
 .sidebar {
@@ -169,6 +168,10 @@ button {
     padding: 0.35rem 0.75rem 0.65rem;
     border-bottom: 1px solid var(--border);
     margin-bottom: 0.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
 }
 
 .sidebar-brand-title {
@@ -886,7 +889,7 @@ input::placeholder {
     justify-content: space-between;
     gap: 0.75rem;
     padding: 0.75rem 1.25rem 0;
-    max-width: 1100px;
+    max-width: 860px;
     margin: 0 auto;
     width: 100%;
 }
@@ -952,7 +955,7 @@ input::placeholder {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    max-width: 1100px;
+    max-width: 860px;
     margin: 0 auto;
     width: 100%;
     scrollbar-width: thin;
@@ -1023,6 +1026,28 @@ input::placeholder {
 .message-bubble {
     flex: 1;
     min-width: 0;
+    padding: 0.65rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    max-width: 72ch;
+}
+
+.chatbot-a .message-bubble {
+    background: var(--chatbot-a-bg);
+    border-color: rgba(126, 184, 212, 0.15);
+}
+
+.chatbot-b .message-bubble {
+    background: var(--chatbot-b-bg);
+    border-color: rgba(200, 149, 106, 0.15);
+}
+
+html[data-theme="light"] .chatbot-a .message-bubble {
+    border-color: rgba(58, 127, 160, 0.18);
+}
+
+html[data-theme="light"] .chatbot-b .message-bubble {
+    border-color: rgba(160, 98, 42, 0.18);
 }
 
 .message-meta {
@@ -1070,8 +1095,6 @@ input::placeholder {
 .message-row.chatbot-a + .message-row.chatbot-b,
 .message-row.chatbot-b + .message-row.chatbot-a {
     margin-top: 0.35rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--border);
 }
 
 .thinking-block {
@@ -1097,8 +1120,8 @@ input::placeholder {
 .message-content {
     white-space: pre-wrap;
     word-break: break-word;
-    font-size: 1rem;
-    line-height: 1.8;
+    font-size: 0.97rem;
+    line-height: 1.6;
 }
 
 .message-bubble.generating {
@@ -1283,8 +1306,4 @@ html[data-theme="light"] .chatbot-config {
         grid-template-columns: 1fr;
     }
 
-    .theme-toggle {
-        top: 0.75rem;
-        right: 0.75rem;
-    }
 }
