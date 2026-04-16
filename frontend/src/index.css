@@ -188,7 +188,13 @@ button {
     text-transform: uppercase;
     cursor: pointer;
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sidebar-brand-title .sidebar-brand-logo {
+    flex-shrink: 0;
+    display: block;
 }
 
 .sidebar-brand-title .brand-a {

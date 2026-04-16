@@ -213,6 +213,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [enableThinkingA, setEnableThinkingA] = useState(false);
     const [enableThinkingB, setEnableThinkingB] = useState(false);
     const [conversationTitle, setConversationTitle] = useState("");
+    const [isConversationNameExpanded, setIsConversationNameExpanded] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     const [isSavePresetOpen, setIsSavePresetOpen] = useState(false);
     const [presetName, setPresetName] = useState("");
@@ -702,15 +703,30 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                     </div>
 
                     <div className="setup-bottom">
-                        <label className="field">
-                            <span>Conversation name</span>
-                            <input
-                                type="text"
-                                value={conversationTitle}
-                                onChange={(event) => setConversationTitle(event.target.value)}
-                                placeholder="Optional"
-                            />
-                        </label>
+                        <button
+                            type="button"
+                            className="advanced-toggle"
+                            onClick={() => setIsConversationNameExpanded((prev) => !prev)}
+                            aria-expanded={isConversationNameExpanded}
+                        >
+                            {isConversationNameExpanded ? "Hide advanced" : "Advanced"}
+                            <span className={`advanced-toggle-icon ${isConversationNameExpanded ? "open" : ""}`}>›</span>
+                        </button>
+                        <div
+                            className={`advanced-fields ${isConversationNameExpanded ? "" : "advanced-fields-hidden"}`}
+                            aria-hidden={!isConversationNameExpanded}
+                        >
+                            <label className="field">
+                                <span>Conversation name</span>
+                                <input
+                                    type="text"
+                                    value={conversationTitle}
+                                    onChange={(event) => setConversationTitle(event.target.value)}
+                                    placeholder="Auto-generated if empty"
+                                    tabIndex={isConversationNameExpanded ? 0 : -1}
+                                />
+                            </label>
+                        </div>
 
                         <div className="setup-actions">
                             <button type="submit" className="start-btn" disabled={!canStart}>

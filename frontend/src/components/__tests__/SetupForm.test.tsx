@@ -277,6 +277,7 @@ describe("SetupForm", () => {
         const onStart = vi.fn()
         render(<SetupForm onStart={onStart} error={null} />)
         await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).not.toBeDisabled())
+        await userEvent.click(screen.getByRole("button", { name: /Advanced/ }))
         await userEvent.type(screen.getByLabelText("Conversation name"), "Test chat")
         await userEvent.click(screen.getByRole("button", { name: "Start conversation" }))
         expect(onStart).toHaveBeenCalledWith(expect.anything(), "Test chat")
