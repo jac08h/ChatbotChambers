@@ -1,6 +1,10 @@
 import { defineConfig } from "@playwright/test";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const BACKEND_PORT = 8001;
 const FRONTEND_PORT = 5173;
