@@ -525,7 +525,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     return (
         <div className="setup-page">
             <div className="setup-landing">
-                <h1 className="setup-title">ChatbotChambers</h1>
+                <h1 className="setup-title">Who&rsquo;s talking today?</h1>
 
                 {error && <div className="error-banner">{error}</div>}
 

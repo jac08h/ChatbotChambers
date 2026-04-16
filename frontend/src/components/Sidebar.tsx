@@ -58,7 +58,9 @@ export function Sidebar({
             <div className="sidebar-brand">
                 {!isCollapsed && (
                     <button className="sidebar-brand-title" onClick={onHome} type="button">
-                        ChatbotChambers
+                        <span className="brand-a">Chatbot</span>
+                        <span className="brand-gap" />
+                        <span className="brand-b">Chambers</span>
                     </button>
                 )}
                 <div className="sidebar-brand-actions">
