@@ -84,7 +84,7 @@ const SLUG_ADJECTIVES = [
     "amber", "blue", "bold", "calm", "cool", "dark", "deep", "fair", "fast",
     "glad", "gold", "gray", "keen", "kind", "lush", "mild", "pale", "pure",
     "rare", "rich", "sage", "slim", "soft", "tall", "tidy", "warm", "wild",
-    "wise", "bold", "dusk", "dawn", "free",
+    "wise", "dusk", "dawn", "free", "thin",
 ];
 
 const SLUG_NOUNS = [
