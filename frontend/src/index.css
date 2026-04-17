@@ -33,7 +33,7 @@
     --font-mono: "JetBrains Mono", "DejaVu Sans Mono", "Courier New", monospace;
     --radius: 10px;
     --radius-lg: 14px;
-    --sidebar-width: 260px;
+    --sidebar-width: 300px;
     color: var(--text);
     font-family: var(--font);
     font-size: 15px;
@@ -190,11 +190,6 @@ button {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-}
-
-.sidebar-brand-title .sidebar-brand-logo {
-    flex-shrink: 0;
-    display: block;
 }
 
 .sidebar-brand-title .brand-a {

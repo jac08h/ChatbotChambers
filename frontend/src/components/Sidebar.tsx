@@ -58,26 +58,6 @@ export function Sidebar({
             <div className="sidebar-brand">
                 {!isCollapsed && (
                     <button className="sidebar-brand-title" onClick={onHome} type="button">
-                        <svg
-                            className="sidebar-brand-logo"
-                            width="18"
-                            height="18"
-                            viewBox="0 0 64 64"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-hidden="true"
-                        >
-                            <path
-                                d="M10 22a10 10 0 0 1 10-10h14a10 10 0 0 1 10 10v6a10 10 0 0 1-10 10h-4l-6 6v-6h-4a10 10 0 0 1-10-10z"
-                                fill="var(--chatbot-a)"
-                                fillOpacity="0.85"
-                            />
-                            <path
-                                d="M20 36a10 10 0 0 1 10-10h14a10 10 0 0 1 10 10v6a10 10 0 0 1-10 10h-4l-6 6v-6h-4a10 10 0 0 1-10-10z"
-                                fill="var(--chatbot-b)"
-                                fillOpacity="0.85"
-                            />
-                        </svg>
                         <span className="brand-a">Chatbot</span>
                         <span className="brand-gap" />
                         <span className="brand-b">Chambers</span>
