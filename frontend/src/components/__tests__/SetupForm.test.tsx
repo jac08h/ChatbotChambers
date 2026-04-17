@@ -222,7 +222,9 @@ describe("SetupForm", () => {
         const presetSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
         await userEvent.selectOptions(presetSelect, "debate")
 
-        await userEvent.click(screen.getByRole("button", { name: "Rename" }))
+        await userEvent.click(screen.getByRole("button", { name: "Manage" }))
+        await userEvent.click(screen.getByRole("button", { name: /Preset options for/ }))
+        await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
         expect(screen.getByRole("dialog", { name: "Rename preset" })).toBeInTheDocument()
         const input = screen.getByRole("dialog", { name: "Rename preset" }).querySelector("input")!
         await userEvent.clear(input)
@@ -241,7 +243,9 @@ describe("SetupForm", () => {
             })
         )
 
-        await userEvent.click(screen.getByRole("button", { name: "Delete" }))
+        await userEvent.click(screen.getByRole("button", { name: "Manage" }))
+        await userEvent.click(screen.getByRole("button", { name: /Preset options for/ }))
+        await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }))
         expect(screen.getByRole("dialog", { name: "Delete preset" })).toBeInTheDocument()
         await userEvent.click(screen.getAllByRole("button", { name: "Delete" }).find((btn) => btn.closest(".confirmation-dialog"))!)
 
@@ -277,7 +281,8 @@ describe("SetupForm", () => {
         const onStart = vi.fn()
         render(<SetupForm onStart={onStart} error={null} />)
         await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).not.toBeDisabled())
-        await userEvent.click(screen.getByRole("button", { name: /Advanced/ }))
+        const advancedButtons = screen.getAllByRole("button", { name: /Advanced/ })
+        await userEvent.click(advancedButtons[advancedButtons.length - 1])
         await userEvent.type(screen.getByLabelText("Conversation name"), "Test chat")
         await userEvent.click(screen.getByRole("button", { name: "Start conversation" }))
         expect(onStart).toHaveBeenCalledWith(expect.anything(), "Test chat")

@@ -69,7 +69,7 @@ describe("App", () => {
     it("updates the URL when selecting an archived conversation", async () => {
         mockWebSocketState = createWebSocketState({ history: [archivedSession] })
         render(<App />)
-        await userEvent.click(screen.getByRole("button", { name: "bold-mesa-abc" }))
+        await userEvent.click(screen.getByRole("button", { name: "gold-glad-fern" }))
         expect(window.location.pathname).toBe(`/chat/${archivedSession.id}`)
     })
 
@@ -77,7 +77,7 @@ describe("App", () => {
         window.history.pushState({}, "", `/chat/${archivedSession.id}`)
         mockWebSocketState = createWebSocketState({ history: [archivedSession] })
         render(<App />)
-        expect(screen.getByRole("heading", { name: "bold-mesa-abc" })).toBeInTheDocument()
+        expect(screen.getByRole("heading", { name: "gold-glad-fern" })).toBeInTheDocument()
     })
 
     it("confirms before deleting an archived conversation", async () => {
@@ -85,7 +85,7 @@ describe("App", () => {
         mockWebSocketState = createWebSocketState({ history: [archivedSession], deleteSession })
         render(<App />)
 
-        await userEvent.click(screen.getByRole("button", { name: "Conversation options for bold-mesa-abc" }))
+        await userEvent.click(screen.getByRole("button", { name: "Conversation options for gold-glad-fern" }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }))
 
         expect(screen.getByRole("dialog", { name: "Delete conversation" })).toBeInTheDocument()
@@ -99,11 +99,11 @@ describe("App", () => {
         mockWebSocketState = createWebSocketState({ history: [archivedSession], renameSession })
         render(<App />)
 
-        await userEvent.click(screen.getByRole("button", { name: "Conversation options for bold-mesa-abc" }))
+        await userEvent.click(screen.getByRole("button", { name: "Conversation options for gold-glad-fern" }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
 
         expect(screen.getByRole("dialog", { name: "Rename chat" })).toBeInTheDocument()
-        const input = screen.getByDisplayValue("bold-mesa-abc")
+        const input = screen.getByDisplayValue("gold-glad-fern")
         await userEvent.clear(input)
         await userEvent.type(input, "Renamed chat")
         await userEvent.click(screen.getByRole("button", { name: "Save" }))

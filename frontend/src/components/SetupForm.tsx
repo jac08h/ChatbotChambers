@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiUrl } from "../api";
 import { type Provider, type SessionConfig } from "../hooks/useWebSocket";
 import { loadSettings, saveSettings } from "../settings";
@@ -225,6 +225,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [presetPendingRename, setPresetPendingRename] = useState<Preset | null>(null);
     const [isManagePresetsOpen, setIsManagePresetsOpen] = useState(false);
     const [openPresetRowMenuId, setOpenPresetRowMenuId] = useState<string | null>(null);
+    const presetManageRef = useRef<HTMLDivElement | null>(null);
 
     const closeSavePresetDialog = useCallback((forceClose = false) => {
         if (!forceClose && isSavingPreset) {
@@ -357,6 +358,31 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [closeSavePresetDialog, isSavePresetOpen]);
+
+    useEffect(() => {
+        if (!isManagePresetsOpen) {
+            return;
+        }
+        const handlePointerDown = (event: PointerEvent) => {
+            const target = event.target as Node | null;
+            if (target && presetManageRef.current && !presetManageRef.current.contains(target)) {
+                setIsManagePresetsOpen(false);
+                setOpenPresetRowMenuId(null);
+            }
+        };
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setIsManagePresetsOpen(false);
+                setOpenPresetRowMenuId(null);
+            }
+        };
+        window.addEventListener("pointerdown", handlePointerDown);
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("pointerdown", handlePointerDown);
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [isManagePresetsOpen]);
 
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
 
@@ -537,7 +563,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                         <div className="preset-header">
                             <span className="field-label">Preset</span>
                             <div className="preset-header-actions">
-                                <div className="preset-manage">
+                                <div className="preset-manage" ref={presetManageRef}>
                                     <button
                                         type="button"
                                         className="preset-action-link"
