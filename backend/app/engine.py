@@ -2,12 +2,18 @@ import asyncio
 from pathlib import Path
 from typing import AsyncGenerator, Dict, List, Literal, Tuple, Union
 
+from app.models import (
+    CLAUDE_CODE_MODELS,
+    CODEX_MODELS,
+    MODELS,
+    ChatbotConfig,
+    Message,
+    SessionConfig,
+)
 from app.providers.claude_code import call_claude_code
 from app.providers.codex_cli import call_codex
-from app.providers.mock import call_mock
-from app.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS, ChatbotConfig, Message, SessionConfig
+from app.providers.mock import MOCK_MODELS, call_mock
 from app.providers.openrouter import call_openrouter
-from app.providers.mock import MOCK_MODELS
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -110,7 +116,7 @@ async def run_conversation(
                     thinking=thinking,
                 )
 
-                if content.strip() == "/leave":
+                if "/leave" in content:
                     return
 
                 break
@@ -154,10 +160,12 @@ async def _call_llm(
         )
 
 
-def _build_system_prompt(
-    individual_preamble: str, shared: str, individual: str
-) -> str:
-    parts = [p for p in [PREAMBLE, individual_preamble, shared.strip(), individual.strip()] if p]
+def _build_system_prompt(individual_preamble: str, shared: str, individual: str) -> str:
+    parts = [
+        p
+        for p in [PREAMBLE, individual_preamble, shared.strip(), individual.strip()]
+        if p
+    ]
     return "\n\n".join(parts)
 
 
