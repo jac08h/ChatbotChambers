@@ -223,6 +223,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [activePresetMutationId, setActivePresetMutationId] = useState<string | null>(null);
     const [presetPendingDelete, setPresetPendingDelete] = useState<Preset | null>(null);
     const [presetPendingRename, setPresetPendingRename] = useState<Preset | null>(null);
+    const [isManagePresetsOpen, setIsManagePresetsOpen] = useState(false);
+    const [openPresetRowMenuId, setOpenPresetRowMenuId] = useState<string | null>(null);
 
     const closeSavePresetDialog = useCallback((forceClose = false) => {
         if (!forceClose && isSavingPreset) {
@@ -535,36 +537,73 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                         <div className="preset-header">
                             <span className="field-label">Preset</span>
                             <div className="preset-header-actions">
-                                {selectedPresetId && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            className="preset-action-link"
-                                            onClick={() => {
-                                                const preset = presets.find((p) => p.id === selectedPresetId);
-                                                if (preset) {
-                                                    setPresetPendingRename(preset);
-                                                }
-                                            }}
-                                            disabled={activePresetMutationId !== null}
-                                        >
-                                            Rename
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="preset-action-link preset-action-link-danger"
-                                            onClick={() => {
-                                                const preset = presets.find((p) => p.id === selectedPresetId);
-                                                if (preset) {
-                                                    setPresetPendingDelete(preset);
-                                                }
-                                            }}
-                                            disabled={activePresetMutationId !== null}
-                                        >
-                                            Delete
-                                        </button>
-                                    </>
-                                )}
+                                <div className="preset-manage">
+                                    <button
+                                        type="button"
+                                        className="preset-action-link"
+                                        onClick={() => {
+                                            setIsManagePresetsOpen((open) => !open);
+                                            setOpenPresetRowMenuId(null);
+                                        }}
+                                        disabled={presets.length === 0}
+                                        aria-haspopup="menu"
+                                        aria-expanded={isManagePresetsOpen}
+                                        title="Manage presets"
+                                    >
+                                        Manage
+                                    </button>
+                                    {isManagePresetsOpen && presets.length > 0 && (
+                                        <div className="preset-menu preset-manage-list" role="menu">
+                                            {presets.map((preset) => (
+                                                <div key={preset.id} className="preset-manage-row">
+                                                    <span className="preset-manage-name" title={preset.name}>{preset.name}</span>
+                                                    <div className="preset-manage-row-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="preset-manage-row-btn"
+                                                            onClick={() => setOpenPresetRowMenuId((id) => (id === preset.id ? null : preset.id))}
+                                                            aria-haspopup="menu"
+                                                            aria-expanded={openPresetRowMenuId === preset.id}
+                                                            aria-label={`Preset options for ${preset.name}`}
+                                                            title="Preset options"
+                                                            disabled={activePresetMutationId !== null}
+                                                        >
+                                                            ⋯
+                                                        </button>
+                                                        {openPresetRowMenuId === preset.id && (
+                                                            <div className="preset-menu preset-row-menu" role="menu">
+                                                                <button
+                                                                    type="button"
+                                                                    className="preset-menu-item"
+                                                                    role="menuitem"
+                                                                    onClick={() => {
+                                                                        setOpenPresetRowMenuId(null);
+                                                                        setIsManagePresetsOpen(false);
+                                                                        setPresetPendingRename(preset);
+                                                                    }}
+                                                                >
+                                                                    Rename
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="preset-menu-item preset-menu-item-danger"
+                                                                    role="menuitem"
+                                                                    onClick={() => {
+                                                                        setOpenPresetRowMenuId(null);
+                                                                        setIsManagePresetsOpen(false);
+                                                                        setPresetPendingDelete(preset);
+                                                                    }}
+                                                                >
+                                                                    Delete
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                                 <button
                                     type="button"
                                     className="preset-save-link"

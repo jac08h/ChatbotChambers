@@ -564,6 +564,111 @@ input::placeholder {
     gap: 0.75rem;
 }
 
+.preset-manage {
+    position: relative;
+    display: inline-flex;
+}
+
+.preset-menu {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    min-width: 9rem;
+    padding: 0.35rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+}
+
+.preset-menu-item {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    font-size: 0.85rem;
+}
+
+.preset-menu-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.preset-menu-item-danger {
+    color: var(--danger);
+}
+
+.preset-menu-item-danger:hover {
+    background: var(--danger-bg);
+}
+
+.preset-manage-list {
+    min-width: 16rem;
+    max-height: 20rem;
+    overflow-y: auto;
+    padding: 0.25rem;
+}
+
+.preset-manage-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 8px;
+}
+
+.preset-manage-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.preset-manage-name {
+    flex: 1;
+    min-width: 0;
+    color: var(--text);
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preset-manage-row-actions {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.preset-manage-row-btn {
+    width: 1.75rem;
+    height: 1.75rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    transition: background 150ms ease, color 150ms ease;
+}
+
+.preset-manage-row-btn:hover:not(:disabled) {
+    background: var(--bg-secondary);
+    color: var(--text);
+}
+
+.preset-manage-row-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.preset-row-menu {
+    min-width: 8rem;
+}
+
 .preset-action-link {
     background: none;
     border: none;
