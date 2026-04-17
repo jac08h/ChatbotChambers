@@ -81,21 +81,59 @@ interface SessionResponse {
 }
 
 const SLUG_ADJECTIVES = [
-    "amber", "blue", "bold", "brave", "brisk", "calm", "clear", "cool", "crisp",
-    "dark", "dawn", "deep", "dusk", "fair", "fast", "fine", "free", "glad",
-    "gold", "gray", "keen", "kind", "lush", "mild", "merry", "neat", "nimble",
-    "pale", "plush", "proud", "pure", "quiet", "rare", "rich", "ripe", "sage",
-    "silk", "slim", "soft", "spry", "sunny", "swift", "tall", "thin", "tidy",
-    "vivid", "warm", "wild", "wise", "zesty",
+    "chatty",
+    "verbose",
+    "babbling",
+    "rambling",
+    "hallucinating",
+    "pondering",
+    "recursive",
+    "sentient",
+    "dreaming",
+    "wordy",
+    "cryptic",
+    "musing",
+    "looping",
+    "aligned",
+    "emergent",
+    "talkative",
+    "whispering",
+    "introspective",
+    "rambly",
+    "quantized",
+    "misaligned",
+    "nondeterministic",
+    "stochastic",
+    "probabilistic",
+    "overfit",
+    "underfit",
+    "jailbroken",
 ];
 
 const SLUG_NOUNS = [
-    "arch", "bay", "bell", "bird", "brook", "cape", "cave", "cliff", "cloud",
-    "cove", "crag", "creek", "dale", "delta", "dune", "elm", "falls", "fern",
-    "fjord", "fox", "glen", "grove", "hawk", "haze", "heath", "hill", "iris",
-    "jade", "lake", "leaf", "lynx", "mesa", "meadow", "moor", "moth", "oak",
-    "otter", "pear", "pine", "pond", "reef", "ridge", "rose", "seal", "shore",
-    "tide", "trail", "vale", "willow", "wren",
+    "chatbots",
+    "prompts",
+    "tokens",
+    "oracles",
+    "parrots",
+    "agents",
+    "homunculi",
+    "golems",
+    "transformers",
+    "daemons",
+    "phantoms",
+    "sophists",
+    "philosophers",
+    "interlocutors",
+    "automatons",
+    "scribes",
+    "mimics",
+    "hiveminds",
+    "singularities",
+    "intelligences",
+    "ghosts",
+    "utterances",
+    "epistles",
 ];
 
 function hashCode(str: string): number {
@@ -108,15 +146,10 @@ function hashCode(str: string): number {
 
 export function generateSlug(id: string): string {
     const h = hashCode(id);
-    const i1 = h % SLUG_ADJECTIVES.length;
-    let i2 = (h >>> 8) % SLUG_ADJECTIVES.length;
-    if (i2 === i1) {
-        i2 = (i2 + 1) % SLUG_ADJECTIVES.length;
-    }
-    const adj1 = SLUG_ADJECTIVES[i1];
-    const adj2 = SLUG_ADJECTIVES[i2];
-    const noun = SLUG_NOUNS[(h >>> 16) % SLUG_NOUNS.length];
-    return `${adj1}-${adj2}-${noun}`;
+    const adj = SLUG_ADJECTIVES[h % SLUG_ADJECTIVES.length];
+    const noun = SLUG_NOUNS[(h >>> 8) % SLUG_NOUNS.length];
+    const num = (h >>> 16) % 1000;
+    return `${adj}-${noun}-${String(num).padStart(3, "0")}`;
 }
 
 export function getSessionDisplayTitle(session: Pick<ArchivedSession, "id" | "title">): string {

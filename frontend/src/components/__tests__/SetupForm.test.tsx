@@ -31,15 +31,15 @@ const mockPresets: MockPreset[] = [
 ]
 
 function createFetchMock({
-    presets = mockPresets,
+    scenarios = mockPresets,
     settings = {},
     providers = mockProviders,
 }: {
-    presets?: MockPreset[]
+    scenarios?: MockPreset[]
     settings?: unknown
     providers?: typeof mockProviders
 } = {}) {
-    let currentPresets = [...presets]
+    let currentPresets = [...scenarios]
 
     return vi.fn((url: string, options?: RequestInit) => {
         if (url.includes("/settings") && options?.method === "POST") {
@@ -51,10 +51,10 @@ function createFetchMock({
         if (url.includes("/providers")) {
             return Promise.resolve({ ok: true, json: () => Promise.resolve(providers) })
         }
-        if (url.includes("/presets") && options?.method === "POST") {
+        if (url.includes("/scenarios") && options?.method === "POST") {
             const body = JSON.parse(String(options.body))
             const savedPreset = {
-                id: "saved-preset",
+                id: "saved-scenario",
                 name: body.name,
                 shared_system_prompt: body.config.shared_system_prompt,
                 system_prompt_a: body.config.chatbot_a.system_prompt,
@@ -67,24 +67,24 @@ function createFetchMock({
                 json: () => Promise.resolve(savedPreset),
             })
         }
-        if (url.includes("/presets/") && options?.method === "PATCH") {
-            const presetId = url.split("/").at(-1)
+        if (url.includes("/scenarios/") && options?.method === "PATCH") {
+            const scenarioId = url.split("/").at(-1)
             const body = JSON.parse(String(options.body))
-            currentPresets = currentPresets.map((preset) => (
-                preset.id === presetId ? { ...preset, name: body.name } : preset
+            currentPresets = currentPresets.map((scenario) => (
+                scenario.id === scenarioId ? { ...scenario, name: body.name } : scenario
             ))
-            const renamedPreset = currentPresets.find((preset) => preset.id === presetId)
+            const renamedPreset = currentPresets.find((scenario) => scenario.id === scenarioId)
             return Promise.resolve({
                 ok: true,
                 json: () => Promise.resolve(renamedPreset),
             })
         }
-        if (url.includes("/presets/") && options?.method === "DELETE") {
-            const presetId = url.split("/").at(-1)
-            currentPresets = currentPresets.filter((preset) => preset.id !== presetId)
+        if (url.includes("/scenarios/") && options?.method === "DELETE") {
+            const scenarioId = url.split("/").at(-1)
+            currentPresets = currentPresets.filter((scenario) => scenario.id !== scenarioId)
             return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
         }
-        if (url.includes("/presets")) {
+        if (url.includes("/scenarios")) {
             return Promise.resolve({ ok: true, json: () => Promise.resolve(currentPresets) })
         }
         if (url.includes("/models")) {
@@ -114,30 +114,30 @@ describe("SetupForm", () => {
         await waitFor(() => expect(screen.getAllByText("Model One")).toHaveLength(2))
     })
 
-    it("shows preset selector when presets are available", async () => {
+    it("shows scenario selector when scenarios are available", async () => {
         render(<SetupForm onStart={vi.fn()} error={null} />)
-        const presetSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
-        const options = Array.from((presetSelect as HTMLSelectElement).options).map((o) => o.text)
+        const scenarioSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
+        const options = Array.from((scenarioSelect as HTMLSelectElement).options).map((o) => o.text)
         expect(options).toContain("Debate")
-        expect((presetSelect as HTMLSelectElement).value).toBe("")
+        expect((scenarioSelect as HTMLSelectElement).value).toBe("")
     })
 
-    it("loading a preset fills shared and individual prompts", async () => {
+    it("loading a scenario fills shared and individual prompts", async () => {
         render(<SetupForm onStart={vi.fn()} error={null} />)
-        const presetSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
-        await userEvent.selectOptions(presetSelect, "debate")
+        const scenarioSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
+        await userEvent.selectOptions(scenarioSelect, "debate")
         expect(screen.getByDisplayValue("You are debating.")).toBeInTheDocument()
         expect(screen.getByDisplayValue("You argue for.")).toBeInTheDocument()
         expect(screen.getByDisplayValue("You argue against.")).toBeInTheDocument()
     })
 
-    it("loading a saved preset restores the full saved configuration", async () => {
+    it("loading a saved scenario restores the full saved configuration", async () => {
         vi.stubGlobal("fetch", createFetchMock({
             providers: { openrouter: true, claude_code: true, codex: true },
-            presets: [
+            scenarios: [
                 {
-                    id: "full-preset",
-                    name: "Full preset",
+                    id: "full-scenario",
+                    name: "Full scenario",
                     shared_system_prompt: "Saved shared prompt",
                     system_prompt_a: "Prompt A",
                     system_prompt_b: "Prompt B",
@@ -161,13 +161,13 @@ describe("SetupForm", () => {
         }))
 
         render(<SetupForm onStart={vi.fn()} error={null} />)
-        const presetSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
-        await userEvent.selectOptions(presetSelect, "full-preset")
+        const scenarioSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
+        await userEvent.selectOptions(scenarioSelect, "full-scenario")
 
         await waitFor(() => expect(screen.getByDisplayValue("Saved shared prompt")).toBeInTheDocument())
         expect(screen.getByDisplayValue("Prompt A")).toBeInTheDocument()
         expect(screen.getByDisplayValue("Prompt B")).toBeInTheDocument()
-        expect(screen.getAllByRole("button", { name: "Codex CLI" })[0]).toHaveClass("preset-chip-active")
+        expect(screen.getAllByRole("button", { name: "Codex CLI" })[0]).toHaveClass("scenario-chip-active")
         expect(screen.getAllByRole("combobox")[1]).toHaveValue("model-2")
         expect(screen.getAllByRole("combobox")[2]).toHaveValue("model-1")
 
@@ -178,65 +178,65 @@ describe("SetupForm", () => {
         expect(screen.getByDisplayValue("Preset B")).toBeInTheDocument()
     })
 
-    it("saves the current configuration as a preset", async () => {
+    it("saves the current configuration as a scenario", async () => {
         const fetchMock = createFetchMock()
         vi.stubGlobal("fetch", fetchMock)
 
         render(<SetupForm onStart={vi.fn()} error={null} />)
         await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).not.toBeDisabled())
 
-        await userEvent.type(screen.getByLabelText("Shared prompt"), "Shared preset prompt")
-        await userEvent.click(screen.getByRole("button", { name: "Save as preset" }))
-        expect(screen.getByRole("dialog", { name: "Save preset" })).toBeInTheDocument()
-        await userEvent.type(screen.getByLabelText("Preset name"), "My saved preset")
+        await userEvent.type(screen.getByLabelText("Shared prompt"), "Shared scenario prompt")
+        await userEvent.click(screen.getByRole("button", { name: "Save as scenario" }))
+        expect(screen.getByRole("dialog", { name: "Save scenario" })).toBeInTheDocument()
+        await userEvent.type(screen.getByLabelText("Preset name"), "My saved scenario")
         await userEvent.click(screen.getByRole("button", { name: "Save" }))
 
-        await waitFor(() => expect(screen.queryByRole("dialog", { name: "Save preset" })).not.toBeInTheDocument())
-        const presetSelect = screen.getAllByRole("combobox")[0]
-        const options = Array.from((presetSelect as HTMLSelectElement).options).map((o) => o.text)
-        expect(options).toContain("My saved preset")
+        await waitFor(() => expect(screen.queryByRole("dialog", { name: "Save scenario" })).not.toBeInTheDocument())
+        const scenarioSelect = screen.getAllByRole("combobox")[0]
+        const options = Array.from((scenarioSelect as HTMLSelectElement).options).map((o) => o.text)
+        expect(options).toContain("My saved scenario")
         expect(fetchMock).toHaveBeenCalledWith(
-            apiUrl("/presets"),
+            apiUrl("/scenarios"),
             expect.objectContaining({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
             })
         )
         const saveCall = fetchMock.mock.calls.find(
-            ([url, options]) => url === apiUrl("/presets") && options?.method === "POST"
+            ([url, options]) => url === apiUrl("/scenarios") && options?.method === "POST"
         )
         expect(saveCall).toBeDefined()
         expect(JSON.parse(String(saveCall?.[1]?.body))).toMatchObject({
-            name: "My saved preset",
+            name: "My saved scenario",
             config: {
-                shared_system_prompt: "Shared preset prompt",
+                shared_system_prompt: "Shared scenario prompt",
             },
         })
     })
 
-    it("renames and deletes presets through the preset actions", async () => {
+    it("renames and deletes scenarios through the scenario actions", async () => {
         const fetchMock = createFetchMock()
         vi.stubGlobal("fetch", fetchMock)
 
         render(<SetupForm onStart={vi.fn()} error={null} />)
-        const presetSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
-        await userEvent.selectOptions(presetSelect, "debate")
+        const scenarioSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
+        await userEvent.selectOptions(scenarioSelect, "debate")
 
         await userEvent.click(screen.getByRole("button", { name: "Manage" }))
-        await userEvent.click(screen.getByRole("button", { name: /Preset options for/ }))
+        await userEvent.click(screen.getByRole("button", { name: /Scenario options for/ }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
-        expect(screen.getByRole("dialog", { name: "Rename preset" })).toBeInTheDocument()
-        const input = screen.getByRole("dialog", { name: "Rename preset" }).querySelector("input")!
+        expect(screen.getByRole("dialog", { name: "Rename scenario" })).toBeInTheDocument()
+        const input = screen.getByRole("dialog", { name: "Rename scenario" }).querySelector("input")!
         await userEvent.clear(input)
-        await userEvent.type(input, "Renamed preset")
+        await userEvent.type(input, "Renamed scenario")
         await userEvent.click(screen.getByRole("button", { name: "Save" }))
 
         await waitFor(() => {
-            const opts = Array.from((presetSelect as HTMLSelectElement).options).map((o) => o.text)
-            expect(opts).toContain("Renamed preset")
+            const opts = Array.from((scenarioSelect as HTMLSelectElement).options).map((o) => o.text)
+            expect(opts).toContain("Renamed scenario")
         })
         expect(fetchMock).toHaveBeenCalledWith(
-            apiUrl("/presets/debate"),
+            apiUrl("/scenarios/debate"),
             expect.objectContaining({
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -244,17 +244,17 @@ describe("SetupForm", () => {
         )
 
         await userEvent.click(screen.getByRole("button", { name: "Manage" }))
-        await userEvent.click(screen.getByRole("button", { name: /Preset options for/ }))
+        await userEvent.click(screen.getByRole("button", { name: /Scenario options for/ }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }))
-        expect(screen.getByRole("dialog", { name: "Delete preset" })).toBeInTheDocument()
+        expect(screen.getByRole("dialog", { name: "Delete scenario" })).toBeInTheDocument()
         await userEvent.click(screen.getAllByRole("button", { name: "Delete" }).find((btn) => btn.closest(".confirmation-dialog"))!)
 
         await waitFor(() => {
-            const opts = Array.from((presetSelect as HTMLSelectElement).options).map((o) => o.text)
-            expect(opts).not.toContain("Renamed preset")
+            const opts = Array.from((scenarioSelect as HTMLSelectElement).options).map((o) => o.text)
+            expect(opts).not.toContain("Renamed scenario")
         })
         expect(fetchMock).toHaveBeenCalledWith(
-            apiUrl("/presets/debate"),
+            apiUrl("/scenarios/debate"),
             expect.objectContaining({
                 method: "DELETE",
             })

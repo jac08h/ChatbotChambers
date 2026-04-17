@@ -37,7 +37,7 @@ pnpm dev   # starts on http://localhost:5173
 
 ```
 backend/app/
-    main.py        FastAPI app, WebSocket endpoint, GET /models, GET /providers, GET /presets
+    main.py        FastAPI app, WebSocket endpoint, GET /models, GET /providers, GET /scenarios
     engine.py      Async generator conversation loop
     models.py      Pydantic models + hardcoded model lists
     providers/

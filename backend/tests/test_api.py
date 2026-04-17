@@ -120,14 +120,14 @@ async def test_get_providers_claude_code_unavailable_when_cli_missing(
     assert response.json()["codex"] is False
 
 
-async def test_get_presets_seeds_cache_from_bundled_defaults(
+async def test_get_scenarios_seeds_cache_from_bundled_defaults(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ):
-    """GET /presets copies bundled presets into .cache/presets when none exist yet."""
-    bundled_presets_dir = tmp_path / "bundled-presets"
-    bundled_presets_dir.mkdir(parents=True, exist_ok=True)
-    bundled_preset = bundled_presets_dir / "debate.json"
-    bundled_preset.write_text(
+    """GET /scenarios copies bundled scenarios into .cache/scenarios when none exist yet."""
+    bundled_scenarios_dir = tmp_path / "bundled-scenarios"
+    bundled_scenarios_dir.mkdir(parents=True, exist_ok=True)
+    bundled_scenario = bundled_scenarios_dir / "debate.json"
+    bundled_scenario.write_text(
         json.dumps(
             {
                 "name": "Debate",
@@ -138,14 +138,14 @@ async def test_get_presets_seeds_cache_from_bundled_defaults(
         )
     )
 
-    presets_dir = tmp_path / ".cache" / "presets"
-    monkeypatch.setattr("app.main.DEFAULT_PRESETS_DIR", bundled_presets_dir)
-    monkeypatch.setattr("app.main.PRESETS_DIR", presets_dir)
+    scenarios_dir = tmp_path / ".cache" / "scenarios"
+    monkeypatch.setattr("app.main.DEFAULT_SCENARIOS_DIR", bundled_scenarios_dir)
+    monkeypatch.setattr("app.main.SCENARIOS_DIR", scenarios_dir)
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
-        response = await client.get("/presets")
+        response = await client.get("/scenarios")
 
     assert response.status_code == 200
     assert response.json() == [
@@ -157,17 +157,17 @@ async def test_get_presets_seeds_cache_from_bundled_defaults(
             "system_prompt_b": "B",
         }
     ]
-    assert json.loads((presets_dir / "debate.json").read_text())["name"] == "Debate"
+    assert json.loads((scenarios_dir / "debate.json").read_text())["name"] == "Debate"
 
 
-async def test_get_presets_returns_saved_config(
+async def test_get_scenarios_returns_saved_config(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ):
-    """GET /presets includes persisted full configs for user-saved presets."""
-    presets_dir = tmp_path / ".cache" / "presets"
-    presets_dir.mkdir(parents=True, exist_ok=True)
-    preset_payload = {
-        "name": "Saved preset",
+    """GET /scenarios includes persisted full configs for user-saved scenarios."""
+    scenarios_dir = tmp_path / ".cache" / "scenarios"
+    scenarios_dir.mkdir(parents=True, exist_ok=True)
+    scenario_payload = {
+        "name": "Saved scenario",
         "config": {
             "chatbot_a": {
                 "name": "Alpha",
@@ -184,38 +184,38 @@ async def test_get_presets_returns_saved_config(
             "shared_system_prompt": "Shared prompt",
         },
     }
-    (presets_dir / "saved-preset.json").write_text(json.dumps(preset_payload))
+    (scenarios_dir / "saved-scenario.json").write_text(json.dumps(scenario_payload))
 
-    monkeypatch.setattr("app.main.DEFAULT_PRESETS_DIR", tmp_path / "unused-defaults")
-    monkeypatch.setattr("app.main.PRESETS_DIR", presets_dir)
+    monkeypatch.setattr("app.main.DEFAULT_SCENARIOS_DIR", tmp_path / "unused-defaults")
+    monkeypatch.setattr("app.main.SCENARIOS_DIR", scenarios_dir)
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
-        response = await client.get("/presets")
+        response = await client.get("/scenarios")
 
     assert response.status_code == 200
     assert response.json() == [
         {
-            "id": "saved-preset",
-            "name": "Saved preset",
+            "id": "saved-scenario",
+            "name": "Saved scenario",
             "shared_system_prompt": "Shared prompt",
             "system_prompt_a": "Prompt A",
             "system_prompt_b": "Prompt B",
-            "config": preset_payload["config"],
+            "config": scenario_payload["config"],
         }
     ]
 
 
-async def test_post_presets_writes_file_and_returns_body(
+async def test_post_scenarios_writes_file_and_returns_body(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ):
-    """POST /presets persists a user preset to .cache/presets."""
-    presets_dir = tmp_path / ".cache" / "presets"
-    monkeypatch.setattr("app.main.DEFAULT_PRESETS_DIR", tmp_path / "unused-defaults")
-    monkeypatch.setattr("app.main.PRESETS_DIR", presets_dir)
+    """POST /scenarios persists a user scenario to .cache/scenarios."""
+    scenarios_dir = tmp_path / ".cache" / "scenarios"
+    monkeypatch.setattr("app.main.DEFAULT_SCENARIOS_DIR", tmp_path / "unused-defaults")
+    monkeypatch.setattr("app.main.SCENARIOS_DIR", scenarios_dir)
     payload = {
-        "name": "My preset",
+        "name": "My scenario",
         "config": {
             "chatbot_a": {
                 "name": "Alpha",
@@ -236,35 +236,35 @@ async def test_post_presets_writes_file_and_returns_body(
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
-        response = await client.post("/presets", json=payload)
+        response = await client.post("/scenarios", json=payload)
 
     assert response.status_code == 201
     result = response.json()
-    assert result["id"] == "my-preset"
-    assert result["name"] == "My preset"
+    assert result["id"] == "my-scenario"
+    assert result["name"] == "My scenario"
     assert result["shared_system_prompt"] == "Shared prompt"
     assert result["system_prompt_a"] == "Prompt A"
     assert result["system_prompt_b"] == "Prompt B"
     assert result["config"]["chatbot_a"]["name"] == "Alpha"
     assert result["config"]["chatbot_b"]["name"] == "Beta"
-    preset_path = presets_dir / "my-preset.json"
-    assert preset_path.exists()
-    saved_preset = json.loads(preset_path.read_text())
-    assert saved_preset["name"] == result["name"]
-    assert saved_preset["config"] == result["config"]
+    scenario_path = scenarios_dir / "my-scenario.json"
+    assert scenario_path.exists()
+    saved_scenario = json.loads(scenario_path.read_text())
+    assert saved_scenario["name"] == result["name"]
+    assert saved_scenario["config"] == result["config"]
 
 
-async def test_patch_presets_renames_existing_preset(
+async def test_patch_scenarios_renames_existing_scenario(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ):
-    """PATCH /presets/{id} renames a persisted preset without changing its id."""
-    presets_dir = tmp_path / ".cache" / "presets"
-    presets_dir.mkdir(parents=True, exist_ok=True)
-    preset_path = presets_dir / "my-preset.json"
-    preset_path.write_text(
+    """PATCH /scenarios/{id} renames a persisted scenario without changing its id."""
+    scenarios_dir = tmp_path / ".cache" / "scenarios"
+    scenarios_dir.mkdir(parents=True, exist_ok=True)
+    scenario_path = scenarios_dir / "my-scenario.json"
+    scenario_path.write_text(
         json.dumps(
             {
-                "name": "My preset",
+                "name": "My scenario",
                 "config": {
                     "chatbot_a": {
                         "name": "Alpha",
@@ -283,40 +283,40 @@ async def test_patch_presets_renames_existing_preset(
             }
         )
     )
-    monkeypatch.setattr("app.main.DEFAULT_PRESETS_DIR", tmp_path / "unused-defaults")
-    monkeypatch.setattr("app.main.PRESETS_DIR", presets_dir)
+    monkeypatch.setattr("app.main.DEFAULT_SCENARIOS_DIR", tmp_path / "unused-defaults")
+    monkeypatch.setattr("app.main.SCENARIOS_DIR", scenarios_dir)
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         response = await client.patch(
-            "/presets/my-preset", json={"name": "Renamed preset"}
+            "/scenarios/my-scenario", json={"name": "Renamed scenario"}
         )
 
     assert response.status_code == 200
-    assert response.json()["id"] == "my-preset"
-    assert response.json()["name"] == "Renamed preset"
-    assert json.loads(preset_path.read_text())["name"] == "Renamed preset"
+    assert response.json()["id"] == "my-scenario"
+    assert response.json()["name"] == "Renamed scenario"
+    assert json.loads(scenario_path.read_text())["name"] == "Renamed scenario"
 
 
-async def test_delete_presets_removes_existing_preset(
+async def test_delete_scenarios_removes_existing_scenario(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ):
-    """DELETE /presets/{id} removes a persisted preset from .cache/presets."""
-    presets_dir = tmp_path / ".cache" / "presets"
-    presets_dir.mkdir(parents=True, exist_ok=True)
-    preset_path = presets_dir / "my-preset.json"
-    preset_path.write_text(json.dumps({"name": "My preset"}))
-    monkeypatch.setattr("app.main.DEFAULT_PRESETS_DIR", tmp_path / "unused-defaults")
-    monkeypatch.setattr("app.main.PRESETS_DIR", presets_dir)
+    """DELETE /scenarios/{id} removes a persisted scenario from .cache/scenarios."""
+    scenarios_dir = tmp_path / ".cache" / "scenarios"
+    scenarios_dir.mkdir(parents=True, exist_ok=True)
+    scenario_path = scenarios_dir / "my-scenario.json"
+    scenario_path.write_text(json.dumps({"name": "My scenario"}))
+    monkeypatch.setattr("app.main.DEFAULT_SCENARIOS_DIR", tmp_path / "unused-defaults")
+    monkeypatch.setattr("app.main.SCENARIOS_DIR", scenarios_dir)
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
-        response = await client.delete("/presets/my-preset")
+        response = await client.delete("/scenarios/my-scenario")
 
     assert response.status_code == 204
-    assert not preset_path.exists()
+    assert not scenario_path.exists()
 
 
 async def test_get_settings_returns_empty_object_when_missing(

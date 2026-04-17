@@ -320,11 +320,11 @@ describe("useWebSocket", () => {
         expect(getSessionIdFromPath("/")).toBeNull()
     })
 
-    it("generateSlug returns deterministic three-word slug", () => {
+    it("generateSlug returns deterministic slug with adjective-noun-number format", () => {
         const slug1 = generateSlug("test-session-id")
         const slug2 = generateSlug("test-session-id")
         expect(slug1).toBe(slug2)
-        expect(slug1).toMatch(/^[a-z]+-[a-z]+-[a-z]+$/)
+        expect(slug1).toMatch(/^[a-z]+-[a-z]+-\d{3}$/)
     })
 
     it("generateSlug produces different slugs for different ids", () => {

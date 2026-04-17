@@ -10,7 +10,7 @@ interface Model {
     name: string;
 }
 
-interface Preset {
+interface Scenario {
     id: string;
     name: string;
     shared_system_prompt: string;
@@ -128,7 +128,7 @@ function ChatbotConfig({
                         <button
                             key={p}
                             type="button"
-                            className={`preset-chip${provider === p ? " preset-chip-active" : ""}`}
+                            className={`scenario-chip${provider === p ? " scenario-chip-active" : ""}`}
                             onClick={() => onProviderChange(p)}
                         >
                             {PROVIDER_LABELS[p]}
@@ -194,8 +194,8 @@ function ChatbotConfig({
 
 export function SetupForm({ onStart, error }: SetupFormProps) {
     const [providers, setProviders] = useState<Providers>(DEFAULT_PROVIDERS);
-    const [presets, setPresets] = useState<Preset[]>([]);
-    const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+    const [scenarios, setScenarios] = useState<Scenario[]>([]);
+    const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
 
     const [providerA, setProviderA] = useState<Provider>("openrouter");
     const [providerB, setProviderB] = useState<Provider>("openrouter");
@@ -215,41 +215,41 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [conversationTitle, setConversationTitle] = useState("");
     const [isConversationNameExpanded, setIsConversationNameExpanded] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
-    const [isSavePresetOpen, setIsSavePresetOpen] = useState(false);
-    const [presetName, setPresetName] = useState("");
-    const [savePresetError, setSavePresetError] = useState<string | null>(null);
-    const [presetActionError, setPresetActionError] = useState<string | null>(null);
-    const [isSavingPreset, setIsSavingPreset] = useState(false);
-    const [activePresetMutationId, setActivePresetMutationId] = useState<string | null>(null);
-    const [presetPendingDelete, setPresetPendingDelete] = useState<Preset | null>(null);
-    const [presetPendingRename, setPresetPendingRename] = useState<Preset | null>(null);
-    const [isManagePresetsOpen, setIsManagePresetsOpen] = useState(false);
-    const [openPresetRowMenuId, setOpenPresetRowMenuId] = useState<string | null>(null);
-    const presetManageRef = useRef<HTMLDivElement | null>(null);
+    const [isSaveScenarioOpen, setIsSaveScenarioOpen] = useState(false);
+    const [scenarioName, setScenarioName] = useState("");
+    const [saveScenarioError, setSaveScenarioError] = useState<string | null>(null);
+    const [scenarioActionError, setScenarioActionError] = useState<string | null>(null);
+    const [isSavingScenario, setIsSavingScenario] = useState(false);
+    const [activeScenarioMutationId, setActiveScenarioMutationId] = useState<string | null>(null);
+    const [scenarioPendingDelete, setScenarioPendingDelete] = useState<Scenario | null>(null);
+    const [scenarioPendingRename, setScenarioPendingRename] = useState<Scenario | null>(null);
+    const [isManageScenariosOpen, setIsManageScenariosOpen] = useState(false);
+    const [openScenarioRowMenuId, setOpenScenarioRowMenuId] = useState<string | null>(null);
+    const scenarioManageRef = useRef<HTMLDivElement | null>(null);
 
-    const closeSavePresetDialog = useCallback((forceClose = false) => {
-        if (!forceClose && isSavingPreset) {
+    const closeSaveScenarioDialog = useCallback((forceClose = false) => {
+        if (!forceClose && isSavingScenario) {
             return;
         }
-        setIsSavePresetOpen(false);
-        setPresetName("");
-        setSavePresetError(null);
-    }, [isSavingPreset]);
+        setIsSaveScenarioOpen(false);
+        setScenarioName("");
+        setSaveScenarioError(null);
+    }, [isSavingScenario]);
 
-    const openSavePresetDialog = () => {
-        setSavePresetError(null);
-        setIsSavePresetOpen(true);
+    const openSaveScenarioDialog = () => {
+        setSaveScenarioError(null);
+        setIsSaveScenarioOpen(true);
     };
 
     useEffect(() => {
         let cancelled = false;
 
         async function initialize(): Promise<void> {
-            const [providersData, presetsData, settings] = await Promise.all([
+            const [providersData, scenariosData, settings] = await Promise.all([
                 fetch(apiUrl("/providers"))
                     .then((response) => response.json())
                     .catch(() => DEFAULT_PROVIDERS),
-                fetch(apiUrl("/presets"))
+                fetch(apiUrl("/scenarios"))
                     .then((response) => response.json())
                     .catch(() => []),
                 loadSettings().catch(() => null),
@@ -260,7 +260,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             }
 
             setProviders(providersData);
-            setPresets(presetsData);
+            setScenarios(scenariosData);
 
             const availableProviders = (Object.keys(providersData) as Provider[]).filter((provider) => providersData[provider]);
             const fallbackProvider = availableProviders[0] ?? "openrouter";
@@ -347,33 +347,33 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     }, [modelB, modelsB, nameBManual]);
 
     useEffect(() => {
-        if (!isSavePresetOpen) {
+        if (!isSaveScenarioOpen) {
             return;
         }
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
-                closeSavePresetDialog();
+                closeSaveScenarioDialog();
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [closeSavePresetDialog, isSavePresetOpen]);
+    }, [closeSaveScenarioDialog, isSaveScenarioOpen]);
 
     useEffect(() => {
-        if (!isManagePresetsOpen) {
+        if (!isManageScenariosOpen) {
             return;
         }
         const handlePointerDown = (event: PointerEvent) => {
             const target = event.target as Node | null;
-            if (target && presetManageRef.current && !presetManageRef.current.contains(target)) {
-                setIsManagePresetsOpen(false);
-                setOpenPresetRowMenuId(null);
+            if (target && scenarioManageRef.current && !scenarioManageRef.current.contains(target)) {
+                setIsManageScenariosOpen(false);
+                setOpenScenarioRowMenuId(null);
             }
         };
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
-                setIsManagePresetsOpen(false);
-                setOpenPresetRowMenuId(null);
+                setIsManageScenariosOpen(false);
+                setOpenScenarioRowMenuId(null);
             }
         };
         window.addEventListener("pointerdown", handlePointerDown);
@@ -382,7 +382,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             window.removeEventListener("pointerdown", handlePointerDown);
             window.removeEventListener("keydown", handleKeyDown);
         };
-    }, [isManagePresetsOpen]);
+    }, [isManageScenariosOpen]);
 
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
 
@@ -401,87 +401,87 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         shared_system_prompt: sharedPrompt,
     });
 
-    const loadPreset = async (id: string) => {
-        setPresetActionError(null);
-        const preset = presets.find((item) => item.id === id);
-        if (!preset) {
+    const loadScenario = async (id: string) => {
+        setScenarioActionError(null);
+        const scenario = scenarios.find((item) => item.id === id);
+        if (!scenario) {
             return;
         }
-        setSelectedPresetId(id);
-        if (preset.config) {
-            const [presetModelsA, presetModelsB] = await Promise.all([
-                fetchModels(preset.config.chatbot_a.provider),
-                fetchModels(preset.config.chatbot_b.provider),
+        setSelectedScenarioId(id);
+        if (scenario.config) {
+            const [scenarioModelsA, scenarioModelsB] = await Promise.all([
+                fetchModels(scenario.config.chatbot_a.provider),
+                fetchModels(scenario.config.chatbot_b.provider),
             ]);
-            setProviderA(preset.config.chatbot_a.provider);
-            setProviderB(preset.config.chatbot_b.provider);
-            setModelsA(presetModelsA);
-            setModelsB(presetModelsB);
-            const presetModelA = preferredModelId(presetModelsA, preset.config.chatbot_a.provider, preset.config.chatbot_a.model);
-            const presetModelB = preferredModelId(presetModelsB, preset.config.chatbot_b.provider, preset.config.chatbot_b.model);
-            setModelA(presetModelA);
-            setModelB(presetModelB);
-            const presetDerivedNameA = shortModelName(presetModelsA.find((m) => m.id === presetModelA) ?? { id: presetModelA, name: presetModelA });
-            const presetDerivedNameB = shortModelName(presetModelsB.find((m) => m.id === presetModelB) ?? { id: presetModelB, name: presetModelB });
-            const presetNameA = preset.config.chatbot_a.name;
-            const presetNameB = preset.config.chatbot_b.name;
-            const isPresetManualA = presetNameA !== "" && presetNameA !== presetDerivedNameA;
-            const isPresetManualB = presetNameB !== "" && presetNameB !== presetDerivedNameB;
-            setNameA(isPresetManualA ? presetNameA : "");
-            setNameB(isPresetManualB ? presetNameB : "");
-            setNameAManual(isPresetManualA);
-            setNameBManual(isPresetManualB);
-            setSharedPrompt(preset.config.shared_system_prompt);
-            setPromptA(preset.config.chatbot_a.system_prompt);
-            setPromptB(preset.config.chatbot_b.system_prompt);
-            setEnableThinkingA(preset.config.chatbot_a.enable_thinking ?? false);
-            setEnableThinkingB(preset.config.chatbot_b.enable_thinking ?? false);
+            setProviderA(scenario.config.chatbot_a.provider);
+            setProviderB(scenario.config.chatbot_b.provider);
+            setModelsA(scenarioModelsA);
+            setModelsB(scenarioModelsB);
+            const scenarioModelA = preferredModelId(scenarioModelsA, scenario.config.chatbot_a.provider, scenario.config.chatbot_a.model);
+            const scenarioModelB = preferredModelId(scenarioModelsB, scenario.config.chatbot_b.provider, scenario.config.chatbot_b.model);
+            setModelA(scenarioModelA);
+            setModelB(scenarioModelB);
+            const scenarioDerivedNameA = shortModelName(scenarioModelsA.find((m) => m.id === scenarioModelA) ?? { id: scenarioModelA, name: scenarioModelA });
+            const scenarioDerivedNameB = shortModelName(scenarioModelsB.find((m) => m.id === scenarioModelB) ?? { id: scenarioModelB, name: scenarioModelB });
+            const scenarioNameA = scenario.config.chatbot_a.name;
+            const scenarioNameB = scenario.config.chatbot_b.name;
+            const isScenarioManualA = scenarioNameA !== "" && scenarioNameA !== scenarioDerivedNameA;
+            const isScenarioManualB = scenarioNameB !== "" && scenarioNameB !== scenarioDerivedNameB;
+            setNameA(isScenarioManualA ? scenarioNameA : "");
+            setNameB(isScenarioManualB ? scenarioNameB : "");
+            setNameAManual(isScenarioManualA);
+            setNameBManual(isScenarioManualB);
+            setSharedPrompt(scenario.config.shared_system_prompt);
+            setPromptA(scenario.config.chatbot_a.system_prompt);
+            setPromptB(scenario.config.chatbot_b.system_prompt);
+            setEnableThinkingA(scenario.config.chatbot_a.enable_thinking ?? false);
+            setEnableThinkingB(scenario.config.chatbot_b.enable_thinking ?? false);
             return;
         }
-        setSharedPrompt(preset.shared_system_prompt);
-        setPromptA(preset.system_prompt_a);
-        setPromptB(preset.system_prompt_b);
+        setSharedPrompt(scenario.shared_system_prompt);
+        setPromptA(scenario.system_prompt_a);
+        setPromptB(scenario.system_prompt_b);
     };
 
-    const handleSavePreset = async () => {
-        const trimmedPresetName = presetName.trim();
-        if (!trimmedPresetName) {
-            setSavePresetError("Enter a preset name.");
+    const handleSaveScenario = async () => {
+        const trimmedScenarioName = scenarioName.trim();
+        if (!trimmedScenarioName) {
+            setSaveScenarioError("Enter a scenario name.");
             return;
         }
-        setIsSavingPreset(true);
-        setSavePresetError(null);
-        setPresetActionError(null);
+        setIsSavingScenario(true);
+        setSaveScenarioError(null);
+        setScenarioActionError(null);
         try {
-            const response = await fetch(apiUrl("/presets"), {
+            const response = await fetch(apiUrl("/scenarios"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    name: trimmedPresetName,
+                    name: trimmedScenarioName,
                     config: buildConfig(),
                 }),
             });
             if (!response.ok) {
-                throw new Error("Failed to save preset");
+                throw new Error("Failed to save scenario");
             }
-            const savedPreset: Preset = await response.json();
-            setPresets((currentPresets) => [savedPreset, ...currentPresets]);
-            setSelectedPresetId(null);
-            closeSavePresetDialog(true);
+            const savedScenario: Scenario = await response.json();
+            setScenarios((currentScenarios) => [savedScenario, ...currentScenarios]);
+            setSelectedScenarioId(null);
+            closeSaveScenarioDialog(true);
         } catch {
-            setSavePresetError("Failed to save preset.");
+            setSaveScenarioError("Failed to save scenario.");
         } finally {
-            setIsSavingPreset(false);
+            setIsSavingScenario(false);
         }
     };
 
-    const handleRenamePreset = async (presetId: string, nextName: string): Promise<boolean> => {
-        setActivePresetMutationId(presetId);
-        setPresetActionError(null);
+    const handleRenameScenario = async (scenarioId: string, nextName: string): Promise<boolean> => {
+        setActiveScenarioMutationId(scenarioId);
+        setScenarioActionError(null);
         try {
-            const response = await fetch(apiUrl(`/presets/${presetId}`), {
+            const response = await fetch(apiUrl(`/scenarios/${scenarioId}`), {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -489,49 +489,49 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                 body: JSON.stringify({ name: nextName }),
             });
             if (!response.ok) {
-                throw new Error("Failed to rename preset");
+                throw new Error("Failed to rename scenario");
             }
-            const renamedPreset: Preset = await response.json();
-            setPresets((currentPresets) => currentPresets.map((preset) => (
-                preset.id === presetId ? renamedPreset : preset
+            const renamedScenario: Scenario = await response.json();
+            setScenarios((currentScenarios) => currentScenarios.map((scenario) => (
+                scenario.id === scenarioId ? renamedScenario : scenario
             )));
-            setPresetPendingRename(null);
+            setScenarioPendingRename(null);
             return true;
         } catch {
-            setPresetActionError("Failed to rename preset.");
+            setScenarioActionError("Failed to rename scenario.");
             return false;
         } finally {
-            setActivePresetMutationId(null);
+            setActiveScenarioMutationId(null);
         }
     };
 
-    const handleDeletePreset = async (): Promise<void> => {
-        if (!presetPendingDelete) {
+    const handleDeleteScenario = async (): Promise<void> => {
+        if (!scenarioPendingDelete) {
             return;
         }
-        setActivePresetMutationId(presetPendingDelete.id);
-        setPresetActionError(null);
+        setActiveScenarioMutationId(scenarioPendingDelete.id);
+        setScenarioActionError(null);
         try {
-            const response = await fetch(apiUrl(`/presets/${presetPendingDelete.id}`), {
+            const response = await fetch(apiUrl(`/scenarios/${scenarioPendingDelete.id}`), {
                 method: "DELETE",
             });
             if (!response.ok) {
-                throw new Error("Failed to delete preset");
+                throw new Error("Failed to delete scenario");
             }
-            setPresets((currentPresets) => currentPresets.filter((item) => item.id !== presetPendingDelete.id));
-            if (selectedPresetId === presetPendingDelete.id) {
-                setSelectedPresetId(null);
+            setScenarios((currentScenarios) => currentScenarios.filter((item) => item.id !== scenarioPendingDelete.id));
+            if (selectedScenarioId === scenarioPendingDelete.id) {
+                setSelectedScenarioId(null);
             }
-            setPresetPendingDelete(null);
+            setScenarioPendingDelete(null);
         } catch {
-            setPresetActionError("Failed to delete preset.");
+            setScenarioActionError("Failed to delete scenario.");
         } finally {
-            setActivePresetMutationId(null);
+            setActiveScenarioMutationId(null);
         }
     };
 
     const handleClearAll = () => {
-        setSelectedPresetId(null);
+        setSelectedScenarioId(null);
         setSharedPrompt("");
         setPromptA("");
         setPromptB("");
@@ -560,64 +560,64 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
                 <form onSubmit={handleSubmit} className="setup-form">
                     <div className="field">
-                        <div className="preset-header">
+                        <div className="scenario-header">
                             <span className="field-label">Preset</span>
-                            <div className="preset-header-actions">
-                                <div className="preset-manage" ref={presetManageRef}>
+                            <div className="scenario-header-actions">
+                                <div className="scenario-manage" ref={scenarioManageRef}>
                                     <button
                                         type="button"
-                                        className="preset-action-link"
+                                        className="scenario-action-link"
                                         onClick={() => {
-                                            setIsManagePresetsOpen((open) => !open);
-                                            setOpenPresetRowMenuId(null);
+                                            setIsManageScenariosOpen((open) => !open);
+                                            setOpenScenarioRowMenuId(null);
                                         }}
-                                        disabled={presets.length === 0}
+                                        disabled={scenarios.length === 0}
                                         aria-haspopup="menu"
-                                        aria-expanded={isManagePresetsOpen}
-                                        title="Manage presets"
+                                        aria-expanded={isManageScenariosOpen}
+                                        title="Manage scenarios"
                                     >
                                         Manage
                                     </button>
-                                    {isManagePresetsOpen && presets.length > 0 && (
-                                        <div className="preset-menu preset-manage-list" role="menu">
-                                            {presets.map((preset) => (
-                                                <div key={preset.id} className="preset-manage-row">
-                                                    <span className="preset-manage-name" title={preset.name}>{preset.name}</span>
-                                                    <div className="preset-manage-row-actions">
+                                    {isManageScenariosOpen && scenarios.length > 0 && (
+                                        <div className="scenario-menu scenario-manage-list" role="menu">
+                                            {scenarios.map((scenario) => (
+                                                <div key={scenario.id} className="scenario-manage-row">
+                                                    <span className="scenario-manage-name" title={scenario.name}>{scenario.name}</span>
+                                                    <div className="scenario-manage-row-actions">
                                                         <button
                                                             type="button"
-                                                            className="preset-manage-row-btn"
-                                                            onClick={() => setOpenPresetRowMenuId((id) => (id === preset.id ? null : preset.id))}
+                                                            className="scenario-manage-row-btn"
+                                                            onClick={() => setOpenScenarioRowMenuId((id) => (id === scenario.id ? null : scenario.id))}
                                                             aria-haspopup="menu"
-                                                            aria-expanded={openPresetRowMenuId === preset.id}
-                                                            aria-label={`Preset options for ${preset.name}`}
+                                                            aria-expanded={openScenarioRowMenuId === scenario.id}
+                                                            aria-label={`Scenario options for ${scenario.name}`}
                                                             title="Preset options"
-                                                            disabled={activePresetMutationId !== null}
+                                                            disabled={activeScenarioMutationId !== null}
                                                         >
                                                             ⋯
                                                         </button>
-                                                        {openPresetRowMenuId === preset.id && (
-                                                            <div className="preset-menu preset-row-menu" role="menu">
+                                                        {openScenarioRowMenuId === scenario.id && (
+                                                            <div className="scenario-menu scenario-row-menu" role="menu">
                                                                 <button
                                                                     type="button"
-                                                                    className="preset-menu-item"
+                                                                    className="scenario-menu-item"
                                                                     role="menuitem"
                                                                     onClick={() => {
-                                                                        setOpenPresetRowMenuId(null);
-                                                                        setIsManagePresetsOpen(false);
-                                                                        setPresetPendingRename(preset);
+                                                                        setOpenScenarioRowMenuId(null);
+                                                                        setIsManageScenariosOpen(false);
+                                                                        setScenarioPendingRename(scenario);
                                                                     }}
                                                                 >
                                                                     Rename
                                                                 </button>
                                                                 <button
                                                                     type="button"
-                                                                    className="preset-menu-item preset-menu-item-danger"
+                                                                    className="scenario-menu-item scenario-menu-item-danger"
                                                                     role="menuitem"
                                                                     onClick={() => {
-                                                                        setOpenPresetRowMenuId(null);
-                                                                        setIsManagePresetsOpen(false);
-                                                                        setPresetPendingDelete(preset);
+                                                                        setOpenScenarioRowMenuId(null);
+                                                                        setIsManageScenariosOpen(false);
+                                                                        setScenarioPendingDelete(scenario);
                                                                     }}
                                                                 >
                                                                     Delete
@@ -632,15 +632,15 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                 </div>
                                 <button
                                     type="button"
-                                    className="preset-save-link"
-                                    onClick={openSavePresetDialog}
-                                    disabled={!canStart || isSavingPreset}
+                                    className="scenario-save-link"
+                                    onClick={openSaveScenarioDialog}
+                                    disabled={!canStart || isSavingScenario}
                                 >
-                                    Save as preset
+                                    Save as scenario
                                 </button>
                                 <button
                                     type="button"
-                                    className="preset-action-link preset-action-link-clear"
+                                    className="scenario-action-link preset-action-link-clear"
                                     onClick={handleClearAll}
                                     title="Clear all prompts and names"
                                 >
@@ -652,29 +652,29 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             </div>
                         </div>
                         <select
-                            value={selectedPresetId ?? ""}
+                            value={selectedScenarioId ?? ""}
                             onChange={(event) => {
                                 const id = event.target.value;
                                 if (id) {
-                                    loadPreset(id).catch(() => setPresetActionError("Failed to load preset."));
+                                    loadScenario(id).catch(() => setScenarioActionError("Failed to load preset."));
                                 } else {
-                                    setSelectedPresetId(null);
+                                    setSelectedScenarioId(null);
                                 }
                             }}
                         >
                             <option value="">None</option>
-                            {presets.map((preset) => (
-                                <option key={preset.id} value={preset.id}>{preset.name}</option>
+                            {scenarios.map((scenario) => (
+                                <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
                             ))}
                         </select>
-                        {presetActionError && <div className="preset-save-error">{presetActionError}</div>}
-                        {isSavePresetOpen && (
+                        {scenarioActionError && <div className="scenario-save-error">{scenarioActionError}</div>}
+                        {isSaveScenarioOpen && (
                             <div
                                 className="rename-dialog-backdrop"
                                 role="presentation"
                                 onClick={() => {
-                                    if (!isSavingPreset) {
-                                        closeSavePresetDialog();
+                                    if (!isSavingScenario) {
+                                        closeSaveScenarioDialog();
                                     }
                                 }}
                             >
@@ -686,33 +686,33 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                     onClick={(event) => event.stopPropagation()}
                                 >
                                     <div className="rename-dialog-header">
-                                        <h2 id="save-preset-title" className="rename-dialog-title">Save preset</h2>
+                                        <h2 id="save-preset-title" className="rename-dialog-title">Save scenario</h2>
                                     </div>
                                     <input
                                         type="text"
                                         className="rename-dialog-input"
                                         aria-label="Preset name"
-                                        value={presetName}
-                                        onChange={(event) => setPresetName(event.target.value)}
+                                        value={scenarioName}
+                                        onChange={(event) => setScenarioName(event.target.value)}
                                         placeholder="Enter a preset name"
                                     />
-                                    {savePresetError && <div className="preset-save-error">{savePresetError}</div>}
+                                    {saveScenarioError && <div className="scenario-save-error">{saveScenarioError}</div>}
                                     <div className="rename-dialog-actions">
                                         <button
                                             type="button"
                                             className="rename-dialog-cancel"
-                                            onClick={() => closeSavePresetDialog()}
-                                            disabled={isSavingPreset}
+                                            onClick={() => closeSaveScenarioDialog()}
+                                            disabled={isSavingScenario}
                                         >
                                             Cancel
                                         </button>
                                         <button
                                             type="button"
                                             className="rename-dialog-confirm"
-                                            onClick={handleSavePreset}
-                                            disabled={isSavingPreset}
+                                            onClick={handleSaveScenario}
+                                            disabled={isSavingScenario}
                                         >
-                                            {isSavingPreset ? "Saving…" : "Save"}
+                                            {isSavingScenario ? "Saving…" : "Save"}
                                         </button>
                                     </div>
                                 </div>
@@ -801,32 +801,32 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                     </div>
                 </form>
                 <ConfirmationDialog
-                    isOpen={presetPendingDelete !== null}
-                    title="Delete preset"
-                    message={presetPendingDelete ? `Delete preset "${presetPendingDelete.name}"?` : ""}
+                    isOpen={scenarioPendingDelete !== null}
+                    title="Delete scenario"
+                    message={scenarioPendingDelete ? `Delete scenario "${scenarioPendingDelete.name}"?` : ""}
                     confirmLabel="Delete"
-                    isConfirming={activePresetMutationId !== null}
-                    onConfirm={() => { void handleDeletePreset(); }}
+                    isConfirming={activeScenarioMutationId !== null}
+                    onConfirm={() => { void handleDeleteScenario(); }}
                     onCancel={() => {
-                        if (activePresetMutationId === null) {
-                            setPresetPendingDelete(null);
+                        if (activeScenarioMutationId === null) {
+                            setScenarioPendingDelete(null);
                         }
                     }}
                 />
                 <RenameDialog
-                    key={presetPendingRename?.id ?? "preset-rename-closed"}
-                    isOpen={presetPendingRename !== null}
-                    title="Rename preset"
-                    initialValue={presetPendingRename?.name ?? ""}
-                    isSaving={activePresetMutationId !== null}
+                    key={scenarioPendingRename?.id ?? "scenario-rename-closed"}
+                    isOpen={scenarioPendingRename !== null}
+                    title="Rename scenario"
+                    initialValue={scenarioPendingRename?.name ?? ""}
+                    isSaving={activeScenarioMutationId !== null}
                     onConfirm={(value) => {
-                        if (presetPendingRename) {
-                            void handleRenamePreset(presetPendingRename.id, value);
+                        if (scenarioPendingRename) {
+                            void handleRenameScenario(scenarioPendingRename.id, value);
                         }
                     }}
                     onCancel={() => {
-                        if (activePresetMutationId === null) {
-                            setPresetPendingRename(null);
+                        if (activeScenarioMutationId === null) {
+                            setScenarioPendingRename(null);
                         }
                     }}
                 />

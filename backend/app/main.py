@@ -16,9 +16,9 @@ from app.models import (
     CLAUDE_CODE_MODELS,
     CODEX_MODELS,
     MODELS,
-    PresetCreateRequest,
-    PresetRenameRequest,
     RenameRequest,
+    ScenarioCreateRequest,
+    ScenarioRenameRequest,
     SessionConfig,
     Settings,
 )
@@ -26,12 +26,12 @@ from app.providers.mock import MOCK_MODELS, reset_mock_state
 
 MOCK_PROVIDER_ENABLED = os.environ.get("MOCK_PROVIDER", "") == "1"
 
-PRESET_ID_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
+SCENARIO_ID_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SESSION_ID_PATTERN = r"[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*"
 REPO_ROOT = Path(__file__).parent.parent.parent
-DEFAULT_PRESETS_DIR = Path(__file__).parent / "presets"
-PRESETS_DIR = Path(
-    os.environ.get("LMPARLOR_PRESETS_DIR", str(REPO_ROOT / ".cache/presets"))
+DEFAULT_SCENARIOS_DIR = Path(__file__).parent / "scenarios"
+SCENARIOS_DIR = Path(
+    os.environ.get("LMPARLOR_SCENARIOS_DIR", str(REPO_ROOT / ".cache/scenarios"))
 )
 SETTINGS_PATH = Path(
     os.environ.get("LMPARLOR_SETTINGS_PATH", str(REPO_ROOT / ".cache/settings.json"))
@@ -69,18 +69,18 @@ def _normalize_session_data(data: dict) -> dict:
     return normalized
 
 
-def _ensure_presets_dir() -> None:
-    PRESETS_DIR.mkdir(parents=True, exist_ok=True)
-    if any(PRESETS_DIR.glob("*.json")):
+def _ensure_scenarios_dir() -> None:
+    SCENARIOS_DIR.mkdir(parents=True, exist_ok=True)
+    if any(SCENARIOS_DIR.glob("*.json")):
         return
-    for source_path in sorted(DEFAULT_PRESETS_DIR.glob("*.json")):
-        shutil.copy2(source_path, PRESETS_DIR / source_path.name)
+    for source_path in sorted(DEFAULT_SCENARIOS_DIR.glob("*.json")):
+        shutil.copy2(source_path, SCENARIOS_DIR / source_path.name)
 
 
-def _normalize_preset_data(preset_id: str, data: dict) -> dict:
+def _normalize_scenario_data(scenario_id: str, data: dict) -> dict:
     config = data.get("config")
     normalized = {
-        "id": preset_id,
+        "id": scenario_id,
         "name": data["name"],
         "shared_system_prompt": data.get(
             "shared_system_prompt",
@@ -100,24 +100,24 @@ def _normalize_preset_data(preset_id: str, data: dict) -> dict:
     return normalized
 
 
-def _new_preset_id(name: str) -> str:
-    base_slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "preset"
+def _new_scenario_id(name: str) -> str:
+    base_slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "scenario"
     base_slug = re.sub(r"-+", "-", base_slug)
     candidate = base_slug
     suffix = 2
-    while _preset_path(candidate).exists():
+    while _scenario_path(candidate).exists():
         candidate = base_slug + "-" + str(suffix)
         suffix += 1
     return candidate
 
 
-def _preset_path(preset_id: str) -> Path:
-    if re.fullmatch(PRESET_ID_PATTERN, preset_id) is None:
-        raise ValueError("Invalid preset id")
-    presets_root = PRESETS_DIR.resolve()
-    path = (presets_root / (preset_id + ".json")).resolve()
-    if path.parent != presets_root:
-        raise ValueError("Invalid preset path")
+def _scenario_path(scenario_id: str) -> Path:
+    if re.fullmatch(SCENARIO_ID_PATTERN, scenario_id) is None:
+        raise ValueError("Invalid scenario id")
+    scenarios_root = SCENARIOS_DIR.resolve()
+    path = (scenarios_root / (scenario_id + ".json")).resolve()
+    if path.parent != scenarios_root:
+        raise ValueError("Invalid scenario path")
     return path
 
 
@@ -142,47 +142,47 @@ app.add_middleware(
 )
 
 
-@app.get("/presets")
-def get_presets() -> List[dict]:
-    _ensure_presets_dir()
-    presets = []
-    for path in sorted(PRESETS_DIR.glob("*.json")):
+@app.get("/scenarios")
+def get_scenarios() -> List[dict]:
+    _ensure_scenarios_dir()
+    scenarios = []
+    for path in sorted(SCENARIOS_DIR.glob("*.json")):
         try:
             data = json.loads(path.read_text())
-            presets.append(_normalize_preset_data(path.stem, data))
+            scenarios.append(_normalize_scenario_data(path.stem, data))
         except (OSError, json.JSONDecodeError, KeyError):
-            logger.warning("Failed to load preset %s", path.name)
-    return presets
+            logger.warning("Failed to load scenario %s", path.name)
+    return scenarios
 
 
-@app.post("/presets", status_code=201)
-def save_preset(request: PresetCreateRequest) -> dict:
-    preset_name = request.name.strip()
-    if not preset_name:
+@app.post("/scenarios", status_code=201)
+def save_scenario(request: ScenarioCreateRequest) -> dict:
+    scenario_name = request.name.strip()
+    if not scenario_name:
         raise HTTPException(status_code=422, detail="name must not be empty")
     try:
-        _ensure_presets_dir()
-        preset_id = _new_preset_id(preset_name)
+        _ensure_scenarios_dir()
+        scenario_id = _new_scenario_id(scenario_name)
         data = {
-            "name": preset_name,
+            "name": scenario_name,
             "config": request.config.model_dump(),
         }
-        path = _preset_path(preset_id)
+        path = _scenario_path(scenario_id)
         path.write_text(json.dumps(data))
-        return _normalize_preset_data(preset_id, data)
+        return _normalize_scenario_data(scenario_id, data)
     except OSError as exc:
-        logger.exception("Failed to save preset %s", preset_name)
-        raise HTTPException(status_code=500, detail="Failed to save preset") from exc
+        logger.exception("Failed to save scenario %s", scenario_name)
+        raise HTTPException(status_code=500, detail="Failed to save scenario") from exc
 
 
-@app.patch("/presets/{preset_id}")
-def rename_preset(preset_id: str, request: PresetRenameRequest) -> dict:
+@app.patch("/scenarios/{scenario_id}")
+def rename_scenario(scenario_id: str, request: ScenarioRenameRequest) -> dict:
     try:
-        path = _preset_path(preset_id)
+        path = _scenario_path(scenario_id)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail="Invalid preset id") from exc
+        raise HTTPException(status_code=422, detail="Invalid scenario id") from exc
     if not path.exists():
-        raise HTTPException(status_code=404, detail="Preset not found")
+        raise HTTPException(status_code=404, detail="Scenario not found")
     try:
         data = json.loads(path.read_text())
         new_name = request.name.strip()
@@ -190,27 +190,31 @@ def rename_preset(preset_id: str, request: PresetRenameRequest) -> dict:
             raise HTTPException(status_code=422, detail="name must not be empty")
         data["name"] = new_name
         path.write_text(json.dumps(data))
-        return _normalize_preset_data(preset_id, data)
+        return _normalize_scenario_data(scenario_id, data)
     except HTTPException:
         raise
     except (OSError, json.JSONDecodeError) as exc:
-        logger.exception("Failed to rename preset %s", preset_id)
-        raise HTTPException(status_code=500, detail="Failed to rename preset") from exc
+        logger.exception("Failed to rename scenario %s", scenario_id)
+        raise HTTPException(
+            status_code=500, detail="Failed to rename scenario"
+        ) from exc
 
 
-@app.delete("/presets/{preset_id}", status_code=204)
-def delete_preset(preset_id: str) -> None:
+@app.delete("/scenarios/{scenario_id}", status_code=204)
+def delete_scenario(scenario_id: str) -> None:
     try:
-        path = _preset_path(preset_id)
+        path = _scenario_path(scenario_id)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail="Invalid preset id") from exc
+        raise HTTPException(status_code=422, detail="Invalid scenario id") from exc
     if not path.exists():
-        raise HTTPException(status_code=404, detail="Preset not found")
+        raise HTTPException(status_code=404, detail="Scenario not found")
     try:
         path.unlink()
     except OSError as exc:
-        logger.exception("Failed to delete preset %s", preset_id)
-        raise HTTPException(status_code=500, detail="Failed to delete preset") from exc
+        logger.exception("Failed to delete scenario %s", scenario_id)
+        raise HTTPException(
+            status_code=500, detail="Failed to delete scenario"
+        ) from exc
 
 
 @app.get("/providers")

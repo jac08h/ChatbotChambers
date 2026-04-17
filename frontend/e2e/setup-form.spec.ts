@@ -15,7 +15,7 @@ test.describe("Setup Form & Configuration", () => {
         const mockChip = providerGroup.locator("button", { hasText: "Mock" });
         await expect(mockChip).toBeVisible();
         await mockChip.click();
-        await expect(mockChip).toHaveClass(/preset-chip-active/);
+        await expect(mockChip).toHaveClass(/scenario-chip-active/);
     });
 
     test("Model dropdown populates on provider select", async ({ page }) => {

@@ -55,11 +55,11 @@ class RenameRequest(BaseModel):
     title: str
 
 
-class PresetRenameRequest(BaseModel):
+class ScenarioRenameRequest(BaseModel):
     name: str
 
 
-class PresetCreateRequest(BaseModel):
+class ScenarioCreateRequest(BaseModel):
     name: str
     config: SessionConfig
 

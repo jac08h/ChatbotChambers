@@ -22,7 +22,7 @@ ensureCleanDir(E2E_CACHE_DIR);
 const envVars = [
     `MOCK_PROVIDER=1`,
     `CHATBOTCHAMBERS_CORS_ORIGINS=http://localhost:${FRONTEND_PORT}`,
-    `LMPARLOR_PRESETS_DIR=${path.join(E2E_CACHE_DIR, "presets")}`,
+    `LMPARLOR_SCENARIOS_DIR=${path.join(E2E_CACHE_DIR, "scenarios")}`,
     `LMPARLOR_SETTINGS_PATH=${path.join(E2E_CACHE_DIR, "settings.json")}`,
     `LMPARLOR_SESSIONS_DIR=${path.join(E2E_CACHE_DIR, "sessions")}`,
 ].join(" ");

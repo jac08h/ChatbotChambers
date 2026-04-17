@@ -1,27 +1,27 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Preset CRUD", () => {
+test.describe("Scenario CRUD", () => {
     test.beforeEach(async ({ page }) => {
         await page.goto("/");
         await page.waitForSelector(".setup-form");
     });
 
-    test("Presets dropdown loads on page open", async ({ page }) => {
-        const presetSelect = page.locator(".setup-form .field").first().locator("select");
-        await expect(presetSelect).toBeVisible();
-        const optionCount = await presetSelect.locator("option").count();
+    test("Scenarios dropdown loads on page open", async ({ page }) => {
+        const scenarioSelect = page.locator(".setup-form .field").first().locator("select");
+        await expect(scenarioSelect).toBeVisible();
+        const optionCount = await scenarioSelect.locator("option").count();
         expect(optionCount).toBeGreaterThan(1);
     });
 
-    test("Loading a preset populates the form", async ({ page }) => {
-        const presetSelect = page.locator(".setup-form .field").first().locator("select");
-        await presetSelect.selectOption({ index: 1 });
+    test("Loading a scenario populates the form", async ({ page }) => {
+        const scenarioSelect = page.locator(".setup-form .field").first().locator("select");
+        await scenarioSelect.selectOption({ index: 1 });
 
         const sharedPrompt = page.locator("textarea").first();
         await expect(sharedPrompt).not.toHaveValue("");
     });
 
-    test("Saving current config as new preset", async ({ page }) => {
+    test("Saving current config as new scenario", async ({ page }) => {
         const sectionA = page.locator(".chatbot-config.side-a");
         const sectionB = page.locator(".chatbot-config.side-b");
         await sectionA.locator(".provider-chips button", { hasText: "Mock" }).click();
@@ -29,24 +29,24 @@ test.describe("Preset CRUD", () => {
         await expect(sectionA.locator("select")).toBeVisible();
         await expect(sectionB.locator("select")).toBeVisible();
 
-        const saveLink = page.locator(".preset-save-link");
+        const saveLink = page.locator(".scenario-save-link");
         await saveLink.click();
 
         const dialog = page.locator('[role="dialog"]');
         await expect(dialog).toBeVisible();
 
-        const presetNameInput = dialog.locator("input");
-        const uniqueName = "E2E Test Preset " + Date.now();
-        await presetNameInput.fill(uniqueName);
+        const scenarioNameInput = dialog.locator("input");
+        const uniqueName = "E2E Test Scenario " + Date.now();
+        await scenarioNameInput.fill(uniqueName);
         await dialog.locator("button", { hasText: "Save" }).click();
 
         await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
-        const presetSelect = page.locator(".setup-form .field").first().locator("select");
-        await expect(presetSelect.locator("option", { hasText: uniqueName })).toBeAttached();
+        const scenarioSelect = page.locator(".setup-form .field").first().locator("select");
+        await expect(scenarioSelect.locator("option", { hasText: uniqueName })).toBeAttached();
     });
 
-    test("Preset name required to save", async ({ page }) => {
+    test("Scenario name required to save", async ({ page }) => {
         const sectionA = page.locator(".chatbot-config.side-a");
         const sectionB = page.locator(".chatbot-config.side-b");
         await sectionA.locator(".provider-chips button", { hasText: "Mock" }).click();
@@ -54,7 +54,7 @@ test.describe("Preset CRUD", () => {
         await expect(sectionA.locator("select")).toBeVisible();
         await expect(sectionB.locator("select")).toBeVisible();
 
-        const saveLink = page.locator(".preset-save-link");
+        const saveLink = page.locator(".scenario-save-link");
         await saveLink.click();
 
         const dialog = page.locator('[role="dialog"]');
@@ -62,19 +62,19 @@ test.describe("Preset CRUD", () => {
 
         await dialog.locator("button", { hasText: "Save" }).click();
 
-        const error = dialog.locator(".preset-save-error");
+        const error = dialog.locator(".scenario-save-error");
         await expect(error).toBeVisible();
-        await expect(error).toHaveText("Enter a preset name.");
+        await expect(error).toHaveText("Enter a scenario name.");
     });
 
-    test("Renaming a preset updates the dropdown option", async ({ page }) => {
+    test("Renaming a scenario updates the dropdown option", async ({ page }) => {
         const sectionA = page.locator(".chatbot-config.side-a");
         const sectionB = page.locator(".chatbot-config.side-b");
         await sectionA.locator(".provider-chips button", { hasText: "Mock" }).click();
         await sectionB.locator(".provider-chips button", { hasText: "Mock" }).click();
         await expect(sectionA.locator("select")).toBeVisible();
 
-        const saveLink = page.locator(".preset-save-link");
+        const saveLink = page.locator(".scenario-save-link");
         await saveLink.click();
         const dialog = page.locator('[role="dialog"]');
         await expect(dialog).toBeVisible();
@@ -84,15 +84,15 @@ test.describe("Preset CRUD", () => {
         await dialog.locator("button", { hasText: "Save" }).click();
         await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
-        const presetSelect = page.locator(".setup-form .field").first().locator("select");
-        await presetSelect.selectOption({ label: originalName });
+        const scenarioSelect = page.locator(".setup-form .field").first().locator("select");
+        await scenarioSelect.selectOption({ label: originalName });
 
-        const manageBtn = page.locator(".preset-action-link", { hasText: "Manage" });
+        const manageBtn = page.locator(".scenario-action-link", { hasText: "Manage" });
         await manageBtn.click();
 
-        const presetRow = page.locator(".preset-manage-row", { hasText: originalName });
-        await presetRow.locator(".preset-manage-row-btn").click();
-        await presetRow.locator(".preset-menu-item", { hasText: "Rename" }).click();
+        const scenarioRow = page.locator(".scenario-manage-row", { hasText: originalName });
+        await scenarioRow.locator(".scenario-manage-row-btn").click();
+        await scenarioRow.locator(".scenario-menu-item", { hasText: "Rename" }).click();
 
         const renameDialog = page.locator('[role="dialog"]');
         await expect(renameDialog).toBeVisible();
@@ -103,21 +103,21 @@ test.describe("Preset CRUD", () => {
         await renameDialog.locator("button", { hasText: "Save" }).click();
 
         await expect(renameDialog).not.toBeVisible({ timeout: 5000 });
-        await expect(presetSelect.locator("option", { hasText: renamedName })).toBeAttached();
+        await expect(scenarioSelect.locator("option", { hasText: renamedName })).toBeAttached();
     });
 
     test("Rename dialog requires non-empty name", async ({ page }) => {
-        const presetSelect = page.locator(".setup-form .field").first().locator("select");
-        const firstOption = presetSelect.locator("option").nth(1);
-        const presetName = await firstOption.textContent();
-        await presetSelect.selectOption({ index: 1 });
+        const scenarioSelect = page.locator(".setup-form .field").first().locator("select");
+        const firstOption = scenarioSelect.locator("option").nth(1);
+        const scenarioName = await firstOption.textContent();
+        await scenarioSelect.selectOption({ index: 1 });
 
-        const manageBtn = page.locator(".preset-action-link", { hasText: "Manage" });
+        const manageBtn = page.locator(".scenario-action-link", { hasText: "Manage" });
         await manageBtn.click();
 
-        const presetRow = page.locator(".preset-manage-row", { hasText: presetName! });
-        await presetRow.locator(".preset-manage-row-btn").click();
-        await presetRow.locator(".preset-menu-item", { hasText: "Rename" }).click();
+        const scenarioRow = page.locator(".scenario-manage-row", { hasText: scenarioName! });
+        await scenarioRow.locator(".scenario-manage-row-btn").click();
+        await scenarioRow.locator(".scenario-menu-item", { hasText: "Rename" }).click();
 
         const renameDialog = page.locator('[role="dialog"]');
         await expect(renameDialog).toBeVisible();
@@ -129,14 +129,14 @@ test.describe("Preset CRUD", () => {
         await expect(saveButton).toBeDisabled();
     });
 
-    test("Deleting a preset removes it from dropdown", async ({ page }) => {
+    test("Deleting a scenario removes it from dropdown", async ({ page }) => {
         const sectionA = page.locator(".chatbot-config.side-a");
         const sectionB = page.locator(".chatbot-config.side-b");
         await sectionA.locator(".provider-chips button", { hasText: "Mock" }).click();
         await sectionB.locator(".provider-chips button", { hasText: "Mock" }).click();
         await expect(sectionA.locator("select")).toBeVisible();
 
-        const saveLink = page.locator(".preset-save-link");
+        const saveLink = page.locator(".scenario-save-link");
         await saveLink.click();
         const dialog = page.locator('[role="dialog"]');
         const deleteName = "Delete Me " + Date.now();
@@ -144,41 +144,41 @@ test.describe("Preset CRUD", () => {
         await dialog.locator("button", { hasText: "Save" }).click();
         await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
-        const presetSelect = page.locator(".setup-form .field").first().locator("select");
-        await presetSelect.selectOption({ label: deleteName });
+        const scenarioSelect = page.locator(".setup-form .field").first().locator("select");
+        await scenarioSelect.selectOption({ label: deleteName });
 
-        const manageBtn = page.locator(".preset-action-link", { hasText: "Manage" });
+        const manageBtn = page.locator(".scenario-action-link", { hasText: "Manage" });
         await manageBtn.click();
 
-        const presetRow = page.locator(".preset-manage-row", { hasText: deleteName });
-        await presetRow.locator(".preset-manage-row-btn").click();
-        await presetRow.locator(".preset-menu-item-danger", { hasText: "Delete" }).click();
+        const scenarioRow = page.locator(".scenario-manage-row", { hasText: deleteName });
+        await scenarioRow.locator(".scenario-manage-row-btn").click();
+        await scenarioRow.locator(".scenario-menu-item-danger", { hasText: "Delete" }).click();
 
         const confirmDialog = page.locator(".confirmation-dialog");
         await expect(confirmDialog).toBeVisible();
         await confirmDialog.locator("button", { hasText: "Delete" }).click();
 
-        await expect(presetSelect.locator("option", { hasText: deleteName })).not.toBeAttached({ timeout: 5000 });
+        await expect(scenarioSelect.locator("option", { hasText: deleteName })).not.toBeAttached({ timeout: 5000 });
     });
 
-    test("Cancelling delete does not remove preset", async ({ page }) => {
-        const presetSelect = page.locator(".setup-form .field").first().locator("select");
-        const firstOption = presetSelect.locator("option").nth(1);
-        const presetName = await firstOption.textContent();
-        await presetSelect.selectOption({ index: 1 });
+    test("Cancelling delete does not remove scenario", async ({ page }) => {
+        const scenarioSelect = page.locator(".setup-form .field").first().locator("select");
+        const firstOption = scenarioSelect.locator("option").nth(1);
+        const scenarioName = await firstOption.textContent();
+        await scenarioSelect.selectOption({ index: 1 });
 
-        const manageBtn = page.locator(".preset-action-link", { hasText: "Manage" });
+        const manageBtn = page.locator(".scenario-action-link", { hasText: "Manage" });
         await manageBtn.click();
 
-        const presetRow = page.locator(".preset-manage-row", { hasText: presetName! });
-        await presetRow.locator(".preset-manage-row-btn").click();
-        await presetRow.locator(".preset-menu-item-danger", { hasText: "Delete" }).click();
+        const scenarioRow = page.locator(".scenario-manage-row", { hasText: scenarioName! });
+        await scenarioRow.locator(".scenario-manage-row-btn").click();
+        await scenarioRow.locator(".scenario-menu-item-danger", { hasText: "Delete" }).click();
 
         const confirmDialog = page.locator(".confirmation-dialog");
         await expect(confirmDialog).toBeVisible();
         await confirmDialog.locator("button", { hasText: "Cancel" }).click();
 
         await expect(confirmDialog).not.toBeVisible({ timeout: 5000 });
-        await expect(presetSelect.locator("option", { hasText: presetName! })).toBeAttached();
+        await expect(scenarioSelect.locator("option", { hasText: scenarioName! })).toBeAttached();
     });
 });
