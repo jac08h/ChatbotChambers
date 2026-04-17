@@ -87,8 +87,12 @@ test.describe("Preset CRUD", () => {
         const presetSelect = page.locator(".setup-form .field").first().locator("select");
         await presetSelect.selectOption({ label: originalName });
 
-        const renameBtn = page.locator(".preset-action-link", { hasText: "Rename" });
-        await renameBtn.click();
+        const manageBtn = page.locator(".preset-action-link", { hasText: "Manage" });
+        await manageBtn.click();
+
+        const presetRow = page.locator(".preset-manage-row", { hasText: originalName });
+        await presetRow.locator(".preset-manage-row-btn").click();
+        await presetRow.locator(".preset-menu-item", { hasText: "Rename" }).click();
 
         const renameDialog = page.locator('[role="dialog"]');
         await expect(renameDialog).toBeVisible();
@@ -104,10 +108,16 @@ test.describe("Preset CRUD", () => {
 
     test("Rename dialog requires non-empty name", async ({ page }) => {
         const presetSelect = page.locator(".setup-form .field").first().locator("select");
+        const firstOption = presetSelect.locator("option").nth(1);
+        const presetName = await firstOption.textContent();
         await presetSelect.selectOption({ index: 1 });
 
-        const renameBtn = page.locator(".preset-action-link", { hasText: "Rename" });
-        await renameBtn.click();
+        const manageBtn = page.locator(".preset-action-link", { hasText: "Manage" });
+        await manageBtn.click();
+
+        const presetRow = page.locator(".preset-manage-row", { hasText: presetName! });
+        await presetRow.locator(".preset-manage-row-btn").click();
+        await presetRow.locator(".preset-menu-item", { hasText: "Rename" }).click();
 
         const renameDialog = page.locator('[role="dialog"]');
         await expect(renameDialog).toBeVisible();
@@ -137,8 +147,12 @@ test.describe("Preset CRUD", () => {
         const presetSelect = page.locator(".setup-form .field").first().locator("select");
         await presetSelect.selectOption({ label: deleteName });
 
-        const deleteBtn = page.locator(".preset-action-link-danger", { hasText: "Delete" });
-        await deleteBtn.click();
+        const manageBtn = page.locator(".preset-action-link", { hasText: "Manage" });
+        await manageBtn.click();
+
+        const presetRow = page.locator(".preset-manage-row", { hasText: deleteName });
+        await presetRow.locator(".preset-manage-row-btn").click();
+        await presetRow.locator(".preset-menu-item-danger", { hasText: "Delete" }).click();
 
         const confirmDialog = page.locator(".confirmation-dialog");
         await expect(confirmDialog).toBeVisible();
@@ -153,8 +167,12 @@ test.describe("Preset CRUD", () => {
         const presetName = await firstOption.textContent();
         await presetSelect.selectOption({ index: 1 });
 
-        const deleteBtn = page.locator(".preset-action-link-danger", { hasText: "Delete" });
-        await deleteBtn.click();
+        const manageBtn = page.locator(".preset-action-link", { hasText: "Manage" });
+        await manageBtn.click();
+
+        const presetRow = page.locator(".preset-manage-row", { hasText: presetName! });
+        await presetRow.locator(".preset-manage-row-btn").click();
+        await presetRow.locator(".preset-menu-item-danger", { hasText: "Delete" }).click();
 
         const confirmDialog = page.locator(".confirmation-dialog");
         await expect(confirmDialog).toBeVisible();
