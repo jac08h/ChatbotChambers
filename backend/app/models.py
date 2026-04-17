@@ -36,6 +36,7 @@ class ChatbotConfig(BaseModel):
     model: str
     system_prompt: str
     provider: Literal["openrouter", "claude_code", "codex", "mock"] = "openrouter"
+    enable_thinking: bool = False
 
 
 class SessionConfig(BaseModel):
@@ -67,6 +68,7 @@ class Message(BaseModel):
     chatbot: Literal["a", "b"]
     name: str
     model: str
+    model_name: str = ""
     content: str
     turn: int
     thinking: str = ""

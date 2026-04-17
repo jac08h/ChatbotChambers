@@ -2,9 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import {
     DEFAULT_CHATBOT_NAMES,
     type ChatMessage,
+    type Provider,
     type SessionConfig,
     type Status,
 } from "../hooks/useWebSocket";
+
+const PROVIDER_LABELS: Record<Provider, string> = {
+    openrouter: "OpenRouter",
+    claude_code: "Claude Code",
+    codex: "Codex CLI",
+    mock: "Mock",
+};
 
 interface ConversationViewProps {
     messages: ChatMessage[];
@@ -118,6 +126,7 @@ export function ConversationView({
                         key={`${message.chatbot}-${index}`}
                         message={message}
                         avatar={message.chatbot === "a" ? avatarA : avatarB}
+                        provider={message.chatbot === "a" ? config?.chatbot_a.provider : config?.chatbot_b.provider}
                     />
                 ))}
 
@@ -170,7 +179,13 @@ export function ConversationView({
     );
 }
 
-function MessageBubble({ message, avatar }: { message: ChatMessage; avatar?: string }) {
+function formatModelLabel(message: ChatMessage, provider?: Provider): string {
+    const providerLabel = provider ? PROVIDER_LABELS[provider] : "";
+    const modelDisplay = message.model_name || message.model;
+    return providerLabel ? `${providerLabel} · ${modelDisplay}` : modelDisplay;
+}
+
+function MessageBubble({ message, avatar, provider }: { message: ChatMessage; avatar?: string; provider?: Provider }) {
     return (
         <div className={`message-row chatbot-${message.chatbot}`}>
             <div className={`message-glyph${avatar ? " has-avatar" : ""}`}>
@@ -181,7 +196,7 @@ function MessageBubble({ message, avatar }: { message: ChatMessage; avatar?: str
             <div className="message-bubble">
                 <div className="message-meta">
                     <span className="sender-label">{message.name}</span>
-                    {message.model && <span className="model-label">{message.model}</span>}
+                    {message.model && <span className="model-label">{formatModelLabel(message, provider)}</span>}
                 </div>
                 {message.thinking && (
                     <details className="thinking-block">

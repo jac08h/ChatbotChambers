@@ -15,6 +15,7 @@ function makeMessage(chatbot: "a" | "b", content: string, turn = 0): ChatMessage
         chatbot,
         name: chatbot === "a" ? "Alice" : "Bob",
         model: "test-model",
+        model_name: "Test Model",
         content,
         turn,
         thinking: "",
@@ -140,6 +141,16 @@ describe("ConversationView", () => {
             />
         )
         expect(screen.getByText("Alice")).toBeInTheDocument()
+    })
+
+    it("shows provider and model name on hover label", () => {
+        render(
+            <ConversationView
+                {...defaultProps}
+                messages={[makeMessage("a", "content")]}
+            />
+        )
+        expect(screen.getByText("OpenRouter · Test Model")).toBeInTheDocument()
     })
 
     it("shows thinking block when message has thinking", () => {

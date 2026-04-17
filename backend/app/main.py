@@ -2,9 +2,9 @@ import asyncio
 import json
 import logging
 import os
-from pathlib import Path
 import re
 import shutil
+from pathlib import Path
 from typing import List
 from uuid import uuid4
 
@@ -30,14 +30,23 @@ PRESET_ID_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SESSION_ID_PATTERN = r"[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*"
 REPO_ROOT = Path(__file__).parent.parent.parent
 DEFAULT_PRESETS_DIR = Path(__file__).parent / "presets"
-PRESETS_DIR = Path(os.environ.get("LMPARLOR_PRESETS_DIR", str(REPO_ROOT / ".cache/presets")))
-SETTINGS_PATH = Path(os.environ.get("LMPARLOR_SETTINGS_PATH", str(REPO_ROOT / ".cache/settings.json")))
-SESSIONS_DIR = Path(os.environ.get("LMPARLOR_SESSIONS_DIR", str(REPO_ROOT / ".cache/sessions")))
+PRESETS_DIR = Path(
+    os.environ.get("LMPARLOR_PRESETS_DIR", str(REPO_ROOT / ".cache/presets"))
+)
+SETTINGS_PATH = Path(
+    os.environ.get("LMPARLOR_SETTINGS_PATH", str(REPO_ROOT / ".cache/settings.json"))
+)
+SESSIONS_DIR = Path(
+    os.environ.get("LMPARLOR_SESSIONS_DIR", str(REPO_ROOT / ".cache/sessions"))
+)
 
 
 def _cors_origins_from_env() -> List[str]:
     raw_value = os.environ.get("CHATBOTCHAMBERS_CORS_ORIGINS", "http://localhost:5173")
-    return [origin for origin in (item.strip() for item in raw_value.split(",")) if origin]
+    return [
+        origin for origin in (item.strip() for item in raw_value.split(",")) if origin
+    ]
+
 
 def _new_session_id() -> str:
     return str(uuid4())
@@ -120,6 +129,7 @@ def _session_path(session_id: str) -> Path:
     if path.parent != sessions_root:
         raise ValueError("Invalid session path")
     return path
+
 
 logger = logging.getLogger(__name__)
 
@@ -255,7 +265,9 @@ def get_sessions() -> List[dict]:
     if not SESSIONS_DIR.exists():
         return []
     sessions = []
-    for path in sorted(SESSIONS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+    for path in sorted(
+        SESSIONS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+    ):
         try:
             sessions.append(_normalize_session_data(json.loads(path.read_text())))
         except (OSError, json.JSONDecodeError):
@@ -299,6 +311,20 @@ def delete_session(session_id: str) -> None:
         raise HTTPException(status_code=500, detail="Failed to delete session") from exc
 
 
+@app.delete("/sessions", status_code=204)
+def delete_all_sessions() -> None:
+    if not SESSIONS_DIR.exists():
+        return
+    try:
+        for path in SESSIONS_DIR.glob("*.json"):
+            path.unlink()
+    except OSError as exc:
+        logger.exception("Failed to delete all sessions")
+        raise HTTPException(
+            status_code=500, detail="Failed to delete all sessions"
+        ) from exc
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     await ws.accept()
@@ -321,8 +347,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         return
 
     uses_mock = (
-        config.chatbot_a.provider == "mock"
-        or config.chatbot_b.provider == "mock"
+        config.chatbot_a.provider == "mock" or config.chatbot_b.provider == "mock"
     )
     if uses_mock:
         reset_mock_state()
@@ -338,7 +363,9 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     cancel_event = asyncio.Event()
 
     engine_task = asyncio.create_task(
-        _run_engine(ws, config, api_key, pause_event, stop_event, cancel_event, session_id)
+        _run_engine(
+            ws, config, api_key, pause_event, stop_event, cancel_event, session_id
+        )
     )
     listener_task = asyncio.create_task(
         _run_listener(ws, pause_event, stop_event, cancel_event)
@@ -371,7 +398,9 @@ async def _run_engine(
     error_message = None
     try:
         last_message = None
-        async for event in run_conversation(config, api_key, pause_event, stop_event, cancel_event):
+        async for event in run_conversation(
+            config, api_key, pause_event, stop_event, cancel_event
+        ):
             if isinstance(event, Generating):
                 await ws.send_json({"type": "generating", "chatbot": event.chatbot})
             elif isinstance(event, EmptyMessage):
@@ -385,9 +414,11 @@ async def _run_engine(
         if stop_event.is_set():
             done_reason = "stopped"
             await ws.send_json({"type": "done", "reason": "stopped"})
-        elif last_message and last_message.content.strip() == "/leave":
+        elif last_message and "/leave" in last_message.content:
             done_reason = "leave:%s" % last_message.chatbot
-            await ws.send_json({"type": "done", "reason": "leave", "chatbot": last_message.chatbot})
+            await ws.send_json(
+                {"type": "done", "reason": "leave", "chatbot": last_message.chatbot}
+            )
         else:
             done_reason = "stopped"
             await ws.send_json({"type": "done", "reason": "stopped"})

@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import App from "./App"
-import type { ArchivedSession, SessionConfig, WebSocketState } from "./hooks/useWebSocket"
+import { generateSlug, type ArchivedSession, type SessionConfig, type WebSocketState } from "./hooks/useWebSocket"
 
 const sampleConfig: SessionConfig = {
     chatbot_a: { name: "Alice", model: "model-a", system_prompt: "", provider: "openrouter" },
@@ -18,6 +18,8 @@ const archivedSession: ArchivedSession = {
     doneReason: "stopped",
     error: null,
 }
+
+const archivedSlug = generateSlug(archivedSession.id)
 
 let mockWebSocketState: WebSocketState
 
@@ -49,6 +51,7 @@ function createWebSocketState(overrides: Partial<WebSocketState> = {}): WebSocke
         renameCurrentSession: vi.fn(),
         renameSession: vi.fn(),
         deleteSession: vi.fn(async () => true),
+        deleteAllSessions: vi.fn(async () => true),
         ...overrides,
     }
 }
@@ -68,7 +71,7 @@ describe("App", () => {
     it("updates the URL when selecting an archived conversation", async () => {
         mockWebSocketState = createWebSocketState({ history: [archivedSession] })
         render(<App />)
-        await userEvent.click(screen.getByRole("button", { name: "abcd1234" }))
+        await userEvent.click(screen.getByRole("button", { name: archivedSlug }))
         expect(window.location.pathname).toBe(`/chat/${archivedSession.id}`)
     })
 
@@ -76,7 +79,7 @@ describe("App", () => {
         window.history.pushState({}, "", `/chat/${archivedSession.id}`)
         mockWebSocketState = createWebSocketState({ history: [archivedSession] })
         render(<App />)
-        expect(screen.getByRole("heading", { name: "abcd1234" })).toBeInTheDocument()
+        expect(screen.getByRole("heading", { name: archivedSlug })).toBeInTheDocument()
     })
 
     it("confirms before deleting an archived conversation", async () => {
@@ -84,7 +87,7 @@ describe("App", () => {
         mockWebSocketState = createWebSocketState({ history: [archivedSession], deleteSession })
         render(<App />)
 
-        await userEvent.click(screen.getByRole("button", { name: "Conversation options for abcd1234" }))
+        await userEvent.click(screen.getByRole("button", { name: `Conversation options for ${archivedSlug}` }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }))
 
         expect(screen.getByRole("dialog", { name: "Delete conversation" })).toBeInTheDocument()
@@ -98,11 +101,11 @@ describe("App", () => {
         mockWebSocketState = createWebSocketState({ history: [archivedSession], renameSession })
         render(<App />)
 
-        await userEvent.click(screen.getByRole("button", { name: "Conversation options for abcd1234" }))
+        await userEvent.click(screen.getByRole("button", { name: `Conversation options for ${archivedSlug}` }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
 
         expect(screen.getByRole("dialog", { name: "Rename chat" })).toBeInTheDocument()
-        const input = screen.getByDisplayValue("abcd1234")
+        const input = screen.getByDisplayValue(archivedSlug)
         await userEvent.clear(input)
         await userEvent.type(input, "Renamed chat")
         await userEvent.click(screen.getByRole("button", { name: "Save" }))

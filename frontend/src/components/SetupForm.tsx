@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiUrl } from "../api";
 import { type Provider, type SessionConfig } from "../hooks/useWebSocket";
 import { loadSettings, saveSettings } from "../settings";
@@ -85,10 +85,12 @@ interface ChatbotConfigProps {
     name: string;
     defaultName: string;
     prompt: string;
+    enableThinking: boolean;
     onProviderChange: (p: Provider) => void;
     onModelChange: (m: string) => void;
     onNameChange: (n: string) => void;
     onPromptChange: (p: string) => void;
+    onEnableThinkingChange: (v: boolean) => void;
 }
 
 function ChatbotConfig({
@@ -101,10 +103,12 @@ function ChatbotConfig({
     name,
     defaultName,
     prompt,
+    enableThinking,
     onProviderChange,
     onModelChange,
     onNameChange,
     onPromptChange,
+    onEnableThinkingChange,
 }: ChatbotConfigProps) {
     const [expanded, setExpanded] = useState(false);
 
@@ -173,6 +177,16 @@ function ChatbotConfig({
                         tabIndex={expanded ? 0 : -1}
                     />
                 </label>
+                <label className="field thinking-toggle-field">
+                    <input
+                        type="checkbox"
+                        checked={enableThinking}
+                        onChange={(event) => onEnableThinkingChange(event.target.checked)}
+                        disabled={provider !== "openrouter"}
+                        tabIndex={expanded ? 0 : -1}
+                    />
+                    <span>Enable thinking</span>
+                </label>
             </div>
         </section>
     );
@@ -196,7 +210,10 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [sharedPrompt, setSharedPrompt] = useState("");
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");
+    const [enableThinkingA, setEnableThinkingA] = useState(false);
+    const [enableThinkingB, setEnableThinkingB] = useState(false);
     const [conversationTitle, setConversationTitle] = useState("");
+    const [isConversationNameExpanded, setIsConversationNameExpanded] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     const [isSavePresetOpen, setIsSavePresetOpen] = useState(false);
     const [presetName, setPresetName] = useState("");
@@ -206,6 +223,9 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [activePresetMutationId, setActivePresetMutationId] = useState<string | null>(null);
     const [presetPendingDelete, setPresetPendingDelete] = useState<Preset | null>(null);
     const [presetPendingRename, setPresetPendingRename] = useState<Preset | null>(null);
+    const [isManagePresetsOpen, setIsManagePresetsOpen] = useState(false);
+    const [openPresetRowMenuId, setOpenPresetRowMenuId] = useState<string | null>(null);
+    const presetManageRef = useRef<HTMLDivElement | null>(null);
 
     const closeSavePresetDialog = useCallback((forceClose = false) => {
         if (!forceClose && isSavingPreset) {
@@ -282,6 +302,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             setSharedPrompt(settings?.shared_system_prompt ?? "");
             setPromptA(settings?.chatbot_a.system_prompt ?? "");
             setPromptB(settings?.chatbot_b.system_prompt ?? "");
+            setEnableThinkingA(settings?.chatbot_a.enable_thinking ?? false);
+            setEnableThinkingB(settings?.chatbot_b.enable_thinking ?? false);
             setIsInitialized(true);
         }
 
@@ -337,6 +359,31 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [closeSavePresetDialog, isSavePresetOpen]);
 
+    useEffect(() => {
+        if (!isManagePresetsOpen) {
+            return;
+        }
+        const handlePointerDown = (event: PointerEvent) => {
+            const target = event.target as Node | null;
+            if (target && presetManageRef.current && !presetManageRef.current.contains(target)) {
+                setIsManagePresetsOpen(false);
+                setOpenPresetRowMenuId(null);
+            }
+        };
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setIsManagePresetsOpen(false);
+                setOpenPresetRowMenuId(null);
+            }
+        };
+        window.addEventListener("pointerdown", handlePointerDown);
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("pointerdown", handlePointerDown);
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [isManagePresetsOpen]);
+
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
 
     const defaultNameA = (() => {
@@ -349,8 +396,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     })();
 
     const buildConfig = (): SessionConfig => ({
-        chatbot_a: { name: nameA || defaultNameA, model: modelA, system_prompt: promptA, provider: providerA },
-        chatbot_b: { name: nameB || defaultNameB, model: modelB, system_prompt: promptB, provider: providerB },
+        chatbot_a: { name: nameA || defaultNameA, model: modelA, system_prompt: promptA, provider: providerA, enable_thinking: enableThinkingA },
+        chatbot_b: { name: nameB || defaultNameB, model: modelB, system_prompt: promptB, provider: providerB, enable_thinking: enableThinkingB },
         shared_system_prompt: sharedPrompt,
     });
 
@@ -387,6 +434,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             setSharedPrompt(preset.config.shared_system_prompt);
             setPromptA(preset.config.chatbot_a.system_prompt);
             setPromptB(preset.config.chatbot_b.system_prompt);
+            setEnableThinkingA(preset.config.chatbot_a.enable_thinking ?? false);
+            setEnableThinkingB(preset.config.chatbot_b.enable_thinking ?? false);
             return;
         }
         setSharedPrompt(preset.shared_system_prompt);
@@ -505,7 +554,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     return (
         <div className="setup-page">
             <div className="setup-landing">
-                <h1 className="setup-title">ChatbotChambers</h1>
+                <h1 className="setup-title">Who&rsquo;s talking today?</h1>
 
                 {error && <div className="error-banner">{error}</div>}
 
@@ -514,36 +563,73 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                         <div className="preset-header">
                             <span className="field-label">Preset</span>
                             <div className="preset-header-actions">
-                                {selectedPresetId && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            className="preset-action-link"
-                                            onClick={() => {
-                                                const preset = presets.find((p) => p.id === selectedPresetId);
-                                                if (preset) {
-                                                    setPresetPendingRename(preset);
-                                                }
-                                            }}
-                                            disabled={activePresetMutationId !== null}
-                                        >
-                                            Rename
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="preset-action-link preset-action-link-danger"
-                                            onClick={() => {
-                                                const preset = presets.find((p) => p.id === selectedPresetId);
-                                                if (preset) {
-                                                    setPresetPendingDelete(preset);
-                                                }
-                                            }}
-                                            disabled={activePresetMutationId !== null}
-                                        >
-                                            Delete
-                                        </button>
-                                    </>
-                                )}
+                                <div className="preset-manage" ref={presetManageRef}>
+                                    <button
+                                        type="button"
+                                        className="preset-action-link"
+                                        onClick={() => {
+                                            setIsManagePresetsOpen((open) => !open);
+                                            setOpenPresetRowMenuId(null);
+                                        }}
+                                        disabled={presets.length === 0}
+                                        aria-haspopup="menu"
+                                        aria-expanded={isManagePresetsOpen}
+                                        title="Manage presets"
+                                    >
+                                        Manage
+                                    </button>
+                                    {isManagePresetsOpen && presets.length > 0 && (
+                                        <div className="preset-menu preset-manage-list" role="menu">
+                                            {presets.map((preset) => (
+                                                <div key={preset.id} className="preset-manage-row">
+                                                    <span className="preset-manage-name" title={preset.name}>{preset.name}</span>
+                                                    <div className="preset-manage-row-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="preset-manage-row-btn"
+                                                            onClick={() => setOpenPresetRowMenuId((id) => (id === preset.id ? null : preset.id))}
+                                                            aria-haspopup="menu"
+                                                            aria-expanded={openPresetRowMenuId === preset.id}
+                                                            aria-label={`Preset options for ${preset.name}`}
+                                                            title="Preset options"
+                                                            disabled={activePresetMutationId !== null}
+                                                        >
+                                                            ⋯
+                                                        </button>
+                                                        {openPresetRowMenuId === preset.id && (
+                                                            <div className="preset-menu preset-row-menu" role="menu">
+                                                                <button
+                                                                    type="button"
+                                                                    className="preset-menu-item"
+                                                                    role="menuitem"
+                                                                    onClick={() => {
+                                                                        setOpenPresetRowMenuId(null);
+                                                                        setIsManagePresetsOpen(false);
+                                                                        setPresetPendingRename(preset);
+                                                                    }}
+                                                                >
+                                                                    Rename
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="preset-menu-item preset-menu-item-danger"
+                                                                    role="menuitem"
+                                                                    onClick={() => {
+                                                                        setOpenPresetRowMenuId(null);
+                                                                        setIsManagePresetsOpen(false);
+                                                                        setPresetPendingDelete(preset);
+                                                                    }}
+                                                                >
+                                                                    Delete
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                                 <button
                                     type="button"
                                     className="preset-save-link"
@@ -655,10 +741,12 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             name={nameA}
                             defaultName={defaultNameA}
                             prompt={promptA}
+                            enableThinking={enableThinkingA}
                             onProviderChange={setProviderA}
                             onModelChange={setModelA}
                             onNameChange={(n) => { setNameA(n); setNameAManual(n !== ""); }}
                             onPromptChange={setPromptA}
+                            onEnableThinkingChange={setEnableThinkingA}
                         />
                         <ChatbotConfig
                             side="b"
@@ -670,23 +758,40 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             name={nameB}
                             defaultName={defaultNameB}
                             prompt={promptB}
+                            enableThinking={enableThinkingB}
                             onProviderChange={setProviderB}
                             onModelChange={setModelB}
                             onNameChange={(n) => { setNameB(n); setNameBManual(n !== ""); }}
                             onPromptChange={setPromptB}
+                            onEnableThinkingChange={setEnableThinkingB}
                         />
                     </div>
 
                     <div className="setup-bottom">
-                        <label className="field">
-                            <span>Conversation name</span>
-                            <input
-                                type="text"
-                                value={conversationTitle}
-                                onChange={(event) => setConversationTitle(event.target.value)}
-                                placeholder="Optional"
-                            />
-                        </label>
+                        <button
+                            type="button"
+                            className="advanced-toggle"
+                            onClick={() => setIsConversationNameExpanded((prev) => !prev)}
+                            aria-expanded={isConversationNameExpanded}
+                        >
+                            {isConversationNameExpanded ? "Hide advanced" : "Advanced"}
+                            <span className={`advanced-toggle-icon ${isConversationNameExpanded ? "open" : ""}`}>›</span>
+                        </button>
+                        <div
+                            className={`advanced-fields ${isConversationNameExpanded ? "" : "advanced-fields-hidden"}`}
+                            aria-hidden={!isConversationNameExpanded}
+                        >
+                            <label className="field">
+                                <span>Conversation name</span>
+                                <input
+                                    type="text"
+                                    value={conversationTitle}
+                                    onChange={(event) => setConversationTitle(event.target.value)}
+                                    placeholder="Auto-generated if empty"
+                                    tabIndex={isConversationNameExpanded ? 0 : -1}
+                                />
+                            </label>
+                        </div>
 
                         <div className="setup-actions">
                             <button type="submit" className="start-btn" disabled={!canStart}>

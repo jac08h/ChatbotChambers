@@ -2,10 +2,17 @@ import asyncio
 from pathlib import Path
 from typing import AsyncGenerator, Dict, List, Literal, Tuple, Union
 
+from app.models import (
+    CLAUDE_CODE_MODELS,
+    CODEX_MODELS,
+    MODELS,
+    ChatbotConfig,
+    Message,
+    SessionConfig,
+)
 from app.providers.claude_code import call_claude_code
 from app.providers.codex_cli import call_codex
-from app.providers.mock import call_mock
-from app.models import ChatbotConfig, Message, SessionConfig
+from app.providers.mock import MOCK_MODELS, call_mock
 from app.providers.openrouter import call_openrouter
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
@@ -13,6 +20,12 @@ PROMPTS_DIR = Path(__file__).parent / "prompts"
 PREAMBLE = (PROMPTS_DIR / "preamble.md").read_text().strip()
 PREAMBLE_A = (PROMPTS_DIR / "preamble_a.md").read_text().strip()
 PREAMBLE_B = (PROMPTS_DIR / "preamble_b.md").read_text().strip()
+
+ALL_MODELS = dict(MODELS + CLAUDE_CODE_MODELS + CODEX_MODELS + MOCK_MODELS)
+
+
+def _resolve_model_name(model_id: str) -> str:
+    return ALL_MODELS.get(model_id, "")
 
 
 class Generating:
@@ -97,12 +110,13 @@ async def run_conversation(
                     chatbot=chatbot_id,
                     name=chatbot_config.name,
                     model=chatbot_config.model,
+                    model_name=_resolve_model_name(chatbot_config.model),
                     content=content,
                     turn=turn,
                     thinking=thinking,
                 )
 
-                if content.strip() == "/leave":
+                if "/leave" in content:
                     return
 
                 break
@@ -142,13 +156,16 @@ async def _call_llm(
             system_prompt=system_prompt,
             messages=messages,
             api_key=api_key,
+            enable_thinking=chatbot_config.enable_thinking,
         )
 
 
-def _build_system_prompt(
-    individual_preamble: str, shared: str, individual: str
-) -> str:
-    parts = [p for p in [PREAMBLE, individual_preamble, shared.strip(), individual.strip()] if p]
+def _build_system_prompt(individual_preamble: str, shared: str, individual: str) -> str:
+    parts = [
+        p
+        for p in [PREAMBLE, individual_preamble, shared.strip(), individual.strip()]
+        if p
+    ]
     return "\n\n".join(parts)
 
 

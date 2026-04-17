@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { apiUrl } from "../../api"
 import {
+    generateSlug,
     getSessionDisplayTitle,
     getSessionIdFromPath,
     getSessionPath,
@@ -206,7 +207,7 @@ describe("useWebSocket", () => {
         act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "test-id" }) })
         act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "stopped" }) })
         expect(result.current.history[0].title).toBeNull()
-        expect(getSessionDisplayTitle(result.current.history[0])).toBe("test")
+        expect(getSessionDisplayTitle(result.current.history[0])).toBe(generateSlug("test-id"))
     })
 
     it("current session id is set on session_id and cleared on reset", () => {
@@ -317,5 +318,41 @@ describe("useWebSocket", () => {
         expect(getSessionPath("session-1")).toBe("/chat/session-1")
         expect(getSessionIdFromPath("/chat/session-1")).toBe("session-1")
         expect(getSessionIdFromPath("/")).toBeNull()
+    })
+
+    it("generateSlug returns deterministic three-word slug", () => {
+        const slug1 = generateSlug("test-session-id")
+        const slug2 = generateSlug("test-session-id")
+        expect(slug1).toBe(slug2)
+        expect(slug1).toMatch(/^[a-z]+-[a-z]+-[a-z]+$/)
+    })
+
+    it("generateSlug produces different slugs for different ids", () => {
+        expect(generateSlug("session-a")).not.toBe(generateSlug("session-b"))
+    })
+
+    it("leave done event sets status to done", () => {
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
+        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "leave", chatbot: "a" }) })
+        expect(result.current.status).toBe("done")
+        expect(result.current.doneReason).toBe("leave:a")
+    })
+
+    it("deleteAllSessions clears history", async () => {
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
+        act(() => { MockWebSocket.instances[0].receive({ type: "done", reason: "stopped" }) })
+        expect(result.current.history).toHaveLength(1)
+
+        await act(async () => {
+            await result.current.deleteAllSessions()
+        })
+
+        expect(result.current.history).toEqual([])
     })
 })

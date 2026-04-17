@@ -48,7 +48,7 @@ def test_message_model_dump_shape():
     """Message.model_dump() contains all expected keys."""
     msg = Message(chatbot="b", name="B", model="gpt-4o", content="hello", turn=1, thinking="thought")
     data = msg.model_dump()
-    assert set(data.keys()) == {"chatbot", "name", "model", "content", "turn", "thinking"}
+    assert set(data.keys()) == {"chatbot", "name", "model", "model_name", "content", "turn", "thinking"}
     assert data["chatbot"] == "b"
     assert data["thinking"] == "thought"
 

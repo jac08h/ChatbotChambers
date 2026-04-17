@@ -33,7 +33,7 @@
     --font-mono: "JetBrains Mono", "DejaVu Sans Mono", "Courier New", monospace;
     --radius: 10px;
     --radius-lg: 14px;
-    --sidebar-width: 260px;
+    --sidebar-width: 300px;
     color: var(--text);
     font-family: var(--font);
     font-size: 15px;
@@ -179,12 +179,30 @@ button {
     background: none;
     border: none;
     padding: 0;
-    font-family: var(--font-mono);
-    font-size: 1rem;
-    font-weight: 600;
+    font-family: var(--font);
+    font-size: 0.78rem;
+    font-weight: 300;
+    line-height: 1;
     color: var(--text);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sidebar-brand-title .brand-a {
+    color: var(--chatbot-a);
+}
+
+.sidebar-brand-title .brand-b {
+    color: var(--chatbot-b);
+}
+
+.sidebar-brand-title .brand-gap {
+    display: inline-block;
+    width: 1.2em;
 }
 
 .sidebar-new-chat {
@@ -323,6 +341,45 @@ button {
     font-style: italic;
 }
 
+.sidebar-delete-all {
+    width: 100%;
+    margin-top: auto;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--danger-border);
+    background: transparent;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-align: center;
+    transition: background 150ms ease, border-color 150ms ease;
+}
+
+.sidebar-delete-all:hover {
+    background: var(--danger-bg);
+}
+
+.sidebar-brand-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.sidebar-collapsed {
+    padding: 0.75rem 0.35rem;
+    align-items: center;
+}
+
+.sidebar-collapsed .sidebar-brand {
+    justify-content: center;
+    padding: 0.35rem 0 0.65rem;
+}
+
+.sidebar-collapsed-layout {
+    --sidebar-width: 48px;
+}
+
 .setup-page {
     min-height: 100svh;
     display: flex;
@@ -333,7 +390,7 @@ button {
 
 .setup-landing {
     width: 100%;
-    max-width: 1000px;
+    max-width: 1100px;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
@@ -343,11 +400,11 @@ button {
 
 .setup-title {
     margin: 0 0 0.75rem;
-    font-size: 2.2rem;
-    font-weight: 600;
+    font-size: 1.8rem;
+    font-weight: 300;
     text-align: center;
     color: var(--text);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
 }
 
 .setup-subtitle {
@@ -505,6 +562,111 @@ input::placeholder {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+}
+
+.preset-manage {
+    position: relative;
+    display: inline-flex;
+}
+
+.preset-menu {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    min-width: 9rem;
+    padding: 0.35rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+}
+
+.preset-menu-item {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    font-size: 0.85rem;
+}
+
+.preset-menu-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.preset-menu-item-danger {
+    color: var(--danger);
+}
+
+.preset-menu-item-danger:hover {
+    background: var(--danger-bg);
+}
+
+.preset-manage-list {
+    min-width: 16rem;
+    max-height: 20rem;
+    overflow-y: auto;
+    padding: 0.25rem;
+}
+
+.preset-manage-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 8px;
+}
+
+.preset-manage-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.preset-manage-name {
+    flex: 1;
+    min-width: 0;
+    color: var(--text);
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preset-manage-row-actions {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.preset-manage-row-btn {
+    width: 1.75rem;
+    height: 1.75rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    transition: background 150ms ease, color 150ms ease;
+}
+
+.preset-manage-row-btn:hover:not(:disabled) {
+    background: var(--bg-secondary);
+    color: var(--text);
+}
+
+.preset-manage-row-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.preset-row-menu {
+    min-width: 8rem;
 }
 
 .preset-action-link {
@@ -894,6 +1056,27 @@ input::placeholder {
 
 .advanced-fields-hidden {
     display: none;
+}
+
+.thinking-toggle-field {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.thinking-toggle-field input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    accent-color: var(--accent);
+}
+
+.thinking-toggle-field input[type="checkbox"]:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.thinking-toggle-field input[type="checkbox"]:disabled + span {
+    opacity: 0.5;
 }
 
 .setup-bottom {
