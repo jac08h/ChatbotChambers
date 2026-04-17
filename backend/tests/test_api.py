@@ -247,7 +247,11 @@ async def test_post_presets_writes_file_and_returns_body(
     assert result["system_prompt_b"] == "Prompt B"
     assert result["config"]["chatbot_a"]["name"] == "Alpha"
     assert result["config"]["chatbot_b"]["name"] == "Beta"
-    assert (presets_dir / "my-preset.json").exists()
+    preset_path = presets_dir / "my-preset.json"
+    assert preset_path.exists()
+    saved_preset = json.loads(preset_path.read_text())
+    assert saved_preset["name"] == result["name"]
+    assert saved_preset["config"] == result["config"]
 
 
 async def test_patch_presets_renames_existing_preset(
@@ -362,6 +366,7 @@ async def test_post_settings_writes_file_and_returns_body(
     assert result["chatbot_b"]["name"] == "Beta"
     assert result["shared_system_prompt"] == "Shared prompt"
     assert settings_path.exists()
+    assert json.loads(settings_path.read_text()) == result
 
 
 async def test_get_settings_returns_saved_settings(

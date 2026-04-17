@@ -2,7 +2,9 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { Sidebar } from "../Sidebar"
-import type { ArchivedSession } from "../../hooks/useWebSocket"
+import { generateSlug, type ArchivedSession } from "../../hooks/useWebSocket"
+
+const sessionSlug = generateSlug("12345678-1234-1234-1234-123456789abc")
 
 const history: ArchivedSession[] = [
     {
@@ -42,7 +44,7 @@ describe("Sidebar", () => {
                 onToggleCollapse={vi.fn()}
             />
         )
-        expect(screen.getByRole("button", { name: "glad-gold-bay" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: sessionSlug })).toBeInTheDocument()
     })
 
     it("renames and deletes through the conversation menu", async () => {
@@ -70,11 +72,11 @@ describe("Sidebar", () => {
             />
         )
 
-        await userEvent.click(screen.getByRole("button", { name: "Conversation options for glad-gold-bay" }))
+        await userEvent.click(screen.getByRole("button", { name: `Conversation options for ${sessionSlug}` }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
         expect(onRenameSession).toHaveBeenCalledWith(expect.objectContaining({ id: history[0].id }))
 
-        await userEvent.click(screen.getByRole("button", { name: "Conversation options for glad-gold-bay" }))
+        await userEvent.click(screen.getByRole("button", { name: `Conversation options for ${sessionSlug}` }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }))
         expect(onDeleteSession).toHaveBeenCalledWith(expect.objectContaining({ id: history[0].id }))
     })
@@ -128,7 +130,7 @@ describe("Sidebar", () => {
                 onToggleCollapse={vi.fn()}
             />
         )
-        expect(screen.queryByRole("button", { name: "glad-gold-bay" })).not.toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: sessionSlug })).not.toBeInTheDocument()
         expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument()
     })
 

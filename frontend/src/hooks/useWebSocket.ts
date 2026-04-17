@@ -5,7 +5,7 @@ export interface ChatMessage {
     chatbot: "a" | "b";
     name: string;
     model: string;
-    model_name: string;
+    model_name?: string;
     content: string;
     turn: number;
     thinking: string;
