@@ -7,7 +7,18 @@ logger = logging.getLogger(__name__)
 
 async def call_claude_code(model: str, system_prompt: str, messages: List[dict]) -> str:
     prompt = _build_prompt(messages)
-    args = ["claude", "-p", "--model", model]
+    args = [
+        "claude",
+        "-p",
+        "--model",
+        model,
+        "--tools",
+        "",
+        "--disable-slash-commands",
+        "--strict-mcp-config",
+        "--mcp-config",
+        '{"mcpServers": {}}',
+    ]
     if system_prompt:
         args += ["--system-prompt", system_prompt]
     args.append(prompt)
