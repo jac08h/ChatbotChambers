@@ -9,7 +9,7 @@ const mockModels = [
     { id: "model-2", name: "Model Two" },
 ]
 
-const mockProviders = { openrouter: true, claude_code: false, codex: false }
+const mockProviders = { openai: { available: true }, anthropic: { available: false }, gemini: { available: false }, github_copilot: { available: true }, claude_code: { available: false }, codex: { available: false } }
 
 interface MockPreset {
     id: string
@@ -133,7 +133,7 @@ describe("SetupForm", () => {
 
     it("loading a saved scenario restores the full saved configuration", async () => {
         vi.stubGlobal("fetch", createFetchMock({
-            providers: { openrouter: true, claude_code: true, codex: true },
+            providers: { openai: { available: true }, anthropic: { available: true }, gemini: { available: true }, github_copilot: { available: true }, claude_code: { available: true }, codex: { available: true } },
             scenarios: [
                 {
                     id: "full-scenario",
@@ -152,7 +152,7 @@ describe("SetupForm", () => {
                             name: "Preset B",
                             model: "model-1",
                             system_prompt: "Prompt B",
-                            provider: "openrouter",
+                            provider: "openai",
                         },
                         shared_system_prompt: "Saved shared prompt",
                     },
@@ -295,13 +295,13 @@ describe("SetupForm", () => {
                     name: "Saved A",
                     model: "model-2",
                     system_prompt: "Prompt A",
-                    provider: "openrouter",
+                    provider: "openai",
                 },
                 chatbot_b: {
                     name: "Saved B",
                     model: "model-1",
                     system_prompt: "Prompt B",
-                    provider: "openrouter",
+                    provider: "openai",
                 },
                 shared_system_prompt: "Saved shared prompt",
             },

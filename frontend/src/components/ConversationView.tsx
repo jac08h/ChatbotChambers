@@ -9,6 +9,7 @@ import {
 
 const PROVIDER_LABELS: Record<Provider, string> = {
     openrouter: "OpenRouter",
+    github_copilot: "GitHub Copilot",
     claude_code: "Claude Code",
     codex: "Codex CLI",
     mock: "Mock",

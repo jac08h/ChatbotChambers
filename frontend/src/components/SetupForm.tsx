@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { apiUrl } from "../api";
 import { type Provider, type SessionConfig } from "../hooks/useWebSocket";
 import { loadSettings, saveSettings } from "../settings";
@@ -19,11 +19,13 @@ interface Scenario {
     config?: SessionConfig;
 }
 
+interface ProviderInfo {
+    available: boolean;
+    docs_url?: string;
+}
+
 interface Providers {
-    openrouter: boolean;
-    claude_code: boolean;
-    codex: boolean;
-    mock?: boolean;
+    [key: string]: ProviderInfo;
 }
 
 interface SetupFormProps {
@@ -33,15 +35,54 @@ interface SetupFormProps {
 
 const PROVIDER_LABELS: Record<Provider, string> = {
     openrouter: "OpenRouter",
+    github_copilot: "GitHub Copilot",
     claude_code: "Claude Code",
     codex: "Codex CLI",
     mock: "Mock",
 };
+
+const PROVIDER_INFO: Partial<Record<Provider, React.ReactNode>> = {
+    openrouter: <>Requires an <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">OpenRouter API key</a> set as the <code>OPENROUTER_API_KEY</code> environment variable.</>,
+    github_copilot: <>Requires a <a href="https://docs.github.com/en/copilot" target="_blank" rel="noopener noreferrer">GitHub Copilot subscription</a> and authentication via the <a href="https://cli.github.com" target="_blank" rel="noopener noreferrer">GitHub CLI</a> (<code>gh auth login</code>).</>,
+    claude_code: <>Requires a <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener noreferrer">Claude Code</a> subscription and the <code>claude</code> CLI installed and authenticated.</>,
+    codex: <>Requires the <a href="https://github.com/openai/codex" target="_blank" rel="noopener noreferrer">Codex CLI</a> installed and an OpenAI API key.</>,
+};
+
+function ProviderInfoPopup({ provider, onClose }: { provider: Provider; onClose: () => void }) {
+    const info = PROVIDER_INFO[provider];
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) {
+                onClose();
+            }
+        };
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") onClose();
+        };
+        document.addEventListener("mousedown", handleClick);
+        document.addEventListener("keydown", handleKey);
+        return () => {
+            document.removeEventListener("mousedown", handleClick);
+            document.removeEventListener("keydown", handleKey);
+        };
+    }, [onClose]);
+
+    if (!info) return null;
+
+    return (
+        <div className="provider-info-popup" ref={ref} role="dialog" aria-label="Provider info">
+            <p className="provider-info-desc">{info}</p>
+        </div>
+    );
+}
 const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-flash-lite-preview";
 const DEFAULT_PROVIDERS: Providers = {
-    openrouter: true,
-    claude_code: false,
-    codex: false,
+    openrouter: { available: false },
+    github_copilot: { available: true },
+    claude_code: { available: false },
+    codex: { available: false },
 };
 
 function defaultModelId(models: Model[], provider: Provider): string {
@@ -49,8 +90,8 @@ function defaultModelId(models: Model[], provider: Provider): string {
         return "";
     }
     if (provider === "openrouter") {
-        const flashLite = models.find((model) => model.id === DEFAULT_OPENROUTER_MODEL);
-        return flashLite ? flashLite.id : models[0].id;
+        const defaultModel = models.find((model) => model.id === DEFAULT_OPENROUTER_MODEL);
+        return defaultModel ? defaultModel.id : models[0].id;
     }
     return models[0].id;
 }
@@ -111,6 +152,7 @@ function ChatbotConfig({
     onEnableThinkingChange,
 }: ChatbotConfigProps) {
     const [expanded, setExpanded] = useState(false);
+    const [infoOpen, setInfoOpen] = useState(false);
 
     const selectedModel = models.find((m) => m.id === model);
     const displayName = selectedModel ? shortModelName(selectedModel) : model;
@@ -122,7 +164,24 @@ function ChatbotConfig({
             </div>
 
             <div className="field">
-                <span className="field-label">Provider</span>
+                <div className="provider-label-row">
+                    <span className="field-label">Provider</span>
+                    {PROVIDER_INFO[provider] && (
+                        <div className="provider-info-anchor">
+                            <button
+                                type="button"
+                                className="provider-info-btn"
+                                onClick={() => setInfoOpen((v) => !v)}
+                                aria-label="Provider setup info"
+                            >
+                                i
+                            </button>
+                            {infoOpen && (
+                                <ProviderInfoPopup provider={provider} onClose={() => setInfoOpen(false)} />
+                            )}
+                        </div>
+                    )}
+                </div>
                 <div className="provider-chips" role="group">
                     {providers.map((p) => (
                         <button
@@ -139,11 +198,21 @@ function ChatbotConfig({
 
             <label className="field">
                 <span>Model</span>
-                <select value={model} onChange={(event) => onModelChange(event.target.value)} title={displayName}>
-                    {models.map((m) => (
-                        <option key={m.id} value={m.id}>{shortModelName(m)}</option>
-                    ))}
-                </select>
+                {provider === "openrouter" ? (
+                    <input
+                        type="text"
+                        value={model}
+                        onChange={(event) => onModelChange(event.target.value)}
+                        placeholder="google/gemini-3.1-flash-lite-preview"
+                        title="OpenRouter model ID"
+                    />
+                ) : (
+                    <select value={model} onChange={(event) => onModelChange(event.target.value)} title={displayName}>
+                        {models.map((m) => (
+                            <option key={m.id} value={m.id}>{shortModelName(m)}</option>
+                        ))}
+                    </select>
+                )}
             </label>
 
             <label className="field">
@@ -182,7 +251,6 @@ function ChatbotConfig({
                         type="checkbox"
                         checked={enableThinking}
                         onChange={(event) => onEnableThinkingChange(event.target.checked)}
-                        disabled={provider !== "openrouter"}
                         tabIndex={expanded ? 0 : -1}
                     />
                     <span>Enable thinking</span>
@@ -197,8 +265,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [scenarios, setScenarios] = useState<Scenario[]>([]);
     const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
 
-    const [providerA, setProviderA] = useState<Provider>("openrouter");
-    const [providerB, setProviderB] = useState<Provider>("openrouter");
+    const [providerA, setProviderA] = useState<Provider>("openai");
+    const [providerB, setProviderB] = useState<Provider>("openai");
     const [modelsA, setModelsA] = useState<Model[]>([]);
     const [modelsB, setModelsB] = useState<Model[]>([]);
     const [modelA, setModelA] = useState("");
@@ -262,12 +330,12 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             setProviders(providersData);
             setScenarios(scenariosData);
 
-            const availableProviders = (Object.keys(providersData) as Provider[]).filter((provider) => providersData[provider]);
-            const fallbackProvider = availableProviders[0] ?? "openrouter";
-            const initialProviderA = settings?.chatbot_a.provider && providersData[settings.chatbot_a.provider]
+            const availableProviders = (Object.keys(providersData) as Provider[]).filter((provider) => providersData[provider]?.available);
+            const fallbackProvider = availableProviders[0] ?? "openai";
+            const initialProviderA = settings?.chatbot_a.provider && providersData[settings.chatbot_a.provider]?.available
                 ? settings.chatbot_a.provider
                 : fallbackProvider;
-            const initialProviderB = settings?.chatbot_b.provider && providersData[settings.chatbot_b.provider]
+            const initialProviderB = settings?.chatbot_b.provider && providersData[settings.chatbot_b.provider]?.available
                 ? settings.chatbot_b.provider
                 : fallbackProvider;
 
@@ -384,7 +452,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         };
     }, [isManageScenariosOpen]);
 
-    const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
+    const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]?.available);
 
     const defaultNameA = (() => {
         const model = modelsA.find((m) => m.id === modelA);
@@ -395,11 +463,15 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         return model ? shortModelName(model) : modelB;
     })();
 
-    const buildConfig = (): SessionConfig => ({
-        chatbot_a: { name: nameA || defaultNameA, model: modelA, system_prompt: promptA, provider: providerA, enable_thinking: enableThinkingA },
-        chatbot_b: { name: nameB || defaultNameB, model: modelB, system_prompt: promptB, provider: providerB, enable_thinking: enableThinkingB },
-        shared_system_prompt: sharedPrompt,
-    });
+    const buildConfig = (): SessionConfig => {
+        const finalModelA = providerA === "openrouter" && !modelA ? DEFAULT_OPENROUTER_MODEL : modelA;
+        const finalModelB = providerB === "openrouter" && !modelB ? DEFAULT_OPENROUTER_MODEL : modelB;
+        return {
+            chatbot_a: { name: nameA || defaultNameA, model: finalModelA, system_prompt: promptA, provider: providerA, enable_thinking: enableThinkingA },
+            chatbot_b: { name: nameB || defaultNameB, model: finalModelB, system_prompt: promptB, provider: providerB, enable_thinking: enableThinkingB },
+            shared_system_prompt: sharedPrompt,
+        };
+    };
 
     const loadScenario = async (id: string) => {
         setScenarioActionError(null);
@@ -549,7 +621,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         onStart(config, conversationTitle.trim());
     };
 
-    const canStart = Boolean(modelA && modelB);
+    const canStart = Boolean((modelA || providerA === "openrouter") && (modelB || providerB === "openrouter"));
 
     return (
         <div className="setup-page">
@@ -561,7 +633,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                 <form onSubmit={handleSubmit} className="setup-form">
                     <div className="field">
                         <div className="scenario-header">
-                            <span className="field-label">Preset</span>
+                            <span className="field-label">Scenario</span>
                             <div className="scenario-header-actions">
                                 <div className="scenario-manage" ref={scenarioManageRef}>
                                     <button
@@ -662,7 +734,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                 }
                             }}
                         >
-                            <option value="">None</option>
+                            <option value="" disabled>Select a scenario...</option>
                             {scenarios.map((scenario) => (
                                 <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
                             ))}

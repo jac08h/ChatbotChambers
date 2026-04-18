@@ -5,8 +5,8 @@ import App from "./App"
 import { generateSlug, type ArchivedSession, type SessionConfig, type WebSocketState } from "./hooks/useWebSocket"
 
 const sampleConfig: SessionConfig = {
-    chatbot_a: { name: "Alice", model: "model-a", system_prompt: "", provider: "openrouter" },
-    chatbot_b: { name: "Bob", model: "model-b", system_prompt: "", provider: "openrouter" },
+    chatbot_a: { name: "Alice", model: "model-a", system_prompt: "", provider: "openai" },
+    chatbot_b: { name: "Bob", model: "model-b", system_prompt: "", provider: "openai" },
     shared_system_prompt: "",
 }
 

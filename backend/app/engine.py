@@ -5,7 +5,7 @@ from typing import AsyncGenerator, Dict, List, Literal, Tuple, Union
 from app.models import (
     CLAUDE_CODE_MODELS,
     CODEX_MODELS,
-    MODELS,
+    LITELLM_PROVIDERS,
     ChatbotConfig,
     Message,
     SessionConfig,
@@ -13,7 +13,7 @@ from app.models import (
 from app.providers.claude_code import call_claude_code
 from app.providers.codex_cli import call_codex
 from app.providers.mock import MOCK_MODELS, call_mock
-from app.providers.openrouter import call_openrouter
+from app.providers.litellm_provider import call_litellm
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -21,7 +21,13 @@ PREAMBLE = (PROMPTS_DIR / "preamble.md").read_text().strip()
 PREAMBLE_A = (PROMPTS_DIR / "preamble_a.md").read_text().strip()
 PREAMBLE_B = (PROMPTS_DIR / "preamble_b.md").read_text().strip()
 
-ALL_MODELS = dict(MODELS + CLAUDE_CODE_MODELS + CODEX_MODELS + MOCK_MODELS)
+_LITELLM_MODELS = [
+    model
+    for provider in LITELLM_PROVIDERS.values()
+    for model in provider["models"]
+]
+
+ALL_MODELS = dict(_LITELLM_MODELS + CLAUDE_CODE_MODELS + CODEX_MODELS + MOCK_MODELS)
 
 
 def _resolve_model_name(model_id: str) -> str:
@@ -40,7 +46,6 @@ class EmptyMessage:
 
 async def run_conversation(
     config: SessionConfig,
-    api_key: str,
     pause_event: asyncio.Event,
     stop_event: asyncio.Event,
     cancel_event: asyncio.Event | None = None,
@@ -79,7 +84,7 @@ async def run_conversation(
 
                 cancel_event.clear()
                 llm_task = asyncio.create_task(
-                    _call_llm(chatbot_config, system_prompt, messages, api_key)
+                    _call_llm(chatbot_config, system_prompt, messages)
                 )
                 cancel_wait = asyncio.create_task(cancel_event.wait())
 
@@ -128,7 +133,6 @@ async def _call_llm(
     chatbot_config: ChatbotConfig,
     system_prompt: str,
     messages: List[dict],
-    api_key: str,
 ) -> Tuple[str, str]:
     if chatbot_config.provider == "mock":
         return await call_mock(
@@ -150,14 +154,15 @@ async def _call_llm(
             messages=messages,
         )
         return content, ""
-    else:
-        return await call_openrouter(
+    elif chatbot_config.provider in LITELLM_PROVIDERS:
+        return await call_litellm(
             model=chatbot_config.model,
             system_prompt=system_prompt,
             messages=messages,
-            api_key=api_key,
             enable_thinking=chatbot_config.enable_thinking,
         )
+    else:
+        raise ValueError("Unknown provider: %s" % chatbot_config.provider)
 
 
 def _build_system_prompt(individual_preamble: str, shared: str, individual: str) -> str:
