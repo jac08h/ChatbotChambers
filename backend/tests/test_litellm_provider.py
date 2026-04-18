@@ -22,26 +22,24 @@ async def test_returns_content_and_empty_thinking(
         mock_litellm.acompletion = AsyncMock(return_value=mock_response)
         from app.providers.litellm_provider import call_litellm
 
-        content, thinking = await call_litellm("model", "sys", [])
+        content, thinking = await call_litellm("openrouter", "model", "sys", [])
     assert content == "Hello world"
     assert thinking == ""
 
 
-async def test_reasoning_content_returned_as_thinking(
+async def test_reasoning_content_is_not_returned(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """When the response message has reasoning_content, it's returned as thinking."""
+    """Reasoning content is ignored in provider responses."""
     monkeypatch.setattr("app.providers.litellm_provider.LOGS_DIR", tmp_path)
     mock_response = make_mock_response("The answer", "Step-by-step reasoning")
     with patch("app.providers.litellm_provider.litellm") as mock_litellm:
         mock_litellm.acompletion = AsyncMock(return_value=mock_response)
         from app.providers.litellm_provider import call_litellm
 
-        content, thinking = await call_litellm(
-            "model", "sys", [], enable_thinking=True
-        )
+        content, thinking = await call_litellm("openrouter", "model", "sys", [])
     assert content == "The answer"
-    assert thinking == "Step-by-step reasoning"
+    assert thinking == ""
 
 
 async def test_system_prompt_prepended(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -53,7 +51,7 @@ async def test_system_prompt_prepended(tmp_path: Path, monkeypatch: pytest.Monke
         from app.providers.litellm_provider import call_litellm
 
         await call_litellm(
-            "model", "Be helpful", [{"role": "user", "content": "Hello"}]
+            "github_copilot", "model", "Be helpful", [{"role": "user", "content": "Hello"}]
         )
 
     call_kwargs = mock_litellm.acompletion.call_args
@@ -74,7 +72,7 @@ async def test_empty_response_returns_empty_strings(
         mock_litellm.acompletion = AsyncMock(return_value=mock_response)
         from app.providers.litellm_provider import call_litellm
 
-        content, thinking = await call_litellm("model", "sys", [])
+        content, thinking = await call_litellm("github_copilot", "model", "sys", [])
     assert content == ""
     assert thinking == ""
 
@@ -87,7 +85,7 @@ async def test_prompt_logged_to_file(tmp_path: Path, monkeypatch: pytest.MonkeyP
         mock_litellm.acompletion = AsyncMock(return_value=mock_response)
         from app.providers.litellm_provider import call_litellm
 
-        await call_litellm("my-model", "sys", [])
+        await call_litellm("github_copilot", "my-model", "sys", [])
 
     log_file = tmp_path / "prompts.jsonl"
     assert log_file.exists()
@@ -97,33 +95,33 @@ async def test_prompt_logged_to_file(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert entry["model"] == "my-model"
 
 
-async def test_enable_thinking_passes_reasoning_effort(
+async def test_openrouter_sets_reasoning_effort_to_none(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """When enable_thinking=True, reasoning_effort='high' is passed to the API call."""
+    """OpenRouter requests opt out of thinking when supported."""
     monkeypatch.setattr("app.providers.litellm_provider.LOGS_DIR", tmp_path)
     mock_response = make_mock_response("Hi")
     with patch("app.providers.litellm_provider.litellm") as mock_litellm:
         mock_litellm.acompletion = AsyncMock(return_value=mock_response)
         from app.providers.litellm_provider import call_litellm
 
-        await call_litellm("model", "sys", [], enable_thinking=True)
+        await call_litellm("openrouter", "model", "sys", [])
 
     call_kwargs = mock_litellm.acompletion.call_args
-    assert call_kwargs.kwargs.get("reasoning_effort") == "high"
+    assert call_kwargs.kwargs.get("reasoning_effort") == "none"
 
 
-async def test_disable_thinking_omits_reasoning_effort(
+async def test_other_litellm_providers_omit_reasoning_effort(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """When enable_thinking=False (default), no reasoning_effort param is passed."""
+    """Non-OpenRouter requests do not send reasoning_effort."""
     monkeypatch.setattr("app.providers.litellm_provider.LOGS_DIR", tmp_path)
     mock_response = make_mock_response("Hi")
     with patch("app.providers.litellm_provider.litellm") as mock_litellm:
         mock_litellm.acompletion = AsyncMock(return_value=mock_response)
         from app.providers.litellm_provider import call_litellm
 
-        await call_litellm("model", "sys", [], enable_thinking=False)
+        await call_litellm("github_copilot", "model", "sys", [])
 
     call_kwargs = mock_litellm.acompletion.call_args
     assert "reasoning_effort" not in call_kwargs.kwargs

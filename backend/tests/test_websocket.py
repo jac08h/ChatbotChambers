@@ -11,15 +11,15 @@ pytestmark = pytest.mark.integration
 LITELLM_CONFIG = {
     "chatbot_a": {
         "name": "LM A",
-        "model": "openai/gpt-4o",
+        "model": "openrouter/openai/gpt-4o",
         "system_prompt": "You are A.",
-        "provider": "openai",
+        "provider": "openrouter",
     },
     "chatbot_b": {
         "name": "LM B",
-        "model": "openai/gpt-4o",
+        "model": "openrouter/openai/gpt-4o",
         "system_prompt": "You are B.",
-        "provider": "openai",
+        "provider": "openrouter",
     },
     "shared_system_prompt": "Have a conversation.",
 }
@@ -107,7 +107,7 @@ def test_message_data_shape(monkeypatch: pytest.MonkeyPatch):
     assert len(message_events) > 0
     msg = message_events[0]["data"]
     assert set(msg.keys()) >= {"chatbot", "name", "model", "content", "turn", "thinking"}
-    assert msg["thinking"] == "thinking"
+    assert msg["thinking"] == ""
 
 
 def test_generating_events_indicate_correct_chatbot(monkeypatch: pytest.MonkeyPatch):

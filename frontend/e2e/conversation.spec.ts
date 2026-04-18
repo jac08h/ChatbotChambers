@@ -85,17 +85,10 @@ test.describe("Conversation Flow (mock provider)", () => {
         expect(bannerText).toContain("left the chat");
     });
 
-    test("Thinking block collapsed by default, expands on click", async ({ page }) => {
+    test("Thinking output is not shown in the conversation UI", async ({ page }) => {
         await startMockConversation(page, "mock/thinking-model", "mock/fast-model");
 
-        const thinkingBlock = page.locator(".thinking-block").first();
-        await expect(thinkingBlock).toBeVisible({ timeout: 30000 });
-
-        const thinkingContent = thinkingBlock.locator(".message-content");
-        await expect(thinkingContent).not.toBeVisible();
-
-        await thinkingBlock.locator("summary").click();
-        await expect(thinkingContent).toBeVisible();
-        await expect(thinkingContent).toContainText("Mock thinking");
+        await expect(page.locator(".thinking-block")).toHaveCount(0);
+        await expect(page.getByText("Mock thinking")).toHaveCount(0);
     });
 });

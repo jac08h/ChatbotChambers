@@ -9,7 +9,7 @@ const mockModels = [
     { id: "model-2", name: "Model Two" },
 ]
 
-const mockProviders = { openai: { available: true }, anthropic: { available: false }, gemini: { available: false }, github_copilot: { available: true }, claude_code: { available: false }, codex: { available: false } }
+const mockProviders = { github_copilot: { available: true }, openrouter: { available: true }, claude_code: { available: false }, codex: { available: false } }
 
 interface MockPreset {
     id: string
@@ -133,7 +133,7 @@ describe("SetupForm", () => {
 
     it("loading a saved scenario restores the full saved configuration", async () => {
         vi.stubGlobal("fetch", createFetchMock({
-            providers: { openai: { available: true }, anthropic: { available: true }, gemini: { available: true }, github_copilot: { available: true }, claude_code: { available: true }, codex: { available: true } },
+            providers: { openrouter: { available: true }, github_copilot: { available: true }, claude_code: { available: true }, codex: { available: true } },
             scenarios: [
                 {
                     id: "full-scenario",
@@ -152,7 +152,7 @@ describe("SetupForm", () => {
                             name: "Preset B",
                             model: "model-1",
                             system_prompt: "Prompt B",
-                            provider: "openai",
+                            provider: "github_copilot",
                         },
                         shared_system_prompt: "Saved shared prompt",
                     },
@@ -274,6 +274,8 @@ describe("SetupForm", () => {
         expect(config).toHaveProperty("shared_system_prompt")
         expect(config.chatbot_a.model).toBeTruthy()
         expect(config.chatbot_b.model).toBeTruthy()
+        expect(config.chatbot_a).not.toHaveProperty("enable_thinking")
+        expect(config.chatbot_b).not.toHaveProperty("enable_thinking")
         expect(initialTitle).toBe("")
     })
 
@@ -295,13 +297,13 @@ describe("SetupForm", () => {
                     name: "Saved A",
                     model: "model-2",
                     system_prompt: "Prompt A",
-                    provider: "openai",
+                    provider: "github_copilot",
                 },
                 chatbot_b: {
                     name: "Saved B",
                     model: "model-1",
                     system_prompt: "Prompt B",
-                    provider: "openai",
+                    provider: "github_copilot",
                 },
                 shared_system_prompt: "Saved shared prompt",
             },
@@ -322,7 +324,15 @@ describe("SetupForm", () => {
     })
 
     it("Start button is disabled when no models loaded", async () => {
-        vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve([]) })))
+        const fetchMock = createFetchMock({
+            providers: { github_copilot: { available: true }, openrouter: { available: false }, claude_code: { available: false }, codex: { available: false } },
+        })
+        vi.stubGlobal("fetch", vi.fn((url: string, options?: RequestInit) => {
+            if (url.includes("/models")) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
+            }
+            return fetchMock(url, options)
+        }))
         render(<SetupForm onStart={vi.fn()} error={null} />)
         await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).toBeDisabled())
     })

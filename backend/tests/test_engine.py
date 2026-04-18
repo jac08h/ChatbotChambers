@@ -103,14 +103,14 @@ async def test_leave_after_two_messages_stops_conversation(
     assert messages[1].chatbot == "b"
 
 
-async def test_thinking_passed_through(
-    mock_litellm: AsyncMock, session_config: SessionConfig
+async def test_thinking_not_passed_through(
+    mock_litellm: AsyncMock, mock_claude_code: AsyncMock, session_config: SessionConfig
 ):
-    """Thinking content from litellm is included in the yielded Message."""
+    """Thinking content from providers is not exposed in yielded messages."""
     mock_litellm.side_effect = [("Answer", "My reasoning here"), ("/leave", "")]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
-    assert messages[0].thinking == "My reasoning here"
+    assert messages[0].thinking == ""
 
 
 async def test_mixed_providers_dispatches_correctly(
@@ -150,7 +150,7 @@ async def test_history_role_perspective(
 
 
 async def test_message_name_populated(
-    mock_litellm: AsyncMock, session_config: SessionConfig
+    mock_litellm: AsyncMock, mock_claude_code: AsyncMock, session_config: SessionConfig
 ):
     """Yielded messages carry the chatbot display name from config."""
     mock_litellm.side_effect = [("Hi", ""), ("/leave", "")]
@@ -161,7 +161,7 @@ async def test_message_name_populated(
 
 
 async def test_turn_number_increments(
-    mock_litellm: AsyncMock, session_config: SessionConfig
+    mock_litellm: AsyncMock, mock_claude_code: AsyncMock, session_config: SessionConfig
 ):
     """Turn number increments after both chatbots have spoken."""
     mock_litellm.side_effect = [("Hi", ""), ("Hi", ""), ("Hi", ""), ("/leave", "")]
@@ -229,7 +229,7 @@ def test_build_messages_role_assignment_for_other():
 
 
 async def test_cancel_event_stops_inflight_generation(
-    mock_litellm: AsyncMock, session_config: SessionConfig
+    mock_litellm: AsyncMock, mock_claude_code: AsyncMock, session_config: SessionConfig
 ):
     """Setting cancel_event during LLM call cancels it and discards the message."""
     pause = asyncio.Event()
