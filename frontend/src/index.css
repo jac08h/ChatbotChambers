@@ -496,7 +496,7 @@ label span {
 }
 
 .chatbot-config.side-a {
-    border-color: var(--chatbot-a);
+    border: 2px solid var(--chatbot-a);
     box-shadow: 0 0 12px var(--chatbot-a-glow);
 }
 
@@ -505,7 +505,7 @@ label span {
 }
 
 .chatbot-config.side-b {
-    border-color: var(--chatbot-b);
+    border: 2px solid var(--chatbot-b);
     box-shadow: 0 0 12px var(--chatbot-b-glow);
 }
 
@@ -655,7 +655,7 @@ textarea {
 }
 
 .field:has(textarea[placeholder="Instructions for both chatbots"]) textarea {
-    border: 1px solid transparent;
+    border: 2px solid transparent;
     background:
         linear-gradient(var(--bg), var(--bg)) padding-box,
         linear-gradient(90deg, var(--chatbot-a), var(--chatbot-b)) border-box;
@@ -1225,7 +1225,7 @@ input::placeholder {
 .start-btn {
     padding: 0.6rem 1.5rem;
     border-radius: 999px;
-    border: 1px solid transparent;
+    border: 2px solid transparent;
     background:
         linear-gradient(var(--bg), var(--bg)) padding-box,
         linear-gradient(90deg, var(--chatbot-a), var(--chatbot-b)) border-box;
@@ -1241,7 +1241,7 @@ input::placeholder {
     background:
         linear-gradient(var(--bg), var(--bg)) padding-box,
         linear-gradient(90deg, var(--chatbot-b), var(--chatbot-a)) border-box;
-    box-shadow: 0 4px 12px rgba(196, 149, 106, 0.2);
+    box-shadow: 0 0 0 1px rgba(212, 165, 116, 0.3), 0 4px 12px rgba(196, 149, 106, 0.2);
 }
 
 .start-btn:disabled {
@@ -1473,9 +1473,17 @@ html[data-theme="light"] .chatbot-b .message-bubble {
 .message-content {
     white-space: pre-wrap;
     word-break: break-word;
-    font-family: "Space Mono", monospace;
+    font-family: var(--font);
     font-size: 0.95rem;
     line-height: 1.6;
+}
+
+.message-content code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
 }
 
 .message-bubble.generating {
