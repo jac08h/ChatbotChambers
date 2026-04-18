@@ -218,9 +218,7 @@ def delete_scenario(scenario_id: str) -> None:
 
 
 LITELLM_PROVIDER_ENV_VARS = {
-    "openai": "OPENAI_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-    "gemini": "GEMINI_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
 }
 
 
@@ -372,9 +370,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     cancel_event = asyncio.Event()
 
     engine_task = asyncio.create_task(
-        _run_engine(
-            ws, config, pause_event, stop_event, cancel_event, session_id
-        )
+        _run_engine(ws, config, pause_event, stop_event, cancel_event, session_id)
     )
     listener_task = asyncio.create_task(
         _run_listener(ws, pause_event, stop_event, cancel_event)
