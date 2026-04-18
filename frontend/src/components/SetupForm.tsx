@@ -240,7 +240,7 @@ function ChatbotConfig({
                         type="text"
                         value={name}
                         onChange={(event) => onNameChange(event.target.value)}
-                        placeholder={defaultName}
+                        placeholder={defaultName || (provider === "openrouter" && !model ? shortModelName({ id: DEFAULT_OPENROUTER_MODEL, name: DEFAULT_OPENROUTER_MODEL }) : "")}
                         tabIndex={expanded ? 0 : -1}
                     />
                 </label>
@@ -398,6 +398,15 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
             setNameB("");
         }
     }, [modelB, modelsB, nameBManual]);
+
+    useEffect(() => {
+        if (!isInitialized) {
+            return;
+        }
+        const config = buildConfig();
+        const timer = setTimeout(() => { saveSettings(config).catch(() => {}); }, 500);
+        return () => clearTimeout(timer);
+    }, [isInitialized, providerA, providerB, modelA, modelB, nameA, nameB, promptA, promptB, sharedPrompt]);
 
     useEffect(() => {
         if (!isSaveScenarioOpen) {
