@@ -39,3 +39,10 @@ frontend/
 - Breadth-first function ordering (public/main functions first)
 - Absolute imports from repo root
 - Update AGENTS.md when a relevant part of the code changes
+
+## Branding
+
+The ChatbotChambers wordmark uses an editorial contrast approach:
+- **Chatbot**: Inter, 0.42em (relative to sidebar brand size), weight 800, uppercase, letter-spacing 0.28em
+- **Chambers**: Fraunces serif, weight 700, letter-spacing -0.04em
+- Both stack vertically (flex-direction: column) in the sidebar brand section

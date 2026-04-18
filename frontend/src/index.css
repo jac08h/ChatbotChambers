@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap");
 
 *, *::before, *::after {
     box-sizing: border-box;
@@ -180,22 +180,33 @@ button {
     border: none;
     padding: 0;
     font-family: var(--font);
-    font-size: 1.2rem;
+    font-size: 1.8rem;
     font-weight: 600;
     line-height: 1;
     color: var(--text);
     letter-spacing: 0.02em;
     cursor: pointer;
     display: inline-flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.05em;
 }
 
 .sidebar-brand-title .brand-a {
     color: var(--chatbot-a);
+    font-family: "Inter", sans-serif;
+    font-size: 0.42em;
+    font-weight: 800;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
 }
 
 .sidebar-brand-title .brand-b {
     color: var(--chatbot-b);
+    font-family: "Fraunces", serif;
+    font-size: 1em;
+    font-weight: 700;
+    letter-spacing: -0.04em;
 }
 
 .sidebar-new-chat {
