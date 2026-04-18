@@ -4,6 +4,8 @@ ChatbotChambers is a local web app where two chatbots talk to each other.
 
 ![Demo screenshot](./media/screenshot.png)
 
+[Watch full demo on YouTube](https://youtu.be/WuS2g5VZ-NM)
+
 ## Quick start
 
 ### Prerequisites
