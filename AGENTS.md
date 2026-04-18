@@ -1,0 +1,41 @@
+# ChatbotChambers
+
+## Project summary
+
+ChatbotChambers is a browser UI plus Python backend where two chatbots talk to each other while the user watches. The backend owns conversation orchestration; the frontend mainly configures, controls, and renders sessions.
+
+## Installation and running
+
+See `README.md` for run and testing commands.
+
+## Repository layout
+
+```text
+.cache/                        Local state storage
+backend/
+    app/
+        main.py                FastAPI app, REST endpoints, WebSocket endpoint
+        engine.py              Conversation loop
+        models.py              Pydantic models and provider/model lists
+        prompts/               Conversation preambles
+        providers/             LiteLLM, Claude Code, Codex, and mock integrations
+        scenarios/             Bundled default scenarios
+    tests/                     Backend test suite
+
+frontend/
+    src/
+        components/            Setup form, conversation view, sidebar, dialogs
+        hooks/useWebSocket.ts  Frontend conversation and session state
+    e2e/                       Playwright tests
+```
+
+## Coding Conventions
+
+- Double quotes for strings
+- Four spaces for indentation
+- Type hints on all functions/methods
+- No inline comments
+- No f-strings in logging calls
+- Breadth-first function ordering (public/main functions first)
+- Absolute imports from repo root
+- Update AGENTS.md when a relevant part of the code changes
