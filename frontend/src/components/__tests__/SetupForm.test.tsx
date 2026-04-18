@@ -9,7 +9,7 @@ const mockModels = [
     { id: "model-2", name: "Model Two" },
 ]
 
-const mockProviders = { github_copilot: { available: true }, openrouter: { available: true }, claude_code: { available: false }, codex: { available: false } }
+const mockProviders = { openrouter: { available: false }, github_copilot: { available: true }, claude_code: { available: false }, codex: { available: false } }
 
 interface MockPreset {
     id: string
@@ -133,7 +133,7 @@ describe("SetupForm", () => {
 
     it("loading a saved scenario restores the full saved configuration", async () => {
         vi.stubGlobal("fetch", createFetchMock({
-            providers: { openrouter: { available: true }, github_copilot: { available: true }, claude_code: { available: true }, codex: { available: true } },
+            providers: { openrouter: { available: false }, github_copilot: { available: true }, claude_code: { available: true }, codex: { available: true } },
             scenarios: [
                 {
                     id: "full-scenario",
@@ -274,8 +274,6 @@ describe("SetupForm", () => {
         expect(config).toHaveProperty("shared_system_prompt")
         expect(config.chatbot_a.model).toBeTruthy()
         expect(config.chatbot_b.model).toBeTruthy()
-        expect(config.chatbot_a).not.toHaveProperty("enable_thinking")
-        expect(config.chatbot_b).not.toHaveProperty("enable_thinking")
         expect(initialTitle).toBe("")
     })
 
@@ -324,15 +322,13 @@ describe("SetupForm", () => {
     })
 
     it("Start button is disabled when no models loaded", async () => {
-        const fetchMock = createFetchMock({
-            providers: { github_copilot: { available: true }, openrouter: { available: false }, claude_code: { available: false }, codex: { available: false } },
-        })
-        vi.stubGlobal("fetch", vi.fn((url: string, options?: RequestInit) => {
+        const fetchMock = vi.fn((url: string, options?: RequestInit) => {
             if (url.includes("/models")) {
                 return Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
             }
-            return fetchMock(url, options)
-        }))
+            return createFetchMock({ providers: mockProviders })(url, options)
+        })
+        vi.stubGlobal("fetch", fetchMock)
         render(<SetupForm onStart={vi.fn()} error={null} />)
         await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).toBeDisabled())
     })

@@ -126,12 +126,14 @@ export default function App() {
         setPendingRenameSession(null);
     };
 
-    const viewingSession = routeSessionId
-        ? ws.history.find((session) => session.id === routeSessionId) ?? null
+    const activeRouteSessionId = ws.startupError ? null : routeSessionId;
+    const shouldShowSetup = showSetup || ws.startupError !== null;
+    const viewingSession = activeRouteSessionId
+        ? ws.history.find((session) => session.id === activeRouteSessionId) ?? null
         : null;
     const hasConversationState = ws.config !== null;
     const hasCurrentConversation = ws.status === "running" || ws.status === "paused";
-    const showCurrentConversation = !showSetup && hasConversationState && (!routeSessionId || routeSessionId === ws.currentSessionId);
+    const showCurrentConversation = !shouldShowSetup && hasConversationState && (!activeRouteSessionId || activeRouteSessionId === ws.currentSessionId);
     const showConversation = Boolean(viewingSession) || showCurrentConversation;
     const currentDisplayTitle = ws.currentSessionId
         ? getSessionDisplayTitle({ id: ws.currentSessionId, title: ws.currentTitle })
@@ -158,7 +160,7 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        const pathname = showSetup
+        const pathname = shouldShowSetup
             ? "/"
             : viewingSession
                 ? getSessionPath(viewingSession.id)
@@ -169,7 +171,7 @@ export default function App() {
         if (pathname && window.location.pathname !== pathname) {
             window.history.pushState({}, "", pathname);
         }
-    }, [showSetup, viewingSession, ws.currentSessionId]);
+    }, [shouldShowSetup, viewingSession, ws.currentSessionId]);
 
     useEffect(() => {
         document.documentElement.dataset.theme = theme;
@@ -218,7 +220,7 @@ export default function App() {
                 onDeleteSession={handleDeleteSession}
                 onDeleteAllSessions={handleDeleteAllSessions}
                 onRenameSession={handleRequestRenameSession}
-                selectedSessionId={routeSessionId}
+                selectedSessionId={activeRouteSessionId}
                 hasCurrentConversation={hasCurrentConversation}
                 isCurrentConversationSelected={showCurrentConversation}
                 theme={theme}
@@ -261,6 +263,15 @@ export default function App() {
                 ) : (
                     <SetupForm onStart={handleStart} error={ws.error} />
                 )}
+                <ConfirmationDialog
+                    isOpen={ws.startupError !== null}
+                    title="Conversation failed to start"
+                    message={ws.startupError ?? ""}
+                    confirmLabel="OK"
+                    showCancel={false}
+                    onConfirm={ws.clearStartupError}
+                    onCancel={ws.clearStartupError}
+                />
                 <ConfirmationDialog
                     isOpen={pendingDeleteSession !== null}
                     title="Delete conversation"

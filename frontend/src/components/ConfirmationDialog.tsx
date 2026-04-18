@@ -6,6 +6,7 @@ interface ConfirmationDialogProps {
     message: string;
     confirmLabel: string;
     cancelLabel?: string;
+    showCancel?: boolean;
     isConfirming?: boolean;
     onConfirm: () => void;
     onCancel: () => void;
@@ -17,6 +18,7 @@ export function ConfirmationDialog({
     message,
     confirmLabel,
     cancelLabel = "Cancel",
+    showCancel = true,
     isConfirming = false,
     onConfirm,
     onCancel,
@@ -60,14 +62,16 @@ export function ConfirmationDialog({
                 </div>
                 <p className="confirmation-dialog-message">{message}</p>
                 <div className="confirmation-dialog-actions">
-                    <button
-                        type="button"
-                        className="confirmation-dialog-cancel"
-                        onClick={onCancel}
-                        disabled={isConfirming}
-                    >
-                        {cancelLabel}
-                    </button>
+                    {showCancel && (
+                        <button
+                            type="button"
+                            className="confirmation-dialog-cancel"
+                            onClick={onCancel}
+                            disabled={isConfirming}
+                        >
+                            {cancelLabel}
+                        </button>
+                    )}
                     <button
                         type="button"
                         className="confirmation-dialog-confirm"

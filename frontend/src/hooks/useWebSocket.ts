@@ -53,6 +53,7 @@ export interface WebSocketState {
     generatingChatbot: "a" | "b" | null;
     doneReason: string | null;
     error: string | null;
+    startupError: string | null;
     emptyMessageError: "a" | "b" | null;
     config: SessionConfig | null;
     currentSessionId: string | null;
@@ -63,6 +64,7 @@ export interface WebSocketState {
     resume: () => void;
     retry: () => void;
     reset: () => void;
+    clearStartupError: () => void;
     renameCurrentSession: (title: string) => void;
     renameSession: (id: string, title: string) => void;
     deleteSession: (id: string) => Promise<boolean>;
@@ -197,6 +199,7 @@ export function useWebSocket(): WebSocketState {
     const [generatingChatbot, setGeneratingChatbot] = useState<"a" | "b" | null>(null);
     const [doneReason, setDoneReason] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [startupError, setStartupError] = useState<string | null>(null);
     const [emptyMessageError, setEmptyMessageError] = useState<"a" | "b" | null>(null);
     const [config, setConfig] = useState<SessionConfig | null>(null);
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -241,6 +244,7 @@ export function useWebSocket(): WebSocketState {
         setGeneratingChatbot(null);
         setDoneReason(null);
         setError(null);
+        setStartupError(null);
         setEmptyMessageError(null);
         setConfig(null);
         setCurrentSessionId(null);
@@ -251,6 +255,47 @@ export function useWebSocket(): WebSocketState {
         currentTitleRef.current = null;
         pendingInitialTitleRef.current = null;
     }, []);
+
+    const clearStartupError = useCallback(() => {
+        setStartupError(null);
+    }, []);
+
+    const discardFailedSession = useCallback((sessionId: string): void => {
+        fetch(apiUrl(`/sessions/${sessionId}`), {
+            method: "DELETE",
+        }).then((response) => {
+            if (!response.ok && response.status !== 404) {
+                console.error("Failed to discard session:", response.status, response.statusText);
+            }
+        }).catch((discardError) => {
+            console.error("Discard session error:", discardError);
+        });
+    }, []);
+
+    const handleStartupFailure = useCallback((message: string) => {
+        const failedSessionId = currentIdRef.current;
+        wsRef.current?.close();
+        wsRef.current = null;
+        setMessages([]);
+        setStatus("idle");
+        setGeneratingChatbot(null);
+        setDoneReason(null);
+        setError(null);
+        setStartupError(message);
+        setEmptyMessageError(null);
+        setConfig(null);
+        setCurrentSessionId(null);
+        setCurrentTitle(null);
+        messagesRef.current = [];
+        configRef.current = null;
+        currentIdRef.current = null;
+        currentTitleRef.current = null;
+        pendingInitialTitleRef.current = null;
+        if (failedSessionId) {
+            setHistory((prev) => prev.filter((session) => session.id !== failedSessionId));
+            discardFailedSession(failedSessionId);
+        }
+    }, [discardFailedSession]);
 
     useEffect(() => {
         fetch(apiUrl("/sessions"))
@@ -294,6 +339,7 @@ export function useWebSocket(): WebSocketState {
         setGeneratingChatbot(null);
         setDoneReason(null);
         setError(null);
+        setStartupError(null);
         setEmptyMessageError(null);
         setConfig(newConfig);
         setCurrentSessionId(null);
@@ -338,6 +384,10 @@ export function useWebSocket(): WebSocketState {
                 setStatus("done");
                 archive(reason, null);
             } else if (data.type === "error") {
+                if (messagesRef.current.length === 0) {
+                    handleStartupFailure(data.message);
+                    return;
+                }
                 setGeneratingChatbot(null);
                 setError(data.message);
                 setStatus("error");
@@ -346,13 +396,17 @@ export function useWebSocket(): WebSocketState {
         };
 
         ws.onerror = () => {
+            if (messagesRef.current.length === 0) {
+                handleStartupFailure("WebSocket connection error");
+                return;
+            }
             setError("WebSocket connection error");
             setStatus("error");
             archive(null, "WebSocket connection error");
         };
 
         ws.onclose = () => {};
-    }, [applySessionTitle, archive, persistSessionTitle]);
+    }, [applySessionTitle, archive, handleStartupFailure, persistSessionTitle]);
 
     const pause = useCallback(() => {
         wsRef.current?.send(JSON.stringify({ type: "pause" }));
@@ -444,6 +498,7 @@ export function useWebSocket(): WebSocketState {
         generatingChatbot,
         doneReason,
         error,
+        startupError,
         emptyMessageError,
         config,
         currentSessionId,
@@ -454,6 +509,7 @@ export function useWebSocket(): WebSocketState {
         resume,
         retry,
         reset,
+        clearStartupError,
         renameCurrentSession,
         renameSession,
         deleteSession,

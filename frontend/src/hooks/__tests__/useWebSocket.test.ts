@@ -121,21 +121,23 @@ describe("useWebSocket", () => {
         expect(result.current.doneReason).toBe("leave:b")
     })
 
-    it("receiving 'error' sets status to error and captures message", () => {
+    it("receiving an initial 'error' shows a startup error instead of a conversation error", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
         act(() => { MockWebSocket.instances[0].receive({ type: "error", message: "Something broke" }) })
-        expect(result.current.status).toBe("error")
-        expect(result.current.error).toBe("Something broke")
+        expect(result.current.status).toBe("idle")
+        expect(result.current.error).toBeNull()
+        expect(result.current.startupError).toBe("Something broke")
     })
 
-    it("WebSocket error event sets status to error", () => {
+    it("an initial WebSocket error shows a startup error", () => {
         const { result } = renderHook(() => useWebSocket())
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].error() })
-        expect(result.current.status).toBe("error")
-        expect(result.current.error).toBe("WebSocket connection error")
+        expect(result.current.status).toBe("idle")
+        expect(result.current.error).toBeNull()
+        expect(result.current.startupError).toBe("WebSocket connection error")
     })
 
     it("pause() sends pause message and sets status to paused", () => {
@@ -227,9 +229,32 @@ describe("useWebSocket", () => {
         act(() => { result.current.start(sampleConfig) })
         act(() => { MockWebSocket.instances[0].open() })
         act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
+        act(() => {
+            MockWebSocket.instances[0].receive({
+                type: "message",
+                data: { chatbot: "a", name: "A", model: "m", content: "Hi", turn: 0, thinking: "" },
+            })
+        })
         act(() => { MockWebSocket.instances[0].receive({ type: "error", message: "oops" }) })
         expect(result.current.history).toHaveLength(1)
         expect(result.current.history[0].error).toBe("oops")
+    })
+
+    it("first error discards the session instead of archiving it", () => {
+        const fetchMock = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve([]) }))
+        vi.stubGlobal("fetch", fetchMock)
+        const { result } = renderHook(() => useWebSocket())
+        act(() => { result.current.start(sampleConfig) })
+        act(() => { MockWebSocket.instances[0].open() })
+        act(() => { MockWebSocket.instances[0].receive({ type: "session_id", id: "session-1" }) })
+        act(() => { MockWebSocket.instances[0].receive({ type: "error", message: "oops" }) })
+        expect(result.current.history).toEqual([])
+        expect(result.current.currentSessionId).toBeNull()
+        expect(result.current.startupError).toBe("oops")
+        expect(fetchMock).toHaveBeenCalledWith(
+            apiUrl("/sessions/session-1"),
+            expect.objectContaining({ method: "DELETE" }),
+        )
     })
 
     it("reset() archives a paused session", () => {
