@@ -260,7 +260,7 @@ export function useWebSocket(): WebSocketState {
         setStartupError(null);
     }, []);
 
-    const discardFailedSession = useCallback((sessionId: string) => {
+    const discardFailedSession = useCallback((sessionId: string): void => {
         fetch(apiUrl(`/sessions/${sessionId}`), {
             method: "DELETE",
         }).then((response) => {

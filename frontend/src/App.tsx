@@ -268,7 +268,7 @@ export default function App() {
                     title="Conversation failed to start"
                     message={ws.startupError ?? ""}
                     confirmLabel="OK"
-                    cancelLabel={null}
+                    showCancel={false}
                     onConfirm={ws.clearStartupError}
                     onCancel={ws.clearStartupError}
                 />

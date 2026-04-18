@@ -322,12 +322,11 @@ describe("SetupForm", () => {
     })
 
     it("Start button is disabled when no models loaded", async () => {
-        const fallbackFetch = createFetchMock({ providers: mockProviders })
         const fetchMock = vi.fn((url: string, options?: RequestInit) => {
             if (url.includes("/models")) {
                 return Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
             }
-            return fallbackFetch(url, options)
+            return createFetchMock({ providers: mockProviders })(url, options)
         })
         vi.stubGlobal("fetch", fetchMock)
         render(<SetupForm onStart={vi.fn()} error={null} />)
