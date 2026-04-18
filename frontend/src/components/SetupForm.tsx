@@ -31,6 +31,8 @@ interface Providers {
 interface SetupFormProps {
     onStart: (config: SessionConfig, initialTitle: string) => void;
     error: string | null;
+    theme?: "dark" | "light";
+    onToggleTheme?: () => void;
 }
 
 const PROVIDER_LABELS: Record<Provider, string> = {
@@ -247,7 +249,7 @@ function ChatbotConfig({
     );
 }
 
-export function SetupForm({ onStart, error }: SetupFormProps) {
+export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormProps) {
     const [providers, setProviders] = useState<Providers>(DEFAULT_PROVIDERS);
     const [scenarios, setScenarios] = useState<Scenario[]>([]);
     const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
@@ -606,6 +608,25 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
     return (
         <div className="setup-page">
+            {theme && onToggleTheme && (
+                <button
+                    className="setup-page-theme-toggle"
+                    onClick={onToggleTheme}
+                    title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                    type="button"
+                    aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                >
+                    {theme === "dark" ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 2a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1Zm0 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM4.22 4.22a1 1 0 0 1 1.42 0l.7.7a1 1 0 0 1-1.42 1.42l-.7-.7a1 1 0 0 1 0-1.42Zm13.44 13.44a1 1 0 0 1 1.42 0l.7.7a1 1 0 0 1-1.42 1.42l-.7-.7a1 1 0 0 1 0-1.42ZM2 12a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1Zm17 0a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1ZM4.22 19.78a1 1 0 0 1 0-1.42l.7-.7a1 1 0 0 1 1.42 1.42l-.7.7a1 1 0 0 1-1.42 0ZM17.66 6.34a1 1 0 0 1 0-1.42l.7-.7a1 1 0 0 1 1.42 1.42l-.7.7a1 1 0 0 1-1.42 0Z"/>
+                        </svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1Z"/>
+                        </svg>
+                    )}
+                </button>
+            )}
             <div className="setup-landing">
                 <h1 className="setup-title">Who&rsquo;s talking today?</h1>
 
@@ -616,6 +637,14 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                         <div className="scenario-header">
                             <span className="field-label">Scenario</span>
                             <div className="scenario-header-actions">
+                                <button
+                                    type="button"
+                                    className="scenario-save-link"
+                                    onClick={openSaveScenarioDialog}
+                                    disabled={!canStart || isSavingScenario}
+                                >
+                                    Save config
+                                </button>
                                 <div className="scenario-manage" ref={scenarioManageRef}>
                                     <button
                                         type="button"
@@ -685,14 +714,6 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                 </div>
                                 <button
                                     type="button"
-                                    className="scenario-save-link"
-                                    onClick={openSaveScenarioDialog}
-                                    disabled={!canStart || isSavingScenario}
-                                >
-                                    Save as scenario
-                                </button>
-                                <button
-                                    type="button"
                                     className="scenario-action-link preset-action-link-clear"
                                     onClick={handleClearAll}
                                     title="Clear all prompts and names"
@@ -747,7 +768,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                                         aria-label="Preset name"
                                         value={scenarioName}
                                         onChange={(event) => setScenarioName(event.target.value)}
-                                        placeholder="Enter a preset name"
+                                        placeholder="Enter a name"
                                     />
                                     {saveScenarioError && <div className="scenario-save-error">{saveScenarioError}</div>}
                                     <div className="rename-dialog-actions">
@@ -816,7 +837,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                         />
                     </div>
 
-                    <div className="setup-bottom">
+                    <div className="advanced-toggle-wrapper">
                         <button
                             type="button"
                             className="advanced-toggle"
@@ -826,6 +847,9 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             {isConversationNameExpanded ? "Hide advanced" : "Advanced"}
                             <span className={`advanced-toggle-icon ${isConversationNameExpanded ? "open" : ""}`}>›</span>
                         </button>
+                    </div>
+
+                    <div className="setup-bottom">
                         <div
                             className={`advanced-fields ${isConversationNameExpanded ? "" : "advanced-fields-hidden"}`}
                             aria-hidden={!isConversationNameExpanded}
@@ -844,7 +868,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
 
                         <div className="setup-actions">
                             <button type="submit" className="start-btn" disabled={!canStart}>
-                                Start conversation
+                                Start
                             </button>
                         </div>
                     </div>

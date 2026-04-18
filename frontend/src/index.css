@@ -180,16 +180,14 @@ button {
     border: none;
     padding: 0;
     font-family: var(--font);
-    font-size: 0.78rem;
-    font-weight: 300;
+    font-size: 1.2rem;
+    font-weight: 600;
     line-height: 1;
     color: var(--text);
-    letter-spacing: 0.35em;
-    text-transform: uppercase;
+    letter-spacing: 0.02em;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
 }
 
 .sidebar-brand-title .brand-a {
@@ -198,11 +196,6 @@ button {
 
 .sidebar-brand-title .brand-b {
     color: var(--chatbot-b);
-}
-
-.sidebar-brand-title .brand-gap {
-    display: inline-block;
-    width: 1.2em;
 }
 
 .sidebar-new-chat {
@@ -345,25 +338,31 @@ button {
     width: 100%;
     margin-top: auto;
     padding: 0.45rem 0.75rem;
-    border-radius: 8px;
-    border: 1px solid var(--danger-border);
-    background: transparent;
-    color: var(--danger);
+    border-radius: 999px;
+    border: 1px solid var(--text);
+    background: var(--text);
+    color: var(--bg);
     cursor: pointer;
     font-size: 0.78rem;
-    font-weight: 500;
+    font-weight: 600;
     text-align: center;
-    transition: background 150ms ease, border-color 150ms ease;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: opacity 150ms ease;
 }
 
 .sidebar-delete-all:hover {
-    background: var(--danger-bg);
+    opacity: 0.85;
 }
 
 .sidebar-brand-actions {
     display: flex;
     align-items: center;
     gap: 0.25rem;
+}
+
+.setup-page .sidebar-brand-actions {
+    display: none;
 }
 
 .sidebar-collapsed {
@@ -386,6 +385,38 @@ button {
     align-items: center;
     justify-content: center;
     padding: 2rem;
+    position: relative;
+}
+
+.setup-page .sidebar-brand-actions {
+    display: none;
+}
+
+.setup-page-theme-toggle {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    appearance: none;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    padding: 0.75rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+    flex-shrink: 0;
+    z-index: 5;
+    width: 3.25rem;
+    height: 3.25rem;
+}
+
+.setup-page-theme-toggle:hover {
+    color: var(--text);
+    background: var(--bg);
+    border-color: var(--accent);
 }
 
 .setup-landing {
@@ -1157,6 +1188,12 @@ input::placeholder {
 
 .thinking-toggle-field input[type="checkbox"]:disabled + span {
     opacity: 0.5;
+}
+
+.advanced-toggle-wrapper {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0 0;
 }
 
 .setup-bottom {

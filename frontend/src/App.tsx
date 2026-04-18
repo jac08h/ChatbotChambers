@@ -223,8 +223,6 @@ export default function App() {
                 selectedSessionId={activeRouteSessionId}
                 hasCurrentConversation={hasCurrentConversation}
                 isCurrentConversationSelected={showCurrentConversation}
-                theme={theme}
-                onToggleTheme={() => setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark")}
                 isCollapsed={isSidebarCollapsed}
                 onToggleCollapse={handleToggleCollapse}
             />
@@ -261,7 +259,12 @@ export default function App() {
                         }
                     />
                 ) : (
-                    <SetupForm onStart={handleStart} error={ws.error} />
+                    <SetupForm
+                        onStart={handleStart}
+                        error={ws.error}
+                        theme={theme}
+                        onToggleTheme={() => setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark")}
+                    />
                 )}
                 <ConfirmationDialog
                     isOpen={ws.startupError !== null}
