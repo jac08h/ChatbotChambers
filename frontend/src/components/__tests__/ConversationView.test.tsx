@@ -5,8 +5,8 @@ import { ConversationView } from "../ConversationView"
 import type { ChatMessage, SessionConfig } from "../../hooks/useWebSocket"
 
 const sampleConfig: SessionConfig = {
-    chatbot_a: { name: "Alice", model: "model-a", system_prompt: "", provider: "openai" },
-    chatbot_b: { name: "Bob", model: "model-b", system_prompt: "", provider: "openai" },
+    chatbot_a: { name: "Alice", model: "model-a", system_prompt: "", provider: "github_copilot" },
+    chatbot_b: { name: "Bob", model: "model-b", system_prompt: "", provider: "github_copilot" },
     shared_system_prompt: "",
 }
 
@@ -150,7 +150,7 @@ describe("ConversationView", () => {
                 messages={[makeMessage("a", "content")]}
             />
         )
-        expect(screen.getByText("OpenAI · Test Model")).toBeInTheDocument()
+        expect(screen.getByText("GitHub Copilot · Test Model")).toBeInTheDocument()
     })
 
     it("shows thinking block when message has thinking", () => {

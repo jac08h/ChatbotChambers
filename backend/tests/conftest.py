@@ -2,7 +2,6 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
-
 from app.models import ChatbotConfig, SessionConfig
 
 
@@ -10,9 +9,9 @@ from app.models import ChatbotConfig, SessionConfig
 def chatbot_config_a() -> ChatbotConfig:
     return ChatbotConfig(
         name="LM A",
-        model="openai/gpt-4o",
+        model="github_copilot/gpt-4o",
         system_prompt="You are LM A.",
-        provider="openai",
+        provider="github_copilot",
     )
 
 
@@ -20,14 +19,16 @@ def chatbot_config_a() -> ChatbotConfig:
 def chatbot_config_b() -> ChatbotConfig:
     return ChatbotConfig(
         name="LM B",
-        model="anthropic/claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         system_prompt="You are LM B.",
-        provider="anthropic",
+        provider="claude_code",
     )
 
 
 @pytest.fixture
-def session_config(chatbot_config_a: ChatbotConfig, chatbot_config_b: ChatbotConfig) -> SessionConfig:
+def session_config(
+    chatbot_config_a: ChatbotConfig, chatbot_config_b: ChatbotConfig
+) -> SessionConfig:
     return SessionConfig(
         chatbot_a=chatbot_config_a,
         chatbot_b=chatbot_config_b,

@@ -3,9 +3,13 @@ from typing import List, Union
 from unittest.mock import AsyncMock
 
 import pytest
-
-from app.engine import Generating, _build_messages, _build_system_prompt, run_conversation
-from app.models import ChatbotConfig, Message, SessionConfig
+from app.engine import (
+    Generating,
+    _build_messages,
+    _build_system_prompt,
+    run_conversation,
+)
+from app.models import Message, SessionConfig
 
 
 async def collect(config: SessionConfig) -> List[Union[Generating, Message]]:
@@ -19,18 +23,24 @@ async def collect(config: SessionConfig) -> List[Union[Generating, Message]]:
     return events
 
 
-async def test_basic_two_turns_produces_four_messages(mock_litellm: AsyncMock, session_config: SessionConfig):
+async def test_basic_two_turns_produces_four_messages(
+    mock_litellm: AsyncMock, mock_claude_code: AsyncMock, session_config: SessionConfig
+):
     """Two turns produce 4 Message events alternating a/b/a/b."""
-    mock_litellm.side_effect = [("Hello!", ""), ("Hi!", ""), ("Again", ""), ("/leave", "")]
+    mock_litellm.side_effect = [("Hello!", ""), ("Again", "")]
+    mock_claude_code.side_effect = ["Hi!", "/leave"]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
     assert len(messages) == 4
     assert [m.chatbot for m in messages] == ["a", "b", "a", "b"]
 
 
-async def test_generating_precedes_each_message(mock_litellm: AsyncMock, session_config: SessionConfig):
+async def test_generating_precedes_each_message(
+    mock_litellm: AsyncMock, mock_claude_code: AsyncMock, session_config: SessionConfig
+):
     """Each Message is immediately preceded by a Generating event for the same chatbot."""
-    mock_litellm.side_effect = [("Hello!", ""), ("Hi!", ""), ("Again", ""), ("/leave", "")]
+    mock_litellm.side_effect = [("Hello!", ""), ("Again", "")]
+    mock_claude_code.side_effect = ["Hi!", "/leave"]
     events = await collect(session_config)
     for i, event in enumerate(events):
         if isinstance(event, Message):
@@ -40,7 +50,9 @@ async def test_generating_precedes_each_message(mock_litellm: AsyncMock, session
             assert prev.chatbot == event.chatbot
 
 
-async def test_leave_command_ends_conversation(mock_litellm: AsyncMock, session_config: SessionConfig):
+async def test_leave_command_ends_conversation(
+    mock_litellm: AsyncMock, session_config: SessionConfig
+):
     """When chatbot A responds with /leave, conversation ends after that message."""
     mock_litellm.side_effect = [("/leave", "")]
     events = await collect(session_config)
@@ -50,9 +62,12 @@ async def test_leave_command_ends_conversation(mock_litellm: AsyncMock, session_
     assert messages[0].chatbot == "a"
 
 
-async def test_leave_by_chatbot_b(mock_litellm: AsyncMock, session_config: SessionConfig):
+async def test_leave_by_chatbot_b(
+    mock_litellm: AsyncMock, mock_claude_code: AsyncMock, session_config: SessionConfig
+):
     """When chatbot B responds with /leave, conversation ends after that message."""
-    mock_litellm.side_effect = [("Hello!", ""), ("/leave", "")]
+    mock_litellm.side_effect = [("Hello!", "")]
+    mock_claude_code.side_effect = ["/leave"]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
     assert len(messages) == 2
@@ -60,7 +75,9 @@ async def test_leave_by_chatbot_b(mock_litellm: AsyncMock, session_config: Sessi
     assert messages[-1].content == "/leave"
 
 
-async def test_stop_event_terminates(mock_litellm: AsyncMock, session_config: SessionConfig):
+async def test_stop_event_terminates(
+    mock_litellm: AsyncMock, session_config: SessionConfig
+):
     """Setting stop_event before start yields no events."""
     pause = asyncio.Event()
     pause.set()
@@ -73,9 +90,12 @@ async def test_stop_event_terminates(mock_litellm: AsyncMock, session_config: Se
     assert events == []
 
 
-async def test_leave_after_two_messages_stops_conversation(mock_litellm: AsyncMock, session_config: SessionConfig):
+async def test_leave_after_two_messages_stops_conversation(
+    mock_litellm: AsyncMock, mock_claude_code: AsyncMock, session_config: SessionConfig
+):
     """A /leave from chatbot B stops the conversation after two messages."""
-    mock_litellm.side_effect = [("Hi!", ""), ("/leave", "")]
+    mock_litellm.side_effect = [("Hi!", "")]
+    mock_claude_code.side_effect = ["/leave"]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
     assert len(messages) == 2
@@ -83,7 +103,9 @@ async def test_leave_after_two_messages_stops_conversation(mock_litellm: AsyncMo
     assert messages[1].chatbot == "b"
 
 
-async def test_thinking_passed_through(mock_litellm: AsyncMock, session_config: SessionConfig):
+async def test_thinking_passed_through(
+    mock_litellm: AsyncMock, session_config: SessionConfig
+):
     """Thinking content from litellm is included in the yielded Message."""
     mock_litellm.side_effect = [("Answer", "My reasoning here"), ("/leave", "")]
     events = await collect(session_config)
@@ -112,25 +134,24 @@ async def test_mixed_providers_dispatches_correctly(
     assert messages[1].content == "/leave"
 
 
-async def test_history_role_perspective(mock_litellm: AsyncMock, session_config: SessionConfig):
+async def test_history_role_perspective(
+    mock_litellm: AsyncMock, mock_claude_code: AsyncMock, session_config: SessionConfig
+):
     """All messages are 'assistant' in the role assignment."""
-    responses = [("A says hi", ""), ("B replies", ""), ("A again", ""), ("/leave", "")]
-    mock_litellm.side_effect = responses
+    mock_litellm.side_effect = [("A says hi", ""), ("A again", "")]
+    mock_claude_code.side_effect = ["B replies", "/leave"]
 
     await collect(session_config)
 
-    third_call_args = mock_litellm.call_args_list[2]
-    messages_arg = third_call_args.kwargs.get("messages") or third_call_args.args[2]
+    second_call_args = mock_litellm.call_args_list[1]
+    messages_arg = second_call_args.kwargs.get("messages") or second_call_args.args[2]
     roles = [m["role"] for m in messages_arg]
     assert roles == ["assistant", "assistant"]
 
-    fourth_call_args = mock_litellm.call_args_list[3]
-    messages_arg = fourth_call_args.kwargs.get("messages") or fourth_call_args.args[2]
-    roles = [m["role"] for m in messages_arg]
-    assert roles == ["assistant", "assistant", "assistant"]
 
-
-async def test_message_name_populated(mock_litellm: AsyncMock, session_config: SessionConfig):
+async def test_message_name_populated(
+    mock_litellm: AsyncMock, session_config: SessionConfig
+):
     """Yielded messages carry the chatbot display name from config."""
     mock_litellm.side_effect = [("Hi", ""), ("/leave", "")]
     events = await collect(session_config)
@@ -139,7 +160,9 @@ async def test_message_name_populated(mock_litellm: AsyncMock, session_config: S
     assert messages[1].name == session_config.chatbot_b.name
 
 
-async def test_turn_number_increments(mock_litellm: AsyncMock, session_config: SessionConfig):
+async def test_turn_number_increments(
+    mock_litellm: AsyncMock, session_config: SessionConfig
+):
     """Turn number increments after both chatbots have spoken."""
     mock_litellm.side_effect = [("Hi", ""), ("Hi", ""), ("Hi", ""), ("/leave", "")]
     events = await collect(session_config)
@@ -154,6 +177,7 @@ def test_build_system_prompt_all_parts():
     """All non-empty parts are joined with double newlines."""
     result = _build_system_prompt("preamble", "shared", "individual")
     from app.engine import PREAMBLE
+
     assert result == "\n\n".join([PREAMBLE, "preamble", "shared", "individual"])
 
 
@@ -161,6 +185,7 @@ def test_build_system_prompt_empty_parts_excluded():
     """Empty shared and individual prompts are excluded from the result."""
     result = _build_system_prompt("preamble", "", "")
     from app.engine import PREAMBLE
+
     assert result == "\n\n".join([PREAMBLE, "preamble"])
     assert "  " not in result
 
@@ -169,6 +194,7 @@ def test_build_system_prompt_whitespace_trimmed():
     """Whitespace-only prompts are excluded."""
     result = _build_system_prompt("preamble", "   ", "\t")
     from app.engine import PREAMBLE
+
     assert result == "\n\n".join([PREAMBLE, "preamble"])
 
 

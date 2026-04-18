@@ -7,8 +7,8 @@ from app.models import CLAUDE_CODE_MODELS, CODEX_MODELS, LITELLM_PROVIDERS
 from httpx import ASGITransport, AsyncClient
 
 
-async def test_get_models_default_returns_openai_models():
-    """GET /models without provider param returns openai models."""
+async def test_get_models_default_returns_openrouter_models():
+    """GET /models without provider param returns openrouter models."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
@@ -16,7 +16,9 @@ async def test_get_models_default_returns_openai_models():
     assert response.status_code == 200
     data = response.json()
     ids = [m["id"] for m in data]
-    assert all(model_id in ids for model_id, _ in LITELLM_PROVIDERS["openai"]["models"])
+    assert all(
+        model_id in ids for model_id, _ in LITELLM_PROVIDERS["openrouter"]["models"]
+    )
 
 
 def test_cors_origins_from_env_default(monkeypatch: pytest.MonkeyPatch):
@@ -37,15 +39,15 @@ def test_cors_origins_from_env_multiple(monkeypatch: pytest.MonkeyPatch):
     ]
 
 
-async def test_get_models_openai_explicit():
-    """GET /models?provider=openai returns openai models."""
+async def test_get_models_github_copilot_explicit():
+    """GET /models?provider=github_copilot returns github_copilot models."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
-        response = await client.get("/models?provider=openai")
+        response = await client.get("/models?provider=github_copilot")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == len(LITELLM_PROVIDERS["openai"]["models"])
+    assert len(data) == len(LITELLM_PROVIDERS["github_copilot"]["models"])
 
 
 async def test_get_models_claude_code():
@@ -87,19 +89,16 @@ async def test_get_providers_returns_provider_info(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """GET /providers returns availability and docs_url per provider."""
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         response = await client.get("/providers")
     assert response.status_code == 200
     data = response.json()
-    assert data["openai"]["available"] is True
-    assert "docs_url" in data["openai"]
-    assert data["anthropic"]["available"] is False
-    assert data["gemini"]["available"] is False
+    assert data["openrouter"]["available"] is False
+    assert "docs_url" in data["openrouter"]
     assert data["github_copilot"]["available"] is True
 
 
@@ -231,7 +230,7 @@ async def test_post_scenarios_writes_file_and_returns_body(
                 "name": "Alpha",
                 "model": "model-a",
                 "system_prompt": "Prompt A",
-                "provider": "openai",
+                "provider": "github_copilot",
             },
             "chatbot_b": {
                 "name": "Beta",
@@ -353,7 +352,7 @@ async def test_post_settings_writes_file_and_returns_body(
             "name": "Alpha",
             "model": "model-a",
             "system_prompt": "Prompt A",
-            "provider": "openai",
+            "provider": "github_copilot",
         },
         "chatbot_b": {
             "name": "Beta",

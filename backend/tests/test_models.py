@@ -1,20 +1,21 @@
 import pytest
-from pydantic import ValidationError
-
 from app.models import ChatbotConfig, Message, RenameRequest, SessionConfig
+from pydantic import ValidationError
 
 
 def test_chatbot_config_valid_providers():
     """ChatbotConfig accepts all valid provider literals."""
-    for provider in ("openai", "anthropic", "gemini", "github_copilot", "claude_code", "codex"):
-        config = ChatbotConfig(name="A", model="m", system_prompt="s", provider=provider)
+    for provider in ("openrouter", "github_copilot", "claude_code", "codex", "mock"):
+        config = ChatbotConfig(
+            name="A", model="m", system_prompt="s", provider=provider
+        )
         assert config.provider == provider
 
 
 def test_chatbot_config_default_provider():
-    """ChatbotConfig defaults to openai provider."""
+    """ChatbotConfig defaults to openrouter provider."""
     config = ChatbotConfig(name="A", model="m", system_prompt="s")
-    assert config.provider == "openai"
+    assert config.provider == "openrouter"
 
 
 def test_chatbot_config_invalid_provider():
@@ -46,9 +47,24 @@ def test_message_thinking_default_empty():
 
 def test_message_model_dump_shape():
     """Message.model_dump() contains all expected keys."""
-    msg = Message(chatbot="b", name="B", model="gpt-4o", content="hello", turn=1, thinking="thought")
+    msg = Message(
+        chatbot="b",
+        name="B",
+        model="gpt-4o",
+        content="hello",
+        turn=1,
+        thinking="thought",
+    )
     data = msg.model_dump()
-    assert set(data.keys()) == {"chatbot", "name", "model", "model_name", "content", "turn", "thinking"}
+    assert set(data.keys()) == {
+        "chatbot",
+        "name",
+        "model",
+        "model_name",
+        "content",
+        "turn",
+        "thinking",
+    }
     assert data["chatbot"] == "b"
     assert data["thinking"] == "thought"
 
