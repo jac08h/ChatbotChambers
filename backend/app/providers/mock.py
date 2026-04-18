@@ -27,6 +27,7 @@ async def call_mock(
             break
 
     if "/leave" in last_user_message or turn > 3:
+        logger.debug("Mock provider returning /leave (turn %d)", turn)
         return "/leave", ""
 
     content = "Mock response %d from %s" % (_call_count, model)
@@ -34,6 +35,7 @@ async def call_mock(
     if model == "mock/thinking-model":
         thinking = "Mock thinking for turn %d" % turn
 
+    logger.debug("Mock provider: call_count=%d turn=%d model=%s", _call_count, turn, model)
     return content, thinking
 
 

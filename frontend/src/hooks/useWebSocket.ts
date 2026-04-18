@@ -348,6 +348,7 @@ export function useWebSocket(): WebSocketState {
         wsRef.current = ws;
 
         ws.onopen = () => {
+            console.info("[WS] Connection opened, sending start");
             ws.send(JSON.stringify({ type: "start", config: newConfig }));
             setStatus("running");
         };
@@ -355,6 +356,7 @@ export function useWebSocket(): WebSocketState {
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.type === "session_id") {
+                console.info("[WS] Session assigned:", data.id);
                 currentIdRef.current = data.id;
                 setCurrentSessionId(data.id);
                 if (pendingInitialTitleRef.current) {
@@ -375,15 +377,17 @@ export function useWebSocket(): WebSocketState {
                 setEmptyMessageError(data.chatbot);
                 setStatus("paused");
             } else if (data.type === "done") {
-                setGeneratingChatbot(null);
-                setEmptyMessageError(null);
                 const reason = data.reason === "leave" && data.chatbot
                     ? `leave:${data.chatbot}`
                     : data.reason;
+                console.info("[WS] Conversation done:", reason);
+                setGeneratingChatbot(null);
+                setEmptyMessageError(null);
                 setDoneReason(reason);
                 setStatus("done");
                 archive(reason, null);
             } else if (data.type === "error") {
+                console.warn("[WS] Error received:", data.message);
                 if (messagesRef.current.length === 0) {
                     handleStartupFailure(data.message);
                     return;
@@ -396,6 +400,7 @@ export function useWebSocket(): WebSocketState {
         };
 
         ws.onerror = () => {
+            console.warn("[WS] Connection error");
             if (messagesRef.current.length === 0) {
                 handleStartupFailure("WebSocket connection error");
                 return;
@@ -405,7 +410,9 @@ export function useWebSocket(): WebSocketState {
             archive(null, "WebSocket connection error");
         };
 
-        ws.onclose = () => {};
+        ws.onclose = () => {
+            console.debug("[WS] Connection closed");
+        };
     }, [applySessionTitle, archive, handleStartupFailure, persistSessionTitle]);
 
     const pause = useCallback(() => {

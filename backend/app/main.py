@@ -344,14 +344,23 @@ def delete_all_sessions() -> None:
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     await ws.accept()
+    logger.info("WebSocket connection accepted")
 
     data = await ws.receive_json()
     if data.get("type") != "start":
+        logger.warning("Expected start message, got type=%s", data.get("type"))
         await ws.send_json({"type": "error", "message": "Expected start message"})
         await ws.close()
         return
 
     config = SessionConfig(**data["config"])
+    logger.info(
+        "Conversation requested: a=%s/%s, b=%s/%s",
+        config.chatbot_a.provider,
+        config.chatbot_a.model,
+        config.chatbot_b.provider,
+        config.chatbot_b.model,
+    )
 
     uses_mock = (
         config.chatbot_a.provider == "mock" or config.chatbot_b.provider == "mock"
@@ -360,6 +369,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         reset_mock_state()
 
     session_id = _new_session_id()
+    logger.info("Session created: %s", session_id)
     await ws.send_json({"type": "session_id", "id": session_id})
 
     _save_session(session_id, config, [], None, None)
@@ -417,23 +427,32 @@ async def _run_engine(
 
         if stop_event.is_set():
             done_reason = "stopped"
+            logger.info("Session %s stopped by user", session_id)
             await ws.send_json({"type": "done", "reason": "stopped"})
         elif last_message and "/leave" in last_message.content:
             done_reason = "leave:%s" % last_message.chatbot
+            logger.info(
+                "Session %s ended: chatbot %s left",
+                session_id,
+                last_message.chatbot,
+            )
             await ws.send_json(
                 {"type": "done", "reason": "leave", "chatbot": last_message.chatbot}
             )
         else:
             done_reason = "stopped"
+            logger.info("Session %s ended", session_id)
             await ws.send_json({"type": "done", "reason": "stopped"})
     except asyncio.CancelledError:
         done_reason = "stopped"
+        logger.info("Session %s cancelled", session_id)
         try:
             await ws.send_json({"type": "done", "reason": "stopped"})
         except Exception:
             pass
     except WebSocketDisconnect:
         done_reason = "stopped"
+        logger.info("Session %s: client disconnected", session_id)
         stop_event.set()
     except Exception as e:
         logger.exception("Engine error")
@@ -480,17 +499,22 @@ async def _run_listener(
             data = await ws.receive_json()
             msg_type = data.get("type")
             if msg_type == "pause":
+                logger.debug("Client sent pause")
                 pause_event.clear()
                 cancel_event.set()
             elif msg_type == "resume":
+                logger.debug("Client sent resume")
                 pause_event.set()
             elif msg_type == "retry":
+                logger.debug("Client sent retry")
                 pause_event.set()
             elif msg_type == "stop":
+                logger.debug("Client sent stop")
                 stop_event.set()
                 pause_event.set()
                 cancel_event.set()
                 return
     except WebSocketDisconnect:
+        logger.debug("WebSocket disconnected in listener")
         stop_event.set()
         pause_event.set()
