@@ -38,6 +38,7 @@ function createWebSocketState(overrides: Partial<WebSocketState> = {}): WebSocke
         generatingChatbot: null,
         doneReason: null,
         error: null,
+        startupError: null,
         emptyMessageError: null,
         config: null,
         currentSessionId: null,
@@ -48,6 +49,7 @@ function createWebSocketState(overrides: Partial<WebSocketState> = {}): WebSocke
         resume: vi.fn(),
         retry: vi.fn(),
         reset: vi.fn(),
+        clearStartupError: vi.fn(),
         renameCurrentSession: vi.fn(),
         renameSession: vi.fn(),
         deleteSession: vi.fn(async () => true),
@@ -123,5 +125,24 @@ describe("App", () => {
         expect(document.documentElement.dataset.theme).toBe("light")
         expect(window.localStorage.getItem("chatbotchambers-theme")).toBe("light")
         expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument()
+    })
+
+    it("shows startup errors as a popup on the intro screen", async () => {
+        const clearStartupError = vi.fn()
+        window.history.pushState({}, "", "/chat/failed-session")
+        mockWebSocketState = createWebSocketState({
+            startupError: "API key missing",
+            clearStartupError,
+        })
+
+        render(<App />)
+
+        await waitFor(() => expect(window.location.pathname).toBe("/"))
+        expect(screen.getByRole("heading", { name: "Who’s talking today?" })).toBeInTheDocument()
+        expect(screen.getByRole("dialog", { name: "Conversation failed to start" })).toBeInTheDocument()
+
+        await userEvent.click(screen.getByRole("button", { name: "OK" }))
+
+        expect(clearStartupError).toHaveBeenCalledOnce()
     })
 })
