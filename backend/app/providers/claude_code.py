@@ -1,5 +1,8 @@
 import asyncio
+import logging
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 
 async def call_claude_code(model: str, system_prompt: str, messages: List[dict]) -> str:
@@ -9,18 +12,28 @@ async def call_claude_code(model: str, system_prompt: str, messages: List[dict])
         args += ["--system-prompt", system_prompt]
     args.append(prompt)
 
+    logger.info("Calling claude CLI: model=%s", model)
     process = await asyncio.create_subprocess_exec(
         *args,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     try:
-        stdout, _ = await process.communicate()
+        stdout, stderr = await process.communicate()
     except asyncio.CancelledError:
+        logger.warning("Claude CLI call cancelled, killing process")
         process.kill()
         await process.wait()
         raise
-    return stdout.decode().strip()
+    if process.returncode != 0:
+        logger.warning(
+            "Claude CLI exited with code %d: %s",
+            process.returncode,
+            stderr.decode().strip(),
+        )
+    result = stdout.decode().strip()
+    logger.debug("Claude CLI response: %d chars", len(result))
+    return result
 
 
 def _build_prompt(messages: List[dict]) -> str:

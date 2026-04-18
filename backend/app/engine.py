@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from pathlib import Path
 from typing import AsyncGenerator, Dict, List, Literal, Tuple, Union
 
@@ -14,6 +15,8 @@ from app.providers.claude_code import call_claude_code
 from app.providers.codex_cli import call_codex
 from app.providers.mock import MOCK_MODELS, call_mock
 from app.providers.litellm_provider import call_litellm
+
+logger = logging.getLogger(__name__)
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -62,17 +65,32 @@ async def run_conversation(
         ("b", config.chatbot_b, PREAMBLE_B),
     ]
 
+    logger.info(
+        "Conversation started: a=%s (%s/%s), b=%s (%s/%s)",
+        config.chatbot_a.name,
+        config.chatbot_a.provider,
+        config.chatbot_a.model,
+        config.chatbot_b.name,
+        config.chatbot_b.provider,
+        config.chatbot_b.model,
+    )
+
     while True:
         for chatbot_id, chatbot_config, individual_preamble in chatbots:
             while True:
                 if stop_event.is_set():
+                    logger.info("Conversation stopped at turn %d", turn)
                     return
 
                 await pause_event.wait()
 
                 if stop_event.is_set():
+                    logger.info("Conversation stopped at turn %d", turn)
                     return
 
+                logger.debug(
+                    "Generating response for chatbot %s (turn %d)", chatbot_id, turn
+                )
                 yield Generating(chatbot=chatbot_id)
 
                 system_prompt = _build_system_prompt(
@@ -101,15 +119,29 @@ async def run_conversation(
 
                 if cancel_wait in done:
                     if stop_event.is_set():
+                        logger.info("Conversation stopped at turn %d", turn)
                         return
+                    logger.debug("Generation cancelled for chatbot %s", chatbot_id)
                     continue
 
                 content, _ = llm_task.result()
 
                 if not content or not content.strip():
+                    logger.warning(
+                        "Empty response from chatbot %s (%s) at turn %d",
+                        chatbot_id,
+                        chatbot_config.model,
+                        turn,
+                    )
                     yield EmptyMessage(chatbot=chatbot_id)
                     continue
 
+                logger.debug(
+                    "Received response from chatbot %s (turn %d, %d chars)",
+                    chatbot_id,
+                    turn,
+                    len(content),
+                )
                 history.append((chatbot_id, content))
                 yield Message(
                     chatbot=chatbot_id,
@@ -122,6 +154,9 @@ async def run_conversation(
                 )
 
                 if "/leave" in content:
+                    logger.info(
+                        "Chatbot %s left the conversation at turn %d", chatbot_id, turn
+                    )
                     return
 
                 break
@@ -134,6 +169,12 @@ async def _call_llm(
     system_prompt: str,
     messages: List[dict],
 ) -> Tuple[str, str]:
+    logger.debug(
+        "Calling LLM provider=%s model=%s message_count=%d",
+        chatbot_config.provider,
+        chatbot_config.model,
+        len(messages),
+    )
     if chatbot_config.provider == "mock":
         return await call_mock(
             model=chatbot_config.model,
