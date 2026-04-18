@@ -6,7 +6,7 @@ class Provider(ABC):
     """Abstract base class for LLM provider integrations.
 
     Subclasses implement ``call`` to send a prompt to a specific LLM service
-    and return the generated response along with any extracted thinking text.
+    and return the generated response content.
     """
 
     @abstractmethod
@@ -17,5 +17,5 @@ class Provider(ABC):
         messages: List[dict],
         api_key: str = "",
     ) -> Tuple[str, str]:
-        """Send a prompt to the provider and return (content, thinking)."""
+        """Send a prompt to the provider and return response content."""
         ...

@@ -182,7 +182,7 @@ async def test_get_scenarios_returns_saved_config(
                 "name": "Alpha",
                 "model": "model-a",
                 "system_prompt": "Prompt A",
-                "provider": "openai",
+                "provider": "openrouter",
             },
             "chatbot_b": {
                 "name": "Beta",
@@ -279,7 +279,7 @@ async def test_patch_scenarios_renames_existing_scenario(
                         "name": "Alpha",
                         "model": "model-a",
                         "system_prompt": "Prompt A",
-                        "provider": "openai",
+                        "provider": "openrouter",
                     },
                     "chatbot_b": {
                         "name": "Beta",
@@ -389,7 +389,7 @@ async def test_get_settings_returns_saved_settings(
             "name": "Alpha",
             "model": "model-a",
             "system_prompt": "Prompt A",
-            "provider": "openai",
+            "provider": "openrouter",
         },
         "chatbot_b": {
             "name": "Beta",

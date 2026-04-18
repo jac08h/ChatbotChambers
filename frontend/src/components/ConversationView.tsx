@@ -199,12 +199,6 @@ function MessageBubble({ message, avatar, provider }: { message: ChatMessage; av
                     <span className="sender-label">{message.name}</span>
                     {message.model && <span className="model-label">{formatModelLabel(message, provider)}</span>}
                 </div>
-                {message.thinking && (
-                    <details className="thinking-block">
-                        <summary>Thinking</summary>
-                        <div className="message-content">{message.thinking}</div>
-                    </details>
-                )}
                 <div className="message-content">{message.content}</div>
             </div>
         </div>

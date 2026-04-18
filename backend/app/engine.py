@@ -104,7 +104,7 @@ async def run_conversation(
                         return
                     continue
 
-                content, thinking = llm_task.result()
+                content, _ = llm_task.result()
 
                 if not content or not content.strip():
                     yield EmptyMessage(chatbot=chatbot_id)
@@ -118,7 +118,7 @@ async def run_conversation(
                     model_name=_resolve_model_name(chatbot_config.model),
                     content=content,
                     turn=turn,
-                    thinking=thinking,
+                    thinking="",
                 )
 
                 if "/leave" in content:
@@ -156,10 +156,10 @@ async def _call_llm(
         return content, ""
     elif chatbot_config.provider in LITELLM_PROVIDERS:
         return await call_litellm(
+            provider=chatbot_config.provider,
             model=chatbot_config.model,
             system_prompt=system_prompt,
             messages=messages,
-            enable_thinking=chatbot_config.enable_thinking,
         )
     else:
         raise ValueError("Unknown provider: %s" % chatbot_config.provider)

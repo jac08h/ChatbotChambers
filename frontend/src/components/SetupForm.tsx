@@ -126,12 +126,10 @@ interface ChatbotConfigProps {
     name: string;
     defaultName: string;
     prompt: string;
-    enableThinking: boolean;
     onProviderChange: (p: Provider) => void;
     onModelChange: (m: string) => void;
     onNameChange: (n: string) => void;
     onPromptChange: (p: string) => void;
-    onEnableThinkingChange: (v: boolean) => void;
 }
 
 function ChatbotConfig({
@@ -144,12 +142,10 @@ function ChatbotConfig({
     name,
     defaultName,
     prompt,
-    enableThinking,
     onProviderChange,
     onModelChange,
     onNameChange,
     onPromptChange,
-    onEnableThinkingChange,
 }: ChatbotConfigProps) {
     const [expanded, setExpanded] = useState(false);
     const [infoOpen, setInfoOpen] = useState(false);
@@ -246,15 +242,6 @@ function ChatbotConfig({
                         tabIndex={expanded ? 0 : -1}
                     />
                 </label>
-                <label className="field thinking-toggle-field">
-                    <input
-                        type="checkbox"
-                        checked={enableThinking}
-                        onChange={(event) => onEnableThinkingChange(event.target.checked)}
-                        tabIndex={expanded ? 0 : -1}
-                    />
-                    <span>Enable thinking</span>
-                </label>
             </div>
         </section>
     );
@@ -265,8 +252,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [scenarios, setScenarios] = useState<Scenario[]>([]);
     const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
 
-    const [providerA, setProviderA] = useState<Provider>("openai");
-    const [providerB, setProviderB] = useState<Provider>("openai");
+    const [providerA, setProviderA] = useState<Provider>("openrouter");
+    const [providerB, setProviderB] = useState<Provider>("openrouter");
     const [modelsA, setModelsA] = useState<Model[]>([]);
     const [modelsB, setModelsB] = useState<Model[]>([]);
     const [modelA, setModelA] = useState("");
@@ -278,8 +265,6 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [sharedPrompt, setSharedPrompt] = useState("");
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");
-    const [enableThinkingA, setEnableThinkingA] = useState(false);
-    const [enableThinkingB, setEnableThinkingB] = useState(false);
     const [conversationTitle, setConversationTitle] = useState("");
     const [isConversationNameExpanded, setIsConversationNameExpanded] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
@@ -331,7 +316,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             setScenarios(scenariosData);
 
             const availableProviders = (Object.keys(providersData) as Provider[]).filter((provider) => providersData[provider]?.available);
-            const fallbackProvider = availableProviders[0] ?? "openai";
+            const fallbackProvider = availableProviders[0] ?? "openrouter";
             const initialProviderA = settings?.chatbot_a.provider && providersData[settings.chatbot_a.provider]?.available
                 ? settings.chatbot_a.provider
                 : fallbackProvider;
@@ -370,8 +355,6 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             setSharedPrompt(settings?.shared_system_prompt ?? "");
             setPromptA(settings?.chatbot_a.system_prompt ?? "");
             setPromptB(settings?.chatbot_b.system_prompt ?? "");
-            setEnableThinkingA(settings?.chatbot_a.enable_thinking ?? false);
-            setEnableThinkingB(settings?.chatbot_b.enable_thinking ?? false);
             setIsInitialized(true);
         }
 
@@ -467,8 +450,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         const finalModelA = providerA === "openrouter" && !modelA ? DEFAULT_OPENROUTER_MODEL : modelA;
         const finalModelB = providerB === "openrouter" && !modelB ? DEFAULT_OPENROUTER_MODEL : modelB;
         return {
-            chatbot_a: { name: nameA || defaultNameA, model: finalModelA, system_prompt: promptA, provider: providerA, enable_thinking: enableThinkingA },
-            chatbot_b: { name: nameB || defaultNameB, model: finalModelB, system_prompt: promptB, provider: providerB, enable_thinking: enableThinkingB },
+            chatbot_a: { name: nameA || defaultNameA, model: finalModelA, system_prompt: promptA, provider: providerA },
+            chatbot_b: { name: nameB || defaultNameB, model: finalModelB, system_prompt: promptB, provider: providerB },
             shared_system_prompt: sharedPrompt,
         };
     };
@@ -506,8 +489,6 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             setSharedPrompt(scenario.config.shared_system_prompt);
             setPromptA(scenario.config.chatbot_a.system_prompt);
             setPromptB(scenario.config.chatbot_b.system_prompt);
-            setEnableThinkingA(scenario.config.chatbot_a.enable_thinking ?? false);
-            setEnableThinkingB(scenario.config.chatbot_b.enable_thinking ?? false);
             return;
         }
         setSharedPrompt(scenario.shared_system_prompt);
@@ -813,12 +794,10 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             name={nameA}
                             defaultName={defaultNameA}
                             prompt={promptA}
-                            enableThinking={enableThinkingA}
                             onProviderChange={setProviderA}
                             onModelChange={setModelA}
                             onNameChange={(n) => { setNameA(n); setNameAManual(n !== ""); }}
                             onPromptChange={setPromptA}
-                            onEnableThinkingChange={setEnableThinkingA}
                         />
                         <ChatbotConfig
                             side="b"
@@ -830,12 +809,10 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             name={nameB}
                             defaultName={defaultNameB}
                             prompt={promptB}
-                            enableThinking={enableThinkingB}
                             onProviderChange={setProviderB}
                             onModelChange={setModelB}
                             onNameChange={(n) => { setNameB(n); setNameBManual(n !== ""); }}
                             onPromptChange={setPromptB}
-                            onEnableThinkingChange={setEnableThinkingB}
                         />
                     </div>
 

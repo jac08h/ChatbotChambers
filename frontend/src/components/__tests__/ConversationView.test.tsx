@@ -153,11 +153,12 @@ describe("ConversationView", () => {
         expect(screen.getByText("GitHub Copilot · Test Model")).toBeInTheDocument()
     })
 
-    it("shows thinking block when message has thinking", () => {
+    it("does not show thinking block when message has thinking", () => {
         const message: ChatMessage = { ...makeMessage("a", "Answer"), thinking: "My reasoning" }
         render(<ConversationView {...defaultProps} messages={[message]} />)
-        expect(screen.getByText("Thinking")).toBeInTheDocument()
-        expect(screen.getByText("My reasoning")).toBeInTheDocument()
+        expect(screen.queryByText("Thinking")).not.toBeInTheDocument()
+        expect(screen.queryByText("My reasoning")).not.toBeInTheDocument()
+        expect(screen.getByText("Answer")).toBeInTheDocument()
     })
 
     it("shows all messages", () => {
