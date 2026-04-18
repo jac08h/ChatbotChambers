@@ -19,11 +19,13 @@ interface Scenario {
     config?: SessionConfig;
 }
 
+interface ProviderInfo {
+    available: boolean;
+    docs_url?: string;
+}
+
 interface Providers {
-    openrouter: boolean;
-    claude_code: boolean;
-    codex: boolean;
-    mock?: boolean;
+    [key: string]: ProviderInfo;
 }
 
 interface SetupFormProps {
@@ -32,25 +34,31 @@ interface SetupFormProps {
 }
 
 const PROVIDER_LABELS: Record<Provider, string> = {
-    openrouter: "OpenRouter",
+    openai: "OpenAI",
+    anthropic: "Anthropic",
+    gemini: "Gemini",
+    github_copilot: "GitHub Copilot",
     claude_code: "Claude Code",
     codex: "Codex CLI",
     mock: "Mock",
 };
-const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-flash-lite-preview";
+const DEFAULT_OPENAI_MODEL = "openai/gpt-4o";
 const DEFAULT_PROVIDERS: Providers = {
-    openrouter: true,
-    claude_code: false,
-    codex: false,
+    openai: { available: true },
+    anthropic: { available: false },
+    gemini: { available: false },
+    github_copilot: { available: true },
+    claude_code: { available: false },
+    codex: { available: false },
 };
 
 function defaultModelId(models: Model[], provider: Provider): string {
     if (models.length === 0) {
         return "";
     }
-    if (provider === "openrouter") {
-        const flashLite = models.find((model) => model.id === DEFAULT_OPENROUTER_MODEL);
-        return flashLite ? flashLite.id : models[0].id;
+    if (provider === "openai") {
+        const defaultModel = models.find((model) => model.id === DEFAULT_OPENAI_MODEL);
+        return defaultModel ? defaultModel.id : models[0].id;
     }
     return models[0].id;
 }
@@ -86,6 +94,7 @@ interface ChatbotConfigProps {
     defaultName: string;
     prompt: string;
     enableThinking: boolean;
+    docsUrl?: string;
     onProviderChange: (p: Provider) => void;
     onModelChange: (m: string) => void;
     onNameChange: (n: string) => void;
@@ -104,6 +113,7 @@ function ChatbotConfig({
     defaultName,
     prompt,
     enableThinking,
+    docsUrl,
     onProviderChange,
     onModelChange,
     onNameChange,
@@ -134,6 +144,17 @@ function ChatbotConfig({
                             {PROVIDER_LABELS[p]}
                         </button>
                     ))}
+                    {docsUrl && (
+                        <a
+                            href={docsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="provider-help-link"
+                            title="Provider documentation"
+                        >
+                            ?
+                        </a>
+                    )}
                 </div>
             </div>
 
@@ -182,7 +203,6 @@ function ChatbotConfig({
                         type="checkbox"
                         checked={enableThinking}
                         onChange={(event) => onEnableThinkingChange(event.target.checked)}
-                        disabled={provider !== "openrouter"}
                         tabIndex={expanded ? 0 : -1}
                     />
                     <span>Enable thinking</span>
@@ -197,8 +217,8 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
     const [scenarios, setScenarios] = useState<Scenario[]>([]);
     const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
 
-    const [providerA, setProviderA] = useState<Provider>("openrouter");
-    const [providerB, setProviderB] = useState<Provider>("openrouter");
+    const [providerA, setProviderA] = useState<Provider>("openai");
+    const [providerB, setProviderB] = useState<Provider>("openai");
     const [modelsA, setModelsA] = useState<Model[]>([]);
     const [modelsB, setModelsB] = useState<Model[]>([]);
     const [modelA, setModelA] = useState("");
@@ -262,12 +282,12 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
             setProviders(providersData);
             setScenarios(scenariosData);
 
-            const availableProviders = (Object.keys(providersData) as Provider[]).filter((provider) => providersData[provider]);
-            const fallbackProvider = availableProviders[0] ?? "openrouter";
-            const initialProviderA = settings?.chatbot_a.provider && providersData[settings.chatbot_a.provider]
+            const availableProviders = (Object.keys(providersData) as Provider[]).filter((provider) => providersData[provider]?.available);
+            const fallbackProvider = availableProviders[0] ?? "openai";
+            const initialProviderA = settings?.chatbot_a.provider && providersData[settings.chatbot_a.provider]?.available
                 ? settings.chatbot_a.provider
                 : fallbackProvider;
-            const initialProviderB = settings?.chatbot_b.provider && providersData[settings.chatbot_b.provider]
+            const initialProviderB = settings?.chatbot_b.provider && providersData[settings.chatbot_b.provider]?.available
                 ? settings.chatbot_b.provider
                 : fallbackProvider;
 
@@ -384,7 +404,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
         };
     }, [isManageScenariosOpen]);
 
-    const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]);
+    const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]?.available);
 
     const defaultNameA = (() => {
         const model = modelsA.find((m) => m.id === modelA);
@@ -742,6 +762,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             defaultName={defaultNameA}
                             prompt={promptA}
                             enableThinking={enableThinkingA}
+                            docsUrl={providers[providerA]?.docs_url}
                             onProviderChange={setProviderA}
                             onModelChange={setModelA}
                             onNameChange={(n) => { setNameA(n); setNameAManual(n !== ""); }}
@@ -759,6 +780,7 @@ export function SetupForm({ onStart, error }: SetupFormProps) {
                             defaultName={defaultNameB}
                             prompt={promptB}
                             enableThinking={enableThinkingB}
+                            docsUrl={providers[providerB]?.docs_url}
                             onProviderChange={setProviderB}
                             onModelChange={setModelB}
                             onNameChange={(n) => { setNameB(n); setNameBManual(n !== ""); }}

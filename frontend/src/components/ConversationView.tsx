@@ -8,7 +8,10 @@ import {
 } from "../hooks/useWebSocket";
 
 const PROVIDER_LABELS: Record<Provider, string> = {
-    openrouter: "OpenRouter",
+    openai: "OpenAI",
+    anthropic: "Anthropic",
+    gemini: "Gemini",
+    github_copilot: "GitHub Copilot",
     claude_code: "Claude Code",
     codex: "Codex CLI",
     mock: "Mock",

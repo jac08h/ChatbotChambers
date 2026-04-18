@@ -15,7 +15,7 @@ from app.engine import EmptyMessage, Generating, run_conversation
 from app.models import (
     CLAUDE_CODE_MODELS,
     CODEX_MODELS,
-    MODELS,
+    LITELLM_PROVIDERS,
     RenameRequest,
     ScenarioCreateRequest,
     ScenarioRenameRequest,
@@ -217,28 +217,42 @@ def delete_scenario(scenario_id: str) -> None:
         ) from exc
 
 
+LITELLM_PROVIDER_ENV_VARS = {
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+}
+
+
 @app.get("/providers")
 def get_providers() -> dict:
-    providers = {
-        "openrouter": True,
-        "claude_code": shutil.which("claude") is not None,
-        "codex": shutil.which("codex") is not None,
-    }
+    providers: dict = {}
+    for key, config in LITELLM_PROVIDERS.items():
+        env_var = LITELLM_PROVIDER_ENV_VARS.get(key)
+        available = bool(os.environ.get(env_var)) if env_var else True
+        entry: dict = {"available": available}
+        if config.get("docs_url"):
+            entry["docs_url"] = config["docs_url"]
+        providers[key] = entry
+    providers["claude_code"] = {"available": shutil.which("claude") is not None}
+    providers["codex"] = {"available": shutil.which("codex") is not None}
     if MOCK_PROVIDER_ENABLED:
-        providers["mock"] = True
+        providers["mock"] = {"available": True}
     return providers
 
 
 @app.get("/models")
-def get_models(provider: str = "openrouter") -> List[dict]:
+def get_models(provider: str = "openai") -> List[dict]:
     if provider == "mock":
         model_list = MOCK_MODELS
     elif provider == "claude_code":
         model_list = CLAUDE_CODE_MODELS
     elif provider == "codex":
         model_list = CODEX_MODELS
+    elif provider in LITELLM_PROVIDERS:
+        model_list = LITELLM_PROVIDERS[provider]["models"]
     else:
-        model_list = MODELS
+        model_list = []
     return [{"id": model_id, "name": name} for model_id, name in model_list]
 
 
@@ -340,15 +354,6 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         return
 
     config = SessionConfig(**data["config"])
-    uses_openrouter = (
-        config.chatbot_a.provider == "openrouter"
-        or config.chatbot_b.provider == "openrouter"
-    )
-    api_key = os.environ.get("OPENROUTER_API_KEY", "")
-    if uses_openrouter and not api_key:
-        await ws.send_json({"type": "error", "message": "OPENROUTER_API_KEY not set"})
-        await ws.close()
-        return
 
     uses_mock = (
         config.chatbot_a.provider == "mock" or config.chatbot_b.provider == "mock"
@@ -368,7 +373,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
     engine_task = asyncio.create_task(
         _run_engine(
-            ws, config, api_key, pause_event, stop_event, cancel_event, session_id
+            ws, config, pause_event, stop_event, cancel_event, session_id
         )
     )
     listener_task = asyncio.create_task(
@@ -391,7 +396,6 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 async def _run_engine(
     ws: WebSocket,
     config: SessionConfig,
-    api_key: str,
     pause_event: asyncio.Event,
     stop_event: asyncio.Event,
     cancel_event: asyncio.Event,
@@ -403,7 +407,7 @@ async def _run_engine(
     try:
         last_message = None
         async for event in run_conversation(
-            config, api_key, pause_event, stop_event, cancel_event
+            config, pause_event, stop_event, cancel_event
         ):
             if isinstance(event, Generating):
                 await ws.send_json({"type": "generating", "chatbot": event.chatbot})

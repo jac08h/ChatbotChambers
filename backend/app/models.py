@@ -1,18 +1,46 @@
-from typing import List, Literal, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 from pydantic import BaseModel
 
-MODELS: List[Tuple[str, str]] = [
-    ("anthropic/claude-sonnet-4-5", "Claude Sonnet 4.5"),
-    ("openai/gpt-4o", "GPT-4o"),
-    ("openai/gpt-4o-mini", "GPT-4o Mini"),
-    ("google/gemini-3.1-flash-lite-preview", "Gemini 3.1 Flash Lite"),
-    ("google/gemini-2.5-flash", "Gemini 2.5 Flash"),
-    ("google/gemini-2.5-pro", "Gemini 2.5 Pro"),
-    ("meta-llama/llama-4-maverick", "Llama 4 Maverick"),
-    ("deepseek/deepseek-chat-v3-0324", "DeepSeek V3"),
-    ("mistralai/mistral-large-2411", "Mistral Large"),
-]
+LITELLM_PROVIDERS: Dict[str, Any] = {
+    "openai": {
+        "label": "OpenAI",
+        "docs_url": "https://docs.litellm.ai/docs/providers/openai",
+        "models": [
+            ("openai/gpt-4o", "GPT-4o"),
+            ("openai/gpt-4o-mini", "GPT-4o Mini"),
+            ("openai/o3-mini", "o3 Mini"),
+            ("openai/o4-mini", "o4 Mini"),
+        ],
+    },
+    "anthropic": {
+        "label": "Anthropic",
+        "docs_url": "https://docs.litellm.ai/docs/providers/anthropic",
+        "models": [
+            ("anthropic/claude-opus-4-20250514", "Claude Opus 4"),
+            ("anthropic/claude-sonnet-4-20250514", "Claude Sonnet 4"),
+            ("anthropic/claude-3-7-sonnet-20250219", "Claude 3.7 Sonnet"),
+            ("anthropic/claude-3-5-sonnet-20241022", "Claude 3.5 Sonnet"),
+        ],
+    },
+    "gemini": {
+        "label": "Gemini",
+        "docs_url": "https://docs.litellm.ai/docs/providers/gemini",
+        "models": [
+            ("gemini/gemini-2.5-flash-preview-04-17", "Gemini 2.5 Flash"),
+            ("gemini/gemini-2.0-flash", "Gemini 2.0 Flash"),
+            ("gemini/gemini-1.5-pro-latest", "Gemini 1.5 Pro"),
+            ("gemini/gemini-1.5-flash", "Gemini 1.5 Flash"),
+        ],
+    },
+    "github_copilot": {
+        "label": "GitHub Copilot",
+        "docs_url": "https://docs.litellm.ai/docs/providers/github_copilot",
+        "models": [
+            ("github_copilot/gpt-4", "GPT-4"),
+        ],
+    },
+}
 
 CLAUDE_CODE_MODELS: List[Tuple[str, str]] = [
     ("claude-sonnet-4-6", "Sonnet 4.6"),
@@ -35,7 +63,7 @@ class ChatbotConfig(BaseModel):
     name: str
     model: str
     system_prompt: str
-    provider: Literal["openrouter", "claude_code", "codex", "mock"] = "openrouter"
+    provider: Literal["openai", "anthropic", "gemini", "github_copilot", "claude_code", "codex", "mock"] = "openai"
     enable_thinking: bool = False
 
 

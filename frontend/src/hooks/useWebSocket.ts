@@ -11,7 +11,7 @@ export interface ChatMessage {
     thinking: string;
 }
 
-export type Provider = "openrouter" | "claude_code" | "codex" | "mock";
+export type Provider = "openai" | "anthropic" | "gemini" | "github_copilot" | "claude_code" | "codex" | "mock";
 
 export const DEFAULT_CHATBOT_NAMES = {
     a: "",
