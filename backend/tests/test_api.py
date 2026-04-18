@@ -3,12 +3,12 @@ import shutil
 
 import pytest
 from app.main import _cors_origins_from_env, _session_path, app
-from app.models import CLAUDE_CODE_MODELS, CODEX_MODELS, MODELS
+from app.models import CLAUDE_CODE_MODELS, CODEX_MODELS, LITELLM_PROVIDERS
 from httpx import ASGITransport, AsyncClient
 
 
-async def test_get_models_default_returns_openrouter_models():
-    """GET /models without provider param returns openrouter models."""
+async def test_get_models_default_returns_openai_models():
+    """GET /models without provider param returns openai models."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
@@ -16,7 +16,7 @@ async def test_get_models_default_returns_openrouter_models():
     assert response.status_code == 200
     data = response.json()
     ids = [m["id"] for m in data]
-    assert all(model_id in ids for model_id, _ in MODELS)
+    assert all(model_id in ids for model_id, _ in LITELLM_PROVIDERS["openai"]["models"])
 
 
 def test_cors_origins_from_env_default(monkeypatch: pytest.MonkeyPatch):
@@ -37,15 +37,15 @@ def test_cors_origins_from_env_multiple(monkeypatch: pytest.MonkeyPatch):
     ]
 
 
-async def test_get_models_openrouter_explicit():
-    """GET /models?provider=openrouter returns openrouter models."""
+async def test_get_models_openai_explicit():
+    """GET /models?provider=openai returns openai models."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
-        response = await client.get("/models?provider=openrouter")
+        response = await client.get("/models?provider=openai")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == len(MODELS)
+    assert len(data) == len(LITELLM_PROVIDERS["openai"]["models"])
 
 
 async def test_get_models_claude_code():
@@ -83,20 +83,30 @@ async def test_get_models_response_shape():
         assert "name" in entry
 
 
-async def test_get_providers_openrouter_always_available():
-    """GET /providers always returns openrouter: true."""
+async def test_get_providers_returns_provider_info(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """GET /providers returns availability and docs_url per provider."""
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         response = await client.get("/providers")
     assert response.status_code == 200
-    assert response.json()["openrouter"] is True
+    data = response.json()
+    assert data["openai"]["available"] is True
+    assert "docs_url" in data["openai"]
+    assert data["anthropic"]["available"] is False
+    assert data["gemini"]["available"] is False
+    assert data["github_copilot"]["available"] is True
 
 
 async def test_get_providers_claude_code_available_when_cli_found(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    """GET /providers returns claude_code: true when 'claude' CLI is on PATH."""
+    """GET /providers returns claude_code available when 'claude' CLI is on PATH."""
     monkeypatch.setattr(
         shutil, "which", lambda name: "/usr/bin/claude" if name == "claude" else None
     )
@@ -104,20 +114,20 @@ async def test_get_providers_claude_code_available_when_cli_found(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         response = await client.get("/providers")
-    assert response.json()["claude_code"] is True
+    assert response.json()["claude_code"]["available"] is True
 
 
 async def test_get_providers_claude_code_unavailable_when_cli_missing(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    """GET /providers returns claude_code: false when 'claude' CLI not found."""
+    """GET /providers returns claude_code unavailable when 'claude' CLI not found."""
     monkeypatch.setattr(shutil, "which", lambda name: None)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         response = await client.get("/providers")
-    assert response.json()["claude_code"] is False
-    assert response.json()["codex"] is False
+    assert response.json()["claude_code"]["available"] is False
+    assert response.json()["codex"]["available"] is False
 
 
 async def test_get_scenarios_seeds_cache_from_bundled_defaults(
@@ -173,7 +183,7 @@ async def test_get_scenarios_returns_saved_config(
                 "name": "Alpha",
                 "model": "model-a",
                 "system_prompt": "Prompt A",
-                "provider": "openrouter",
+                "provider": "openai",
             },
             "chatbot_b": {
                 "name": "Beta",
@@ -221,7 +231,7 @@ async def test_post_scenarios_writes_file_and_returns_body(
                 "name": "Alpha",
                 "model": "model-a",
                 "system_prompt": "Prompt A",
-                "provider": "openrouter",
+                "provider": "openai",
             },
             "chatbot_b": {
                 "name": "Beta",
@@ -270,7 +280,7 @@ async def test_patch_scenarios_renames_existing_scenario(
                         "name": "Alpha",
                         "model": "model-a",
                         "system_prompt": "Prompt A",
-                        "provider": "openrouter",
+                        "provider": "openai",
                     },
                     "chatbot_b": {
                         "name": "Beta",
@@ -343,7 +353,7 @@ async def test_post_settings_writes_file_and_returns_body(
             "name": "Alpha",
             "model": "model-a",
             "system_prompt": "Prompt A",
-            "provider": "openrouter",
+            "provider": "openai",
         },
         "chatbot_b": {
             "name": "Beta",
@@ -380,7 +390,7 @@ async def test_get_settings_returns_saved_settings(
             "name": "Alpha",
             "model": "model-a",
             "system_prompt": "Prompt A",
-            "provider": "openrouter",
+            "provider": "openai",
         },
         "chatbot_b": {
             "name": "Beta",

@@ -10,9 +10,9 @@ from app.models import ChatbotConfig, SessionConfig
 def chatbot_config_a() -> ChatbotConfig:
     return ChatbotConfig(
         name="LM A",
-        model="anthropic/claude-sonnet-4-5",
+        model="openai/gpt-4o",
         system_prompt="You are LM A.",
-        provider="openrouter",
+        provider="openai",
     )
 
 
@@ -20,9 +20,9 @@ def chatbot_config_a() -> ChatbotConfig:
 def chatbot_config_b() -> ChatbotConfig:
     return ChatbotConfig(
         name="LM B",
-        model="openai/gpt-4o",
+        model="anthropic/claude-sonnet-4-20250514",
         system_prompt="You are LM B.",
-        provider="openrouter",
+        provider="anthropic",
     )
 
 
@@ -53,9 +53,9 @@ def cancel_event() -> asyncio.Event:
 
 
 @pytest.fixture
-def mock_openrouter(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
+def mock_litellm(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     mock = AsyncMock(return_value=("Hello!", ""))
-    monkeypatch.setattr("app.engine.call_openrouter", mock)
+    monkeypatch.setattr("app.engine.call_litellm", mock)
     return mock
 
 

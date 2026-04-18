@@ -6,15 +6,15 @@ from app.models import ChatbotConfig, Message, RenameRequest, SessionConfig
 
 def test_chatbot_config_valid_providers():
     """ChatbotConfig accepts all valid provider literals."""
-    for provider in ("openrouter", "claude_code", "codex"):
+    for provider in ("openai", "anthropic", "gemini", "github_copilot", "claude_code", "codex"):
         config = ChatbotConfig(name="A", model="m", system_prompt="s", provider=provider)
         assert config.provider == provider
 
 
 def test_chatbot_config_default_provider():
-    """ChatbotConfig defaults to openrouter provider."""
+    """ChatbotConfig defaults to openai provider."""
     config = ChatbotConfig(name="A", model="m", system_prompt="s")
-    assert config.provider == "openrouter"
+    assert config.provider == "openai"
 
 
 def test_chatbot_config_invalid_provider():
