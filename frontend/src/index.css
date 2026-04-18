@@ -350,20 +350,20 @@ button {
     margin-top: auto;
     padding: 0.45rem 0.75rem;
     border-radius: 999px;
-    border: 1px solid var(--text);
-    background: var(--text);
-    color: var(--bg);
+    border: 1px solid var(--text-muted);
+    background: transparent;
+    color: var(--text-muted);
     cursor: pointer;
     font-size: 0.78rem;
     font-weight: 600;
     text-align: center;
     letter-spacing: 0.05em;
-    text-transform: uppercase;
-    transition: opacity 150ms ease;
+    transition: all 150ms ease;
 }
 
 .sidebar-delete-all:hover {
-    opacity: 0.85;
+    border-color: var(--text-dim);
+    color: var(--text-dim);
 }
 
 .sidebar-brand-actions {
@@ -1225,19 +1225,23 @@ input::placeholder {
 .start-btn {
     padding: 0.6rem 1.5rem;
     border-radius: 999px;
-    border: 1px solid var(--text);
-    background: var(--text);
-    color: var(--bg);
+    border: 1px solid transparent;
+    background:
+        linear-gradient(var(--bg), var(--bg)) padding-box,
+        linear-gradient(90deg, var(--chatbot-a), var(--chatbot-b)) border-box;
+    color: var(--text);
     font-weight: 600;
     letter-spacing: 0.08em;
-    text-transform: uppercase;
     font-size: 0.82rem;
     cursor: pointer;
-    transition: opacity 200ms ease;
+    transition: all 200ms ease;
 }
 
 .start-btn:hover:not(:disabled) {
-    opacity: 0.85;
+    background:
+        linear-gradient(var(--bg), var(--bg)) padding-box,
+        linear-gradient(90deg, var(--chatbot-b), var(--chatbot-a)) border-box;
+    box-shadow: 0 4px 12px rgba(196, 149, 106, 0.2);
 }
 
 .start-btn:disabled {
