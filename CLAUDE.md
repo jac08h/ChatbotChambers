@@ -11,14 +11,20 @@ frontend/  React + TypeScript + Vite, managed with pnpm
 
 ## How to Run
 
-**Backend** (from repo root):
+**Quick start** (from repo root):
+```bash
+npm run dev   # starts both backend (8001) and frontend (5173)
+```
+
+**Manual** (from repo root):
+
+Backend:
 ```bash
 cd backend
-export OPENROUTER_API_KEY="sk-or-..."
 uv run uvicorn app.main:app --reload --port 8001
 ```
 
-**Frontend** (from repo root):
+Frontend:
 ```bash
 cd frontend
 pnpm dev   # starts on http://localhost:5173

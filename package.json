@@ -1,0 +1,6 @@
+{
+  "name": "chatbot-chambers",
+  "scripts": {
+    "dev": "npx concurrently -k -n \"backend,frontend\" -c \"bgBlue.bold,bgGreen.bold\" \"cd backend && uv run uvicorn app.main:app --reload --port 8001\" \"cd frontend && pnpm dev\""
+  }
+}
