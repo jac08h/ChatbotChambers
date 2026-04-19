@@ -11,6 +11,7 @@ from app.models import (
     Message,
     SessionConfig,
 )
+from app.provider_state import ProviderState, create_provider_state, get_capabilities
 from app.providers.claude_code import call_claude_code
 from app.providers.codex_cli import call_codex
 from app.providers.mock import MOCK_MODELS, call_mock
@@ -52,9 +53,16 @@ async def run_conversation(
     pause_event: asyncio.Event,
     stop_event: asyncio.Event,
     cancel_event: asyncio.Event | None = None,
+    provider_states: Dict[str, ProviderState] | None = None,
 ) -> AsyncGenerator[Union[Generating, EmptyMessage, Message], None]:
     if cancel_event is None:
         cancel_event = asyncio.Event()
+
+    if provider_states is None:
+        provider_states = {
+            "a": create_provider_state(config.chatbot_a.provider),
+            "b": create_provider_state(config.chatbot_b.provider),
+        }
 
     history: List[Tuple[str, str]] = []
     turn = 0
@@ -99,10 +107,11 @@ async def run_conversation(
                     chatbot_config.system_prompt,
                 )
                 messages = _build_messages(history, chatbot_id, labels)
+                state = provider_states[chatbot_id]
 
                 cancel_event.clear()
                 llm_task = asyncio.create_task(
-                    _call_llm(chatbot_config, system_prompt, messages)
+                    _call_llm(chatbot_config, system_prompt, messages, state)
                 )
                 cancel_wait = asyncio.create_task(cancel_event.wait())
 
@@ -168,6 +177,7 @@ async def _call_llm(
     chatbot_config: ChatbotConfig,
     system_prompt: str,
     messages: List[dict],
+    provider_state: ProviderState | None = None,
 ) -> Tuple[str, str]:
     logger.debug(
         "Calling LLM provider=%s model=%s message_count=%d",
@@ -186,6 +196,7 @@ async def _call_llm(
             model=chatbot_config.model,
             system_prompt=system_prompt,
             messages=messages,
+            provider_state=provider_state,
         )
         return content, ""
     elif chatbot_config.provider == "codex":
@@ -193,6 +204,7 @@ async def _call_llm(
             model=chatbot_config.model,
             system_prompt=system_prompt,
             messages=messages,
+            provider_state=provider_state,
         )
         return content, ""
     elif chatbot_config.provider in LITELLM_PROVIDERS:
@@ -201,6 +213,7 @@ async def _call_llm(
             model=chatbot_config.model,
             system_prompt=system_prompt,
             messages=messages,
+            provider_state=provider_state,
         )
     else:
         raise ValueError("Unknown provider: %s" % chatbot_config.provider)

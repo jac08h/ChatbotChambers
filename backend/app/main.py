@@ -27,6 +27,7 @@ from app.models import (
     SessionConfig,
     Settings,
 )
+from app.provider_state import ProviderState, create_provider_state
 from app.providers.mock import MOCK_MODELS, reset_mock_state
 
 MOCK_PROVIDER_ENABLED = os.environ.get("MOCK_PROVIDER", "") == "1"
@@ -415,10 +416,14 @@ async def _run_engine(
     messages = []
     done_reason = None
     error_message = None
+    provider_states = {
+        "a": create_provider_state(config.chatbot_a.provider),
+        "b": create_provider_state(config.chatbot_b.provider),
+    }
     try:
         last_message = None
         async for event in run_conversation(
-            config, pause_event, stop_event, cancel_event
+            config, pause_event, stop_event, cancel_event, provider_states
         ):
             if isinstance(event, Generating):
                 await ws.send_json({"type": "generating", "chatbot": event.chatbot})
@@ -467,7 +472,9 @@ async def _run_engine(
         except Exception:
             pass
     finally:
-        _save_session(session_id, config, messages, done_reason, error_message)
+        _save_session(
+            session_id, config, messages, done_reason, error_message, provider_states
+        )
 
 
 def _save_session(
@@ -476,6 +483,7 @@ def _save_session(
     messages: List[dict],
     done_reason: str | None,
     error: str | None,
+    provider_states: dict[str, ProviderState] | None = None,
 ) -> None:
     try:
         SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
@@ -488,6 +496,10 @@ def _save_session(
             "doneReason": done_reason,
             "error": error,
         }
+        if provider_states:
+            data["provider_states"] = {
+                k: v.to_dict() for k, v in provider_states.items()
+            }
         path.write_text(json.dumps(data))
     except OSError:
         logger.exception("Failed to save session %s", session_id)
