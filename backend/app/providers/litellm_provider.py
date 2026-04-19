@@ -1,6 +1,6 @@
+from datetime import datetime, timezone
 import json
 import logging
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Tuple
 
@@ -20,11 +20,7 @@ async def call_litellm(
     all_messages = [{"role": "system", "content": system_prompt}] + messages
     _log_prompt(model, all_messages)
     extra_params: dict = {}
-    if provider == "openrouter":
-        full_model = f"openrouter/{model}"
-        extra_params["reasoning_effort"] = "none"
-    else:
-        full_model = model
+    full_model = f"openrouter/{model}" if provider == "openrouter" else model
     logger.info(
         "Calling LiteLLM: provider=%s model=%s message_count=%d",
         provider,

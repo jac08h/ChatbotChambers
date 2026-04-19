@@ -125,11 +125,13 @@ interface ChatbotConfigProps {
     models: Model[];
     provider: Provider;
     model: string;
+    openRouterModel: string;
     name: string;
     defaultName: string;
     prompt: string;
     onProviderChange: (p: Provider) => void;
     onModelChange: (m: string) => void;
+    onOpenRouterModelChange: (m: string) => void;
     onNameChange: (n: string) => void;
     onPromptChange: (p: string) => void;
 }
@@ -141,11 +143,13 @@ function ChatbotConfig({
     models,
     provider,
     model,
+    openRouterModel,
     name,
     defaultName,
     prompt,
     onProviderChange,
     onModelChange,
+    onOpenRouterModelChange,
     onNameChange,
     onPromptChange,
 }: ChatbotConfigProps) {
@@ -199,8 +203,8 @@ function ChatbotConfig({
                 {provider === "openrouter" ? (
                     <input
                         type="text"
-                        value={model}
-                        onChange={(event) => onModelChange(event.target.value)}
+                        value={openRouterModel}
+                        onChange={(event) => onOpenRouterModelChange(event.target.value)}
                         placeholder="google/gemini-3.1-flash-lite-preview"
                         title="OpenRouter model ID"
                     />
@@ -240,7 +244,7 @@ function ChatbotConfig({
                         type="text"
                         value={name}
                         onChange={(event) => onNameChange(event.target.value)}
-                        placeholder={defaultName || (provider === "openrouter" && !model ? shortModelName({ id: DEFAULT_OPENROUTER_MODEL, name: DEFAULT_OPENROUTER_MODEL }) : "")}
+                        placeholder={defaultName || (provider === "openrouter" && !openRouterModel ? shortModelName({ id: DEFAULT_OPENROUTER_MODEL, name: DEFAULT_OPENROUTER_MODEL }) : "")}
                         tabIndex={expanded ? 0 : -1}
                     />
                 </label>
@@ -260,6 +264,8 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
     const [modelsB, setModelsB] = useState<Model[]>([]);
     const [modelA, setModelA] = useState("");
     const [modelB, setModelB] = useState("");
+    const [openRouterModelA, setOpenRouterModelA] = useState("");
+    const [openRouterModelB, setOpenRouterModelB] = useState("");
     const [nameA, setNameA] = useState<string>("");
     const [nameB, setNameB] = useState<string>("");
     const [nameAManual, setNameAManual] = useState(false);
@@ -343,6 +349,8 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
             const initialModelB = preferredModelId(initialModelsB, initialProviderB, settings?.chatbot_b.model ?? "");
             setModelA(initialModelA);
             setModelB(initialModelB);
+            setOpenRouterModelA(initialProviderA === "openrouter" ? (settings?.chatbot_a.model ?? "") : "");
+            setOpenRouterModelB(initialProviderB === "openrouter" ? (settings?.chatbot_b.model ?? "") : "");
             const savedNameA = settings?.chatbot_a.name ?? "";
             const savedNameB = settings?.chatbot_b.name ?? "";
             const derivedNameA = shortModelName(initialModelsA.find((m) => m.id === initialModelA) ?? { id: initialModelA, name: initialModelA });
@@ -406,7 +414,7 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
         const config = buildConfig();
         const timer = setTimeout(() => { saveSettings(config).catch(() => {}); }, 500);
         return () => clearTimeout(timer);
-    }, [isInitialized, providerA, providerB, modelA, modelB, nameA, nameB, promptA, promptB, sharedPrompt]);
+    }, [isInitialized, providerA, providerB, modelA, modelB, openRouterModelA, openRouterModelB, nameA, nameB, promptA, promptB, sharedPrompt]);
 
     useEffect(() => {
         if (!isSaveScenarioOpen) {
@@ -449,17 +457,25 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]?.available);
 
     const defaultNameA = (() => {
+        if (providerA === "openrouter") {
+            const id = openRouterModelA || DEFAULT_OPENROUTER_MODEL;
+            return shortModelName({ id, name: id });
+        }
         const model = modelsA.find((m) => m.id === modelA);
         return model ? shortModelName(model) : modelA;
     })();
     const defaultNameB = (() => {
+        if (providerB === "openrouter") {
+            const id = openRouterModelB || DEFAULT_OPENROUTER_MODEL;
+            return shortModelName({ id, name: id });
+        }
         const model = modelsB.find((m) => m.id === modelB);
         return model ? shortModelName(model) : modelB;
     })();
 
     const buildConfig = (): SessionConfig => {
-        const finalModelA = providerA === "openrouter" && !modelA ? DEFAULT_OPENROUTER_MODEL : modelA;
-        const finalModelB = providerB === "openrouter" && !modelB ? DEFAULT_OPENROUTER_MODEL : modelB;
+        const finalModelA = providerA === "openrouter" ? (openRouterModelA || DEFAULT_OPENROUTER_MODEL) : modelA;
+        const finalModelB = providerB === "openrouter" ? (openRouterModelB || DEFAULT_OPENROUTER_MODEL) : modelB;
         return {
             chatbot_a: { name: nameA || defaultNameA, model: finalModelA, system_prompt: promptA, provider: providerA },
             chatbot_b: { name: nameB || defaultNameB, model: finalModelB, system_prompt: promptB, provider: providerB },
@@ -487,6 +503,8 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
             const scenarioModelB = preferredModelId(scenarioModelsB, scenario.config.chatbot_b.provider, scenario.config.chatbot_b.model);
             setModelA(scenarioModelA);
             setModelB(scenarioModelB);
+            setOpenRouterModelA(scenario.config.chatbot_a.provider === "openrouter" ? scenario.config.chatbot_a.model : "");
+            setOpenRouterModelB(scenario.config.chatbot_b.provider === "openrouter" ? scenario.config.chatbot_b.model : "");
             const scenarioDerivedNameA = shortModelName(scenarioModelsA.find((m) => m.id === scenarioModelA) ?? { id: scenarioModelA, name: scenarioModelA });
             const scenarioDerivedNameB = shortModelName(scenarioModelsB.find((m) => m.id === scenarioModelB) ?? { id: scenarioModelB, name: scenarioModelB });
             const scenarioNameA = scenario.config.chatbot_a.name;
@@ -821,11 +839,13 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
                             models={modelsA}
                             provider={providerA}
                             model={modelA}
+                            openRouterModel={openRouterModelA}
                             name={nameA}
                             defaultName={defaultNameA}
                             prompt={promptA}
                             onProviderChange={setProviderA}
                             onModelChange={setModelA}
+                            onOpenRouterModelChange={setOpenRouterModelA}
                             onNameChange={(n) => { setNameA(n); setNameAManual(n !== ""); }}
                             onPromptChange={setPromptA}
                         />
@@ -836,11 +856,13 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
                             models={modelsB}
                             provider={providerB}
                             model={modelB}
+                            openRouterModel={openRouterModelB}
                             name={nameB}
                             defaultName={defaultNameB}
                             prompt={promptB}
                             onProviderChange={setProviderB}
                             onModelChange={setModelB}
+                            onOpenRouterModelChange={setOpenRouterModelB}
                             onNameChange={(n) => { setNameB(n); setNameBManual(n !== ""); }}
                             onPromptChange={setPromptB}
                         />
