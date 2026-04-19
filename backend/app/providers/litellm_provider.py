@@ -43,9 +43,11 @@ async def call_litellm(
     )
     message = response.choices[0].message
     content = message.content or ""
-    thinking = ""
-    if enable_thinking and provider == "openrouter":
-        thinking = getattr(message, "reasoning_content", None) or ""
+    thinking = (
+        getattr(message, "reasoning_content", None) or ""
+        if enable_thinking and provider == "openrouter"
+        else ""
+    )
     logger.debug("LiteLLM response: model=%s, %d chars", model, len(content))
     return content, thinking
 
