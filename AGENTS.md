@@ -40,6 +40,10 @@ frontend/
 - Absolute imports from repo root
 - Update AGENTS.md when a relevant part of the code changes
 
+## Architecture Docs
+
+See `info/prompt_construction.md` for how system prompts are built and passed to providers.
+
 ## Branding
 
 The ChatbotChambers wordmark uses an editorial contrast approach:
