@@ -42,7 +42,9 @@ Open `http://localhost:5173` in your browser.
 
 ## Providers
 
-Warning: Caching of the conversations doesn't really work at the moment, so watch your usages.
+You need at least one provider configured to run the app.
+
+**Warning:** Conversation caching doesn't really work at the moment (TODO), so please watch your usage.
 
 | Provider | What you need |
 | --- | --- |
@@ -50,5 +52,3 @@ Warning: Caching of the conversations doesn't really work at the moment, so watc
 | GitHub Copilot | GitHub Copilot access plus `gh auth login` |
 | Claude Code | `claude` CLI installed and authenticated |
 | Codex CLI | `codex` CLI installed and authenticated |
-
-You need at least one provider configured to run the app.
