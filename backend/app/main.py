@@ -11,6 +11,11 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
 from app.engine import EmptyMessage, Generating, run_conversation
 from app.models import (
     CLAUDE_CODE_MODELS,
