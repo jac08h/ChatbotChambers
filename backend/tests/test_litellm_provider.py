@@ -30,7 +30,7 @@ async def test_returns_content_and_empty_thinking(
 async def test_reasoning_content_is_not_returned(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """Reasoning content is ignored in provider responses."""
+    """Reasoning content is ignored when enable_thinking is False."""
     monkeypatch.setattr("app.providers.litellm_provider.LOGS_DIR", tmp_path)
     mock_response = make_mock_response("The answer", "Step-by-step reasoning")
     with patch("app.providers.litellm_provider.litellm") as mock_litellm:
@@ -40,6 +40,23 @@ async def test_reasoning_content_is_not_returned(
         content, thinking = await call_litellm("openrouter", "model", "sys", [])
     assert content == "The answer"
     assert thinking == ""
+
+
+async def test_reasoning_content_returned_when_thinking_enabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Reasoning content is returned when enable_thinking is True for openrouter."""
+    monkeypatch.setattr("app.providers.litellm_provider.LOGS_DIR", tmp_path)
+    mock_response = make_mock_response("The answer", "Step-by-step reasoning")
+    with patch("app.providers.litellm_provider.litellm") as mock_litellm:
+        mock_litellm.acompletion = AsyncMock(return_value=mock_response)
+        from app.providers.litellm_provider import call_litellm
+
+        content, thinking = await call_litellm(
+            "openrouter", "model", "sys", [], enable_thinking=True
+        )
+    assert content == "The answer"
+    assert thinking == "Step-by-step reasoning"
 
 
 async def test_system_prompt_prepended(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -109,6 +126,22 @@ async def test_openrouter_sets_reasoning_effort_to_none(
 
     call_kwargs = mock_litellm.acompletion.call_args
     assert call_kwargs.kwargs.get("reasoning_effort") == "none"
+
+
+async def test_openrouter_sets_reasoning_effort_to_medium_when_thinking_enabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """OpenRouter requests use medium reasoning effort when thinking is enabled."""
+    monkeypatch.setattr("app.providers.litellm_provider.LOGS_DIR", tmp_path)
+    mock_response = make_mock_response("Hi")
+    with patch("app.providers.litellm_provider.litellm") as mock_litellm:
+        mock_litellm.acompletion = AsyncMock(return_value=mock_response)
+        from app.providers.litellm_provider import call_litellm
+
+        await call_litellm("openrouter", "model", "sys", [], enable_thinking=True)
+
+    call_kwargs = mock_litellm.acompletion.call_args
+    assert call_kwargs.kwargs.get("reasoning_effort") == "medium"
 
 
 async def test_other_litellm_providers_omit_reasoning_effort(

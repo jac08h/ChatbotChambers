@@ -12,8 +12,8 @@ const history: ArchivedSession[] = [
         title: null,
         messages: [],
         config: {
-            chatbot_a: { name: "Alice", model: "model-a", system_prompt: "", provider: "openrouter" },
-            chatbot_b: { name: "Bob", model: "model-b", system_prompt: "", provider: "openrouter" },
+            chatbot_a: { name: "Alice", model: "model-a", system_prompt: "", provider: "openrouter", enable_thinking: false },
+            chatbot_b: { name: "Bob", model: "model-b", system_prompt: "", provider: "openrouter", enable_thinking: false },
             shared_system_prompt: "",
         },
         doneReason: "stopped",

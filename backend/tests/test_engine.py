@@ -113,6 +113,17 @@ async def test_thinking_not_passed_through(
     assert messages[0].thinking == ""
 
 
+async def test_thinking_passed_through_when_enabled(
+    mock_litellm: AsyncMock, mock_claude_code: AsyncMock, session_config: SessionConfig
+):
+    """Thinking content is included in messages when enable_thinking is True."""
+    session_config.chatbot_a.enable_thinking = True
+    mock_litellm.side_effect = [("Answer", "My reasoning here"), ("/leave", "")]
+    events = await collect(session_config)
+    messages = [e for e in events if isinstance(e, Message)]
+    assert messages[0].thinking == "My reasoning here"
+
+
 async def test_mixed_providers_dispatches_correctly(
     monkeypatch: pytest.MonkeyPatch, session_config: SessionConfig
 ):

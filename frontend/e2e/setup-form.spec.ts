@@ -126,4 +126,52 @@ test.describe("Setup Form & Configuration", () => {
 
         await expect(page.locator("textarea").first()).toHaveValue("Persist this prompt", { timeout: 5000 });
     });
+
+    test("Enable thinking checkbox is visible and toggleable for Mock provider", async ({ page }) => {
+        const sectionA = page.locator(".chatbot-config.side-a");
+        await sectionA.locator(".provider-chips button", { hasText: "Mock" }).click();
+
+        const checkbox = sectionA.locator(".thinking-toggle-field input[type='checkbox']");
+        await expect(checkbox).toBeVisible();
+        await expect(checkbox).toBeEnabled();
+        await expect(checkbox).not.toBeChecked();
+
+        await checkbox.check();
+        await expect(checkbox).toBeChecked();
+    });
+
+    test("Enable thinking checkbox is disabled for non-OpenRouter providers", async ({ page }) => {
+        const sectionA = page.locator(".chatbot-config.side-a");
+        const providerChips = sectionA.locator(".provider-chips");
+
+        const copilotChip = providerChips.locator("button", { hasText: "GitHub Copilot" });
+        if (await copilotChip.isVisible()) {
+            await copilotChip.click();
+
+            const checkbox = sectionA.locator(".thinking-toggle-field input[type='checkbox']");
+            await expect(checkbox).toBeVisible();
+            await expect(checkbox).toBeDisabled();
+
+            const hint = sectionA.locator(".thinking-toggle-hint");
+            await expect(hint).toBeVisible();
+            await expect(hint).toContainText("Currently supported only for OpenRouter");
+        }
+    });
+
+    test("Enable thinking checkbox resets when switching to unsupported provider", async ({ page }) => {
+        const sectionA = page.locator(".chatbot-config.side-a");
+
+        await sectionA.locator(".provider-chips button", { hasText: "Mock" }).click();
+        const checkbox = sectionA.locator(".thinking-toggle-field input[type='checkbox']");
+        await expect(checkbox).toBeEnabled();
+        await checkbox.check();
+        await expect(checkbox).toBeChecked();
+
+        const copilotChip = sectionA.locator(".provider-chips button", { hasText: "GitHub Copilot" });
+        if (await copilotChip.isVisible()) {
+            await copilotChip.click();
+            await expect(checkbox).not.toBeChecked();
+            await expect(checkbox).toBeDisabled();
+        }
+    });
 });

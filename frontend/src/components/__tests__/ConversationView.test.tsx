@@ -5,8 +5,8 @@ import { ConversationView } from "../ConversationView"
 import type { ChatMessage, SessionConfig } from "../../hooks/useWebSocket"
 
 const sampleConfig: SessionConfig = {
-    chatbot_a: { name: "Alice", model: "model-a", system_prompt: "", provider: "github_copilot" },
-    chatbot_b: { name: "Bob", model: "model-b", system_prompt: "", provider: "github_copilot" },
+    chatbot_a: { name: "Alice", model: "model-a", system_prompt: "", provider: "github_copilot", enable_thinking: false },
+    chatbot_b: { name: "Bob", model: "model-b", system_prompt: "", provider: "github_copilot", enable_thinking: false },
     shared_system_prompt: "",
 }
 
@@ -153,11 +153,17 @@ describe("ConversationView", () => {
         expect(screen.getByText("GitHub Copilot · Test Model")).toBeInTheDocument()
     })
 
-    it("does not show thinking block when message has thinking", () => {
+    it("shows thinking block when message has thinking content", () => {
         const message: ChatMessage = { ...makeMessage("a", "Answer"), thinking: "My reasoning" }
         render(<ConversationView {...defaultProps} messages={[message]} />)
+        expect(screen.getByText("Thinking")).toBeInTheDocument()
+        expect(screen.getByText("Answer")).toBeInTheDocument()
+    })
+
+    it("does not show thinking block when thinking is empty", () => {
+        const message: ChatMessage = { ...makeMessage("a", "Answer"), thinking: "" }
+        render(<ConversationView {...defaultProps} messages={[message]} />)
         expect(screen.queryByText("Thinking")).not.toBeInTheDocument()
-        expect(screen.queryByText("My reasoning")).not.toBeInTheDocument()
         expect(screen.getByText("Answer")).toBeInTheDocument()
     })
 

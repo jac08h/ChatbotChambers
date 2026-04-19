@@ -11,8 +11,8 @@ import {
 } from "../useWebSocket"
 
 const sampleConfig: SessionConfig = {
-    chatbot_a: { name: "A", model: "model-a", system_prompt: "sys a", provider: "openrouter" },
-    chatbot_b: { name: "B", model: "model-b", system_prompt: "sys b", provider: "openrouter" },
+    chatbot_a: { name: "A", model: "model-a", system_prompt: "sys a", provider: "openrouter", enable_thinking: false },
+    chatbot_b: { name: "B", model: "model-b", system_prompt: "sys b", provider: "openrouter", enable_thinking: false },
     shared_system_prompt: "shared",
 }
 
