@@ -187,6 +187,8 @@ function formatModelLabel(message: ChatMessage, provider?: Provider): string {
 }
 
 function MessageBubble({ message, avatar, provider }: { message: ChatMessage; avatar?: string; provider?: Provider }) {
+    const [thinkingExpanded, setThinkingExpanded] = useState(false);
+
     return (
         <div className={`message-row chatbot-${message.chatbot}`}>
             <div className={`message-glyph${avatar ? " has-avatar" : ""}`}>
@@ -199,6 +201,22 @@ function MessageBubble({ message, avatar, provider }: { message: ChatMessage; av
                     <span className="sender-label">{message.name}</span>
                     {message.model && <span className="model-label">{formatModelLabel(message, provider)}</span>}
                 </div>
+                {message.thinking && (
+                    <div className="thinking-block">
+                        <button
+                            type="button"
+                            className="thinking-block-toggle"
+                            onClick={() => setThinkingExpanded((prev) => !prev)}
+                            aria-expanded={thinkingExpanded}
+                        >
+                            <span className="thinking-block-icon">{thinkingExpanded ? "▾" : "▸"}</span>
+                            Thinking
+                        </button>
+                        {thinkingExpanded && (
+                            <div className="thinking-block-content">{message.thinking}</div>
+                        )}
+                    </div>
+                )}
                 <div className="message-content">{message.content}</div>
             </div>
         </div>

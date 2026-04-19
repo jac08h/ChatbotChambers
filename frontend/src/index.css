@@ -1486,6 +1486,52 @@ html[data-theme="light"] .chatbot-b .message-bubble {
     border-radius: 4px;
 }
 
+.thinking-block {
+    margin-bottom: 0.4rem;
+    border-left: 2px solid var(--text-dim);
+    padding-left: 0.6rem;
+}
+
+.thinking-block-toggle {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    font-style: italic;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: color 150ms ease;
+}
+
+.thinking-block-toggle:hover {
+    color: var(--text-muted);
+}
+
+.thinking-block-icon {
+    font-style: normal;
+    font-size: 0.7rem;
+}
+
+.thinking-block-content {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.88rem;
+    font-style: italic;
+    line-height: 1.5;
+    color: var(--text-dim);
+    margin-top: 0.25rem;
+}
+
+.thinking-toggle-hint {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-style: italic;
+}
+
 .message-bubble.generating {
     display: flex;
     flex-direction: column;

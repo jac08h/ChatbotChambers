@@ -124,7 +124,7 @@ async def run_conversation(
                     logger.debug("Generation cancelled for chatbot %s", chatbot_id)
                     continue
 
-                content, _ = llm_task.result()
+                content, thinking = llm_task.result()
 
                 if not content or not content.strip():
                     logger.warning(
@@ -150,7 +150,7 @@ async def run_conversation(
                     model_name=_resolve_model_name(chatbot_config.model),
                     content=content,
                     turn=turn,
-                    thinking="",
+                    thinking=thinking if chatbot_config.enable_thinking else "",
                 )
 
                 if "/leave" in content:
@@ -201,6 +201,7 @@ async def _call_llm(
             model=chatbot_config.model,
             system_prompt=system_prompt,
             messages=messages,
+            enable_thinking=chatbot_config.enable_thinking,
         )
     else:
         raise ValueError("Unknown provider: %s" % chatbot_config.provider)

@@ -16,20 +16,25 @@ async def call_litellm(
     model: str,
     system_prompt: str,
     messages: List[dict],
+    enable_thinking: bool = False,
 ) -> Tuple[str, str]:
     all_messages = [{"role": "system", "content": system_prompt}] + messages
     _log_prompt(model, all_messages)
     extra_params: dict = {}
     if provider == "openrouter":
         full_model = f"openrouter/{model}"
-        extra_params["reasoning_effort"] = "none"
+        if enable_thinking:
+            extra_params["reasoning_effort"] = "medium"
+        else:
+            extra_params["reasoning_effort"] = "none"
     else:
         full_model = model
     logger.info(
-        "Calling LiteLLM: provider=%s model=%s message_count=%d",
+        "Calling LiteLLM: provider=%s model=%s message_count=%d enable_thinking=%s",
         provider,
         model,
         len(all_messages),
+        enable_thinking,
     )
     response = await litellm.acompletion(
         model=full_model,
@@ -38,8 +43,11 @@ async def call_litellm(
     )
     message = response.choices[0].message
     content = message.content or ""
+    thinking = ""
+    if enable_thinking and provider == "openrouter":
+        thinking = getattr(message, "reasoning_content", None) or ""
     logger.debug("LiteLLM response: model=%s, %d chars", model, len(content))
-    return content, ""
+    return content, thinking
 
 
 def _log_prompt(model: str, messages: List[dict]) -> None:

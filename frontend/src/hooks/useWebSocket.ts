@@ -23,6 +23,7 @@ export interface ChatbotConfig {
     model: string;
     system_prompt: string;
     provider: Provider;
+    enable_thinking: boolean;
 }
 
 export interface SessionConfig {
