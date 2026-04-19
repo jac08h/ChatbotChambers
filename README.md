@@ -42,6 +42,8 @@ Open `http://localhost:5173` in your browser.
 
 ## Providers
 
+Warning: Caching of the conversations doesn't really work at the moment, so watch your usages.
+
 | Provider | What you need |
 | --- | --- |
 | OpenRouter | Set `OPENROUTER_API_KEY` |
