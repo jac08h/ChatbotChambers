@@ -61,6 +61,23 @@ async def test_system_prompt_prepended(tmp_path: Path, monkeypatch: pytest.Monke
     assert messages[1]["role"] == "user"
 
 
+async def test_openrouter_marks_system_prompt_for_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """OpenRouter requests mark the system prompt as cacheable."""
+    monkeypatch.setattr("app.providers.litellm_provider.LOGS_DIR", tmp_path)
+    mock_response = make_mock_response("Hi")
+    with patch("app.providers.litellm_provider.litellm") as mock_litellm:
+        mock_litellm.acompletion = AsyncMock(return_value=mock_response)
+        from app.providers.litellm_provider import call_litellm
+
+        await call_litellm("openrouter", "model", "Be helpful", [])
+
+    call_kwargs = mock_litellm.acompletion.call_args
+    messages = call_kwargs.kwargs.get("messages")
+    assert messages[0]["cache_control"] == {"type": "ephemeral"}
+
+
 async def test_empty_response_returns_empty_strings(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
@@ -125,3 +142,20 @@ async def test_other_litellm_providers_omit_reasoning_effort(
 
     call_kwargs = mock_litellm.acompletion.call_args
     assert "reasoning_effort" not in call_kwargs.kwargs
+
+
+async def test_other_litellm_providers_omit_cache_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Non-OpenRouter requests do not mark the system prompt for caching."""
+    monkeypatch.setattr("app.providers.litellm_provider.LOGS_DIR", tmp_path)
+    mock_response = make_mock_response("Hi")
+    with patch("app.providers.litellm_provider.litellm") as mock_litellm:
+        mock_litellm.acompletion = AsyncMock(return_value=mock_response)
+        from app.providers.litellm_provider import call_litellm
+
+        await call_litellm("github_copilot", "model", "sys", [])
+
+    call_kwargs = mock_litellm.acompletion.call_args
+    messages = call_kwargs.kwargs.get("messages")
+    assert "cache_control" not in messages[0]

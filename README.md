@@ -44,7 +44,7 @@ Open `http://localhost:5173` in your browser.
 
 You need at least one provider configured to run the app.
 
-**Warning:** Conversation caching doesn't really work at the moment (TODO), so please watch your usage.
+**Note:** OpenRouter requests mark the system prompt as cacheable with `cache_control`. Other providers do not currently use prompt caching.
 
 | Provider | What you need |
 | --- | --- |

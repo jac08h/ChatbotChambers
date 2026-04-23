@@ -44,6 +44,8 @@ frontend/
 
 See `info/prompt_construction.md` for how system prompts are built and passed to providers.
 
+OpenRouter requests currently mark the system prompt as cacheable via `cache_control`. Other providers do not currently use prompt caching.
+
 ## Branding
 
 The ChatbotChambers wordmark uses an editorial contrast approach:

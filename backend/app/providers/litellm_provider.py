@@ -17,10 +17,12 @@ async def call_litellm(
     system_prompt: str,
     messages: List[dict],
 ) -> Tuple[str, str]:
-    all_messages = [{"role": "system", "content": system_prompt}] + messages
+    all_messages = _build_messages(provider, system_prompt, messages)
     _log_prompt(model, all_messages)
     extra_params: dict = {}
     full_model = f"openrouter/{model}" if provider == "openrouter" else model
+    if provider == "openrouter":
+        extra_params["reasoning_effort"] = "none"
     logger.info(
         "Calling LiteLLM: provider=%s model=%s message_count=%d",
         provider,
@@ -36,6 +38,13 @@ async def call_litellm(
     content = message.content or ""
     logger.debug("LiteLLM response: model=%s, %d chars", model, len(content))
     return content, ""
+
+
+def _build_messages(provider: str, system_prompt: str, messages: List[dict]) -> List[dict]:
+    system_message = {"role": "system", "content": system_prompt}
+    if provider == "openrouter":
+        system_message["cache_control"] = {"type": "ephemeral"}
+    return [system_message] + messages
 
 
 def _log_prompt(model: str, messages: List[dict]) -> None:
