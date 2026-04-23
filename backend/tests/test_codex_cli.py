@@ -15,15 +15,16 @@ async def test_returns_last_non_empty_line():
     """Returns the last non-empty line of stdout."""
     mock_process = make_mock_process(stdout=b"first line\nsecond line\n\n")
     with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=mock_process)):
-        result = await call_codex("model", "sys", [])
+        result, session_id = await call_codex("model", "sys", [], None)
     assert result == "second line"
+    assert session_id == ""
 
 
 async def test_returns_empty_string_for_empty_output():
     """Empty stdout returns empty string."""
     mock_process = make_mock_process(stdout=b"")
     with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=mock_process)):
-        result = await call_codex("model", "sys", [])
+        result, _ = await call_codex("model", "sys", [], None)
     assert result == ""
 
 
@@ -31,7 +32,7 @@ async def test_correct_command_args():
     """CLI command is 'codex exec --model <model>'."""
     mock_process = make_mock_process()
     with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=mock_process)) as mock_exec:
-        await call_codex("gpt-5.4", "sys", [])
+        await call_codex("gpt-5.4", "sys", [], None)
     args = mock_exec.call_args.args
     assert args[0] == "codex"
     assert "exec" in args
@@ -43,11 +44,24 @@ async def test_prompt_sent_via_stdin():
     """Prompt is passed via stdin to the subprocess."""
     mock_process = make_mock_process()
     with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=mock_process)):
-        await call_codex("model", "system prompt", [{"role": "user", "content": "Hello"}])
+        await call_codex(
+            "model",
+            "system prompt",
+            [{"role": "user", "content": "Hello"}],
+            None,
+        )
     call_kwargs = mock_process.communicate.call_args.kwargs
     stdin_input = call_kwargs.get("input") or mock_process.communicate.call_args.args[0]
     assert b"Hello" in stdin_input
     assert b"system prompt" in stdin_input
+
+
+async def test_existing_session_id_is_ignored():
+    """Codex keeps the session-id parameter for interface consistency only."""
+    mock_process = make_mock_process()
+    with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=mock_process)):
+        _, session_id = await call_codex("model", "sys", [], "existing-session")
+    assert session_id == "existing-session"
 
 
 def test_build_prompt_empty_messages_no_system():

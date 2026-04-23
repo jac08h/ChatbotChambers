@@ -62,13 +62,13 @@ def mock_litellm(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
 
 @pytest.fixture
 def mock_claude_code(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
-    mock = AsyncMock(return_value="Hello from Claude!")
+    mock = AsyncMock(return_value=("Hello from Claude!", "claude-session"))
     monkeypatch.setattr("app.engine.call_claude_code", mock)
     return mock
 
 
 @pytest.fixture
 def mock_codex(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
-    mock = AsyncMock(return_value="Hello from Codex!")
+    mock = AsyncMock(return_value=("Hello from Codex!", ""))
     monkeypatch.setattr("app.engine.call_codex", mock)
     return mock

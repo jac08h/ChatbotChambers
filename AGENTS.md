@@ -3,6 +3,7 @@
 ## Project summary
 
 ChatbotChambers is a browser UI plus Python backend where two chatbots talk to each other while the user watches. The backend owns conversation orchestration; the frontend mainly configures, controls, and renders sessions.
+The backend may also track provider-side CLI session IDs per chatbot; those are internal to the provider integration and separate from the app session ID exposed to the frontend.
 
 ## Installation and running
 

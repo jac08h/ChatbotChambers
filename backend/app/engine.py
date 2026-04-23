@@ -57,6 +57,7 @@ async def run_conversation(
         cancel_event = asyncio.Event()
 
     history: List[Tuple[str, str]] = []
+    session_ids: Dict[str, str | None] = {"a": None, "b": None}
     turn = 0
     labels = {"a": config.chatbot_a.name, "b": config.chatbot_b.name}
 
@@ -102,7 +103,12 @@ async def run_conversation(
 
                 cancel_event.clear()
                 llm_task = asyncio.create_task(
-                    _call_llm(chatbot_config, system_prompt, messages)
+                    _call_llm(
+                        chatbot_config,
+                        system_prompt,
+                        messages,
+                        session_ids[chatbot_id],
+                    )
                 )
                 cancel_wait = asyncio.create_task(cancel_event.wait())
 
@@ -124,7 +130,7 @@ async def run_conversation(
                     logger.debug("Generation cancelled for chatbot %s", chatbot_id)
                     continue
 
-                content, _ = llm_task.result()
+                content, _, new_session_id = llm_task.result()
 
                 if not content or not content.strip():
                     logger.warning(
@@ -135,6 +141,9 @@ async def run_conversation(
                     )
                     yield EmptyMessage(chatbot=chatbot_id)
                     continue
+
+                if new_session_id:
+                    session_ids[chatbot_id] = new_session_id
 
                 logger.debug(
                     "Received response from chatbot %s (turn %d, %d chars)",
@@ -168,7 +177,8 @@ async def _call_llm(
     chatbot_config: ChatbotConfig,
     system_prompt: str,
     messages: List[dict],
-) -> Tuple[str, str]:
+    session_id: str | None,
+) -> Tuple[str, str, str | None]:
     logger.debug(
         "Calling LLM provider=%s model=%s message_count=%d",
         chatbot_config.provider,
@@ -176,32 +186,36 @@ async def _call_llm(
         len(messages),
     )
     if chatbot_config.provider == "mock":
-        return await call_mock(
+        content, thinking = await call_mock(
             model=chatbot_config.model,
             system_prompt=system_prompt,
             messages=messages,
         )
+        return content, thinking, None
     elif chatbot_config.provider == "claude_code":
-        content = await call_claude_code(
+        content, new_session_id = await call_claude_code(
             model=chatbot_config.model,
             system_prompt=system_prompt,
             messages=messages,
+            session_id=session_id,
         )
-        return content, ""
+        return content, "", new_session_id
     elif chatbot_config.provider == "codex":
-        content = await call_codex(
+        content, _ = await call_codex(
             model=chatbot_config.model,
             system_prompt=system_prompt,
             messages=messages,
+            session_id=session_id,
         )
-        return content, ""
+        return content, "", None
     elif chatbot_config.provider in LITELLM_PROVIDERS:
-        return await call_litellm(
+        content, thinking = await call_litellm(
             provider=chatbot_config.provider,
             model=chatbot_config.model,
             system_prompt=system_prompt,
             messages=messages,
         )
+        return content, thinking, None
     else:
         raise ValueError("Unknown provider: %s" % chatbot_config.provider)
 

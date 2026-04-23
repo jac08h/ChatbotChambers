@@ -1,17 +1,21 @@
 import asyncio
 import logging
-from typing import List
+import uuid
+from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
 
-async def call_claude_code(model: str, system_prompt: str, messages: List[dict]) -> str:
-    prompt = _build_prompt(messages)
+async def call_claude_code(
+    model: str,
+    system_prompt: str,
+    messages: List[dict],
+    session_id: str | None,
+) -> Tuple[str, str]:
+    prompt = _latest_message_content(messages)
     args = [
         "claude",
         "-p",
-        "--model",
-        model,
         "--tools",
         "",
         "--disable-slash-commands",
@@ -19,7 +23,21 @@ async def call_claude_code(model: str, system_prompt: str, messages: List[dict])
         "--mcp-config",
         '{"mcpServers": {}}',
     ]
-    if system_prompt:
+
+    if session_id is None:
+        session_id = str(uuid.uuid4())
+        args += ["--session-id", session_id]
+        if system_prompt:
+            args += ["--system-prompt", system_prompt]
+    else:
+        args += ["--resume", session_id]
+
+    args += [
+        "--model",
+        model,
+    ]
+
+    if session_id is None and system_prompt:
         args += ["--system-prompt", system_prompt]
     args.append(prompt)
 
@@ -44,14 +62,10 @@ async def call_claude_code(model: str, system_prompt: str, messages: List[dict])
         )
     result = stdout.decode().strip()
     logger.debug("Claude CLI response: %d chars", len(result))
-    return result
+    return result, session_id
 
 
-def _build_prompt(messages: List[dict]) -> str:
+def _latest_message_content(messages: List[dict]) -> str:
     if not messages:
         return "(conversation starts)"
-    parts = []
-    for msg in messages:
-        role = "Human" if msg["role"] == "user" else "Assistant"
-        parts.append(f"{role}: {msg['content']}")
-    return "\n\n".join(parts)
+    return messages[-1]["content"]

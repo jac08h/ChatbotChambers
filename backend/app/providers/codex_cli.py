@@ -1,11 +1,16 @@
 import asyncio
 import logging
-from typing import List
+from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
 
-async def call_codex(model: str, system_prompt: str, messages: List[dict]) -> str:
+async def call_codex(
+    model: str,
+    system_prompt: str,
+    messages: List[dict],
+    session_id: str | None,
+) -> Tuple[str, str]:
     prompt = _build_prompt(system_prompt, messages)
 
     logger.info("Calling codex CLI: model=%s", model)
@@ -31,7 +36,7 @@ async def call_codex(model: str, system_prompt: str, messages: List[dict]) -> st
     lines = [line for line in stdout.decode().splitlines() if line.strip()]
     result = lines[-1] if lines else ""
     logger.debug("Codex CLI response: %d chars", len(result))
-    return result
+    return result, session_id or ""
 
 
 def _build_prompt(system_prompt: str, messages: List[dict]) -> str:

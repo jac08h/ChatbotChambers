@@ -28,7 +28,7 @@ async def test_basic_two_turns_produces_four_messages(
 ):
     """Two turns produce 4 Message events alternating a/b/a/b."""
     mock_litellm.side_effect = [("Hello!", ""), ("Again", "")]
-    mock_claude_code.side_effect = ["Hi!", "/leave"]
+    mock_claude_code.side_effect = [("Hi!", "session-1"), ("/leave", "session-1")]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
     assert len(messages) == 4
@@ -40,7 +40,7 @@ async def test_generating_precedes_each_message(
 ):
     """Each Message is immediately preceded by a Generating event for the same chatbot."""
     mock_litellm.side_effect = [("Hello!", ""), ("Again", "")]
-    mock_claude_code.side_effect = ["Hi!", "/leave"]
+    mock_claude_code.side_effect = [("Hi!", "session-1"), ("/leave", "session-1")]
     events = await collect(session_config)
     for i, event in enumerate(events):
         if isinstance(event, Message):
@@ -67,7 +67,7 @@ async def test_leave_by_chatbot_b(
 ):
     """When chatbot B responds with /leave, conversation ends after that message."""
     mock_litellm.side_effect = [("Hello!", "")]
-    mock_claude_code.side_effect = ["/leave"]
+    mock_claude_code.side_effect = [("/leave", "session-1")]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
     assert len(messages) == 2
@@ -95,7 +95,7 @@ async def test_leave_after_two_messages_stops_conversation(
 ):
     """A /leave from chatbot B stops the conversation after two messages."""
     mock_litellm.side_effect = [("Hi!", "")]
-    mock_claude_code.side_effect = ["/leave"]
+    mock_claude_code.side_effect = [("/leave", "session-1")]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
     assert len(messages) == 2
@@ -119,12 +119,12 @@ async def test_mixed_providers_dispatches_correctly(
     """Chatbot A uses litellm, chatbot B uses claude_code — correct functions called."""
     session_config.chatbot_b.provider = "claude_code"
     mock_or = AsyncMock(return_value=("From OR", ""))
-    mock_cc = AsyncMock(return_value="From CC")
+    mock_cc = AsyncMock(return_value=("From CC", "session-1"))
     monkeypatch.setattr("app.engine.call_litellm", mock_or)
     monkeypatch.setattr("app.engine.call_claude_code", mock_cc)
 
     mock_or.side_effect = [("From OR", "")]
-    mock_cc.side_effect = ["/leave"]
+    mock_cc.side_effect = [("/leave", "session-1")]
     events = await collect(session_config)
     messages = [e for e in events if isinstance(e, Message)]
 
@@ -139,7 +139,7 @@ async def test_history_role_perspective(
 ):
     """All messages are 'assistant' in the role assignment."""
     mock_litellm.side_effect = [("A says hi", ""), ("A again", "")]
-    mock_claude_code.side_effect = ["B replies", "/leave"]
+    mock_claude_code.side_effect = [("B replies", "session-1"), ("/leave", "session-1")]
 
     await collect(session_config)
 
@@ -339,3 +339,16 @@ async def test_pause_retries_same_chatbot(
     assert len(generating_events) == 2
     assert generating_events[0].chatbot == "a"
     assert generating_events[1].chatbot == "a"
+
+
+async def test_claude_code_session_id_is_reused_between_turns(
+    mock_litellm: AsyncMock, mock_claude_code: AsyncMock, session_config: SessionConfig
+):
+    """Claude Code reuses the provider session id across successful turns."""
+    mock_litellm.side_effect = [("Hello!", ""), ("Again", "")]
+    mock_claude_code.side_effect = [("Hi!", "claude-session"), ("/leave", "claude-session")]
+
+    await collect(session_config)
+
+    assert mock_claude_code.call_args_list[0].kwargs["session_id"] is None
+    assert mock_claude_code.call_args_list[1].kwargs["session_id"] == "claude-session"
