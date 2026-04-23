@@ -36,9 +36,6 @@ async def call_claude_code(
         "--model",
         model,
     ]
-
-    if session_id is None and system_prompt:
-        args += ["--system-prompt", system_prompt]
     args.append(prompt)
 
     logger.info("Calling claude CLI: model=%s", model)
