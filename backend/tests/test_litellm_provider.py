@@ -75,6 +75,8 @@ async def test_openrouter_marks_system_prompt_for_cache(
 
     call_kwargs = mock_litellm.acompletion.call_args
     messages = call_kwargs.kwargs.get("messages")
+    assert messages[0]["role"] == "system"
+    assert messages[0]["content"] == "Be helpful"
     assert messages[0]["cache_control"] == {"type": "ephemeral"}
 
 
@@ -110,38 +112,6 @@ async def test_prompt_logged_to_file(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
     entry = json.loads(log_file.read_text().strip())
     assert entry["model"] == "my-model"
-
-
-async def test_openrouter_sets_reasoning_effort_to_none(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
-    """OpenRouter requests opt out of thinking when supported."""
-    monkeypatch.setattr("app.providers.litellm_provider.LOGS_DIR", tmp_path)
-    mock_response = make_mock_response("Hi")
-    with patch("app.providers.litellm_provider.litellm") as mock_litellm:
-        mock_litellm.acompletion = AsyncMock(return_value=mock_response)
-        from app.providers.litellm_provider import call_litellm
-
-        await call_litellm("openrouter", "model", "sys", [])
-
-    call_kwargs = mock_litellm.acompletion.call_args
-    assert call_kwargs.kwargs.get("reasoning_effort") == "none"
-
-
-async def test_other_litellm_providers_omit_reasoning_effort(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
-    """Non-OpenRouter requests do not send reasoning_effort."""
-    monkeypatch.setattr("app.providers.litellm_provider.LOGS_DIR", tmp_path)
-    mock_response = make_mock_response("Hi")
-    with patch("app.providers.litellm_provider.litellm") as mock_litellm:
-        mock_litellm.acompletion = AsyncMock(return_value=mock_response)
-        from app.providers.litellm_provider import call_litellm
-
-        await call_litellm("github_copilot", "model", "sys", [])
-
-    call_kwargs = mock_litellm.acompletion.call_args
-    assert "reasoning_effort" not in call_kwargs.kwargs
 
 
 async def test_other_litellm_providers_omit_cache_control(

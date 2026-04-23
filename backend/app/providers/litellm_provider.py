@@ -19,10 +19,7 @@ async def call_litellm(
 ) -> Tuple[str, str]:
     all_messages = _build_messages(provider, system_prompt, messages)
     _log_prompt(model, all_messages)
-    extra_params: dict = {}
     full_model = f"openrouter/{model}" if provider == "openrouter" else model
-    if provider == "openrouter":
-        extra_params["reasoning_effort"] = "none"
     logger.info(
         "Calling LiteLLM: provider=%s model=%s message_count=%d",
         provider,
@@ -32,7 +29,6 @@ async def call_litellm(
     response = await litellm.acompletion(
         model=full_model,
         messages=all_messages,
-        **extra_params,
     )
     message = response.choices[0].message
     content = message.content or ""
