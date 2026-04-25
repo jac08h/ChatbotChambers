@@ -239,14 +239,23 @@ def get_providers() -> dict:
     for key, config in LITELLM_PROVIDERS.items():
         env_var = LITELLM_PROVIDER_ENV_VARS.get(key)
         available = bool(os.environ.get(env_var)) if env_var else True
-        entry: dict = {"available": available}
+        entry: dict = {
+            "available": available,
+            "available_in_hosted": bool(config.get("available_in_hosted")),
+        }
         if config.get("docs_url"):
             entry["docs_url"] = config["docs_url"]
         providers[key] = entry
-    providers["claude_code"] = {"available": shutil.which("claude") is not None}
-    providers["codex"] = {"available": shutil.which("codex") is not None}
+    providers["claude_code"] = {
+        "available": shutil.which("claude") is not None,
+        "available_in_hosted": False,
+    }
+    providers["codex"] = {
+        "available": shutil.which("codex") is not None,
+        "available_in_hosted": False,
+    }
     if MOCK_PROVIDER_ENABLED:
-        providers["mock"] = {"available": True}
+        providers["mock"] = {"available": True, "available_in_hosted": False}
     return providers
 
 

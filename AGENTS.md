@@ -2,34 +2,46 @@
 
 ## Project summary
 
-ChatbotChambers is a browser UI plus Python backend where two chatbots talk to each other while the user watches. The backend owns conversation orchestration; the frontend mainly configures, controls, and renders sessions.
+ChatbotChambers is a browser UI plus Python backend where two chatbots talk to each other while the user watches.
+
+- **Local mode** uses the FastAPI backend, REST endpoints, and the existing WebSocket conversation engine.
+- **Hosted mode** keeps the same UI, but moves turn-taking into `frontend/src/lib/conversationEngine.ts`, calls `api/turn.py` over HTTP, and stores state in browser storage.
 
 ## Installation and running
 
-See `README.md` for run and testing commands.
+See `README.md` for local run commands, validation commands, and hosted Vercel setup.
 
 ## Repository layout
 
 ```text
-.cache/                        Local state storage
+api/
+    turn.py                     Hosted Vercel function for one OpenRouter turn
+
 backend/
     app/
-        main.py                FastAPI app, REST endpoints, WebSocket endpoint
-        engine.py              Conversation loop
-        models.py              Pydantic models and provider/model lists
-        prompts/               Conversation preambles
-        providers/             LiteLLM, Claude Code, Codex, and mock integrations
-        scenarios/             Bundled default scenarios
-    tests/                     Backend test suite
+        engine.py               Local WebSocket conversation loop
+        main.py                 FastAPI app, REST endpoints, WebSocket endpoint
+        models.py               Pydantic models and provider/model lists
+        prompts/                Conversation preambles
+        providers/              LiteLLM, Claude Code, Codex, and mock integrations
+        scenarios/              Bundled default scenarios
+    tests/                      Backend test suite
 
 frontend/
     src/
-        components/            Setup form, conversation view, sidebar, dialogs
-        hooks/useWebSocket.ts  Frontend conversation and session state
-    e2e/                       Playwright tests
+        components/             Setup form, conversation view, sidebar, dialogs
+        hooks/
+            useConversation.ts  Transport-agnostic conversation/session hook
+            useWebSocket.ts     Compatibility re-export
+        lib/
+            conversationEngine.ts   Hosted browser-side engine mirroring backend/app/engine.py
+            storage.ts              Hosted browser storage wrapper
+            transport/              WebSocket and hosted HTTP transports
+        services/               REST-vs-browser-storage service layer
+    e2e/                        Playwright tests
 ```
 
-## Coding Conventions
+## Coding conventions
 
 - Double quotes for strings
 - Four spaces for indentation
@@ -40,13 +52,14 @@ frontend/
 - Absolute imports from repo root
 - Update AGENTS.md when a relevant part of the code changes
 
-## Architecture Docs
+## Architecture docs
 
 See `info/prompt_construction.md` for how system prompts are built and passed to providers.
 
 ## Branding
 
 The ChatbotChambers wordmark uses an editorial contrast approach:
+
 - **Chatbot**: Inter, 0.42em (relative to sidebar brand size), weight 800, uppercase, letter-spacing 0.28em
 - **Chambers**: Fraunces serif, weight 700, letter-spacing -0.04em
 - Both stack vertically (flex-direction: column) in the sidebar brand section

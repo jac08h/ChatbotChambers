@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "cd frontend && corepack pnpm install --frozen-lockfile",
+  "buildCommand": "cd frontend && corepack pnpm build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/*.py": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -6,11 +6,13 @@ LITELLM_PROVIDERS: Dict[str, Any] = {
     "openrouter": {
         "label": "OpenRouter",
         "docs_url": "https://docs.litellm.ai/docs/providers/openrouter",
+        "available_in_hosted": True,
         "models": [],
     },
     "github_copilot": {
         "label": "GitHub Copilot",
         "docs_url": "https://docs.litellm.ai/docs/providers/github_copilot",
+        "available_in_hosted": False,
         "models": [
             ("github_copilot/gpt-4o", "GPT-4o"),
             ("github_copilot/gpt-5-mini", "GPT-5 Mini"),

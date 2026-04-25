@@ -397,6 +397,26 @@ button {
     color: var(--text-dim);
 }
 
+.sidebar-api-key {
+    width: 100%;
+    margin-bottom: 0.8rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 0.04em;
+    transition: all 150ms ease;
+}
+
+.sidebar-api-key:hover {
+    background: var(--accent-glow);
+}
+
 .sidebar-brand-actions {
     display: flex;
     align-items: center;
@@ -876,6 +896,17 @@ input::placeholder {
     cursor: not-allowed;
 }
 
+.api-key-inline-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.api-key-inline-button {
+    flex-shrink: 0;
+}
+
 .scenario-chips {
     display: flex;
     flex-wrap: wrap;
@@ -1113,6 +1144,13 @@ input::placeholder {
     font-size: 1.05rem;
     font-weight: 600;
     color: var(--dialog-text);
+}
+
+.api-key-dialog-copy {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    line-height: 1.45;
 }
 
 .rename-dialog-input {
@@ -1616,6 +1654,10 @@ html[data-theme="light"] .chatbot-b .message-bubble {
     background: var(--danger-bg);
     border: 1px solid var(--danger-border);
     color: var(--danger);
+}
+
+.api-key-error {
+    margin-top: -0.25rem;
 }
 
 .empty-message-banner {

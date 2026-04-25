@@ -11,15 +11,25 @@ LOGS_DIR = Path(__file__).parent.parent.parent / "logs"
 logger = logging.getLogger(__name__)
 
 
+def build_litellm_messages(system_prompt: str, messages: List[dict]) -> List[dict]:
+    return [{"role": "system", "content": system_prompt}] + messages
+
+
+def build_litellm_extra_params(provider: str) -> dict:
+    if provider == "openrouter":
+        return {"reasoning_effort": "none"}
+    return {}
+
+
 async def call_litellm(
     provider: str,
     model: str,
     system_prompt: str,
     messages: List[dict],
 ) -> Tuple[str, str]:
-    all_messages = [{"role": "system", "content": system_prompt}] + messages
+    all_messages = build_litellm_messages(system_prompt, messages)
     _log_prompt(model, all_messages)
-    extra_params: dict = {}
+    extra_params = build_litellm_extra_params(provider)
     full_model = f"openrouter/{model}" if provider == "openrouter" else model
     logger.info(
         "Calling LiteLLM: provider=%s model=%s message_count=%d",
@@ -37,10 +47,10 @@ async def call_litellm(
     logger.debug("LiteLLM response: model=%s, %d chars", model, len(content))
     return content, ""
 
-
 def _log_prompt(model: str, messages: List[dict]) -> None:
     try:
-        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        if not LOGS_DIR.exists():
+            LOGS_DIR.mkdir(parents=True, exist_ok=True)
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "model": model,

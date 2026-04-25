@@ -61,6 +61,20 @@ async def test_system_prompt_prepended(tmp_path: Path, monkeypatch: pytest.Monke
     assert messages[1]["role"] == "user"
 
 
+def test_build_litellm_messages_prepends_system_prompt():
+    """Shared helper prepends the system prompt to prior messages."""
+    from app.providers.litellm_provider import build_litellm_messages
+
+    result = build_litellm_messages(
+        "Be helpful", [{"role": "assistant", "content": "History"}]
+    )
+
+    assert result == [
+        {"role": "system", "content": "Be helpful"},
+        {"role": "assistant", "content": "History"},
+    ]
+
+
 async def test_empty_response_returns_empty_strings(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):

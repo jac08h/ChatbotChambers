@@ -99,7 +99,9 @@ async def test_get_providers_returns_provider_info(
     data = response.json()
     assert data["openrouter"]["available"] is False
     assert "docs_url" in data["openrouter"]
+    assert data["openrouter"]["available_in_hosted"] is True
     assert data["github_copilot"]["available"] is True
+    assert data["github_copilot"]["available_in_hosted"] is False
 
 
 async def test_get_providers_claude_code_available_when_cli_found(
