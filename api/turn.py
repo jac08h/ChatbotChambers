@@ -93,6 +93,7 @@ async def create_turn(request: Request, payload: TurnRequest) -> StreamingRespon
 
 def _check_rate_limit(client_id: str) -> None:
     now = time.time()
+    _prune_rate_limit_state(now)
     timestamps = _rate_limit_state[client_id]
     while timestamps and now - timestamps[0] >= _RATE_LIMIT_WINDOW_SECONDS:
         timestamps.popleft()
@@ -101,10 +102,25 @@ def _check_rate_limit(client_id: str) -> None:
     timestamps.append(now)
 
 
+def _prune_rate_limit_state(now: float) -> None:
+    expired_clients = []
+    for client_id, timestamps in _rate_limit_state.items():
+        while timestamps and now - timestamps[0] >= _RATE_LIMIT_WINDOW_SECONDS:
+            timestamps.popleft()
+        if not timestamps:
+            expired_clients.append(client_id)
+    for client_id in expired_clients:
+        _rate_limit_state.pop(client_id, None)
+
+
 def _client_id(request: Request) -> str:
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip:
+        return real_ip
     forwarded_for = request.headers.get("x-forwarded-for", "")
     if forwarded_for:
-        return forwarded_for.split(",", 1)[0].strip()
+        if request.headers.get("x-vercel-id"):
+            return forwarded_for.split(",", 1)[0].strip()
     if request.client:
         return request.client.host
     return "unknown"

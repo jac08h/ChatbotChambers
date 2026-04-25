@@ -125,6 +125,7 @@ describe("SetupForm", () => {
     it("loading a scenario fills shared and individual prompts", async () => {
         render(<SetupForm onStart={vi.fn()} error={null} />)
         const scenarioSelect = await waitFor(() => screen.getAllByRole("combobox")[0])
+        await waitFor(() => expect(screen.getByRole("option", { name: "Debate" })).toBeInTheDocument())
         await userEvent.selectOptions(scenarioSelect, "debate")
         expect(screen.getByDisplayValue("You are debating.")).toBeInTheDocument()
         expect(screen.getByDisplayValue("You argue for.")).toBeInTheDocument()

@@ -11,7 +11,7 @@ import {
 
 const SLUG_ADJECTIVES = [
     "aligned",
-    "autoregessive",
+    "autoregressive",
     "babbling",
     "bootstrapped",
     "calibrated",

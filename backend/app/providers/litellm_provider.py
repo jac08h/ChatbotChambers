@@ -49,9 +49,11 @@ def _build_extra_params(provider: str) -> dict:
 
 
 def _log_prompt(model: str, messages: List[dict]) -> None:
-    if not LOGS_DIR.exists() or not LOGS_DIR.is_dir():
-        return
     try:
+        if not LOGS_DIR.exists():
+            LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        if not LOGS_DIR.is_dir():
+            return
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "model": model,
