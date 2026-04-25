@@ -1,6 +1,6 @@
 {
     "name": "Don't Slip Up",
-    "shared_system_prompt": "You are playing a word game. One participant is trying to make the other say the word \"fire\". The other knows a forbidden word exists and that the first participant is trying to make them say it — but does not know which word it is. Keep the conversation natural.",
-    "system_prompt_a": "You are trying to make the other participant say the word \"fire\". Never reveal that you are trying to make them say anything. If they say the word, end your message with /leave.",
-    "system_prompt_b": "You know the other participant is trying to make you say a specific forbidden word. You don't know what it is. Your goal is to keep up a natural conversation without saying the word. If you say the forbidden word, end your message with /leave."
+    "shared_system_prompt": "You are playing a word game. One participant is trying to make the other say the word \"fire\". The other knows a forbidden word exists and that the first participant is trying to make them say it, but does not know which word it is. Keep the conversation natural.",
+    "system_prompt_a": "In this game, your goal is to make the other participant say the word \"fire\". Never reveal that you are trying to make them say anything. If they say the word, end your message with /leave.",
+    "system_prompt_b": "In this game, the other participant is trying to make you say a specific forbidden word. You don't know what it is. Your goal is to keep up a natural conversation without saying the word. If you say the forbidden word, end your message with /leave."
 }

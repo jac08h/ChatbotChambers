@@ -62,7 +62,7 @@ export default function App() {
     const handleNewChat = () => {
         if (ws.status === "running") {
             ws.pause();
-        } else {
+        } else if (ws.status !== "paused") {
             ws.reset();
         }
         setShowSetup(true);
@@ -215,6 +215,7 @@ export default function App() {
         <div className={`app-shell${isSidebarCollapsed ? " sidebar-collapsed-layout" : ""}`}>
             <Sidebar
                 currentSession={currentSession}
+                currentStatus={ws.status}
                 history={ws.history}
                 currentLabel={currentDisplayTitle}
                 onNewChat={handleNewChat}

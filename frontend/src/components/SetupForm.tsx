@@ -107,13 +107,10 @@ interface ChatbotConfigProps {
     provider: Provider;
     model: string;
     openRouterModel: string;
-    name: string;
-    defaultName: string;
     prompt: string;
     onProviderChange: (p: Provider) => void;
     onModelChange: (m: string) => void;
     onOpenRouterModelChange: (m: string) => void;
-    onNameChange: (n: string) => void;
     onPromptChange: (p: string) => void;
 }
 
@@ -125,16 +122,12 @@ function ChatbotConfig({
     provider,
     model,
     openRouterModel,
-    name,
-    defaultName,
     prompt,
     onProviderChange,
     onModelChange,
     onOpenRouterModelChange,
-    onNameChange,
     onPromptChange,
 }: ChatbotConfigProps) {
-    const [expanded, setExpanded] = useState(false);
     const [infoOpen, setInfoOpen] = useState(false);
 
     const selectedModel = models.find((m) => m.id === model);
@@ -208,28 +201,6 @@ function ChatbotConfig({
                 />
             </label>
 
-            <button
-                type="button"
-                className="advanced-toggle"
-                onClick={() => setExpanded((prev) => !prev)}
-                aria-expanded={expanded}
-            >
-                {expanded ? "Hide advanced" : "Advanced"}
-                <span className={`advanced-toggle-icon ${expanded ? "open" : ""}`}>›</span>
-            </button>
-
-            <div className={`advanced-fields ${expanded ? "" : "advanced-fields-hidden"}`} aria-hidden={!expanded}>
-                <label className="field">
-                    <span>Name</span>
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={(event) => onNameChange(event.target.value)}
-                        placeholder={defaultName || (provider === "openrouter" && !openRouterModel ? shortModelName({ id: DEFAULT_OPENROUTER_MODEL, name: DEFAULT_OPENROUTER_MODEL }) : "")}
-                        tabIndex={expanded ? 0 : -1}
-                    />
-                </label>
-            </div>
         </section>
     );
 }
@@ -261,8 +232,6 @@ export function SetupForm({
     const [sharedPrompt, setSharedPrompt] = useState("");
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");
-    const [conversationTitle, setConversationTitle] = useState("");
-    const [isConversationNameExpanded, setIsConversationNameExpanded] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     const [isSaveScenarioOpen, setIsSaveScenarioOpen] = useState(false);
     const [scenarioName, setScenarioName] = useState("");
@@ -629,7 +598,7 @@ export function SetupForm({
         event.preventDefault();
         const config = buildConfig();
         await saveSettings(config).catch(() => {});
-        onStart(config, conversationTitle.trim());
+        onStart(config, "");
     };
 
     const canStart = Boolean(
@@ -859,13 +828,10 @@ export function SetupForm({
                             provider={providerA}
                             model={modelA}
                             openRouterModel={openRouterModelA}
-                            name={nameA}
-                            defaultName={defaultNameA}
                             prompt={promptA}
                             onProviderChange={setProviderA}
                             onModelChange={setModelA}
                             onOpenRouterModelChange={setOpenRouterModelA}
-                            onNameChange={(n) => { setNameA(n); setNameAManual(n !== ""); }}
                             onPromptChange={setPromptA}
                         />
                         <ChatbotConfig
@@ -876,46 +842,15 @@ export function SetupForm({
                             provider={providerB}
                             model={modelB}
                             openRouterModel={openRouterModelB}
-                            name={nameB}
-                            defaultName={defaultNameB}
                             prompt={promptB}
                             onProviderChange={setProviderB}
                             onModelChange={setModelB}
                             onOpenRouterModelChange={setOpenRouterModelB}
-                            onNameChange={(n) => { setNameB(n); setNameBManual(n !== ""); }}
                             onPromptChange={setPromptB}
                         />
                     </div>
 
-                    <div className="advanced-toggle-wrapper">
-                        <button
-                            type="button"
-                            className="advanced-toggle"
-                            onClick={() => setIsConversationNameExpanded((prev) => !prev)}
-                            aria-expanded={isConversationNameExpanded}
-                        >
-                            {isConversationNameExpanded ? "Hide advanced" : "Advanced"}
-                            <span className={`advanced-toggle-icon ${isConversationNameExpanded ? "open" : ""}`}>›</span>
-                        </button>
-                    </div>
-
                     <div className="setup-bottom">
-                        <div
-                            className={`advanced-fields ${isConversationNameExpanded ? "" : "advanced-fields-hidden"}`}
-                            aria-hidden={!isConversationNameExpanded}
-                        >
-                            <label className="field">
-                                <span>Conversation name</span>
-                                <input
-                                    type="text"
-                                    value={conversationTitle}
-                                    onChange={(event) => setConversationTitle(event.target.value)}
-                                    placeholder="Auto-generated if empty"
-                                    tabIndex={isConversationNameExpanded ? 0 : -1}
-                                />
-                            </label>
-                        </div>
-
                         <div className="setup-actions">
                             <button type="submit" className="start-btn" disabled={!canStart}>
                                 Start conversation

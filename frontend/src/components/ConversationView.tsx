@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
     DEFAULT_CHATBOT_NAMES,
     type ChatMessage,
@@ -14,6 +14,8 @@ const PROVIDER_LABELS: Record<Provider, string> = {
     codex: "Codex CLI",
     mock: "Mock",
 };
+
+const SCROLL_FOLLOW_THRESHOLD_PX = 24;
 
 interface ConversationViewProps {
     messages: ChatMessage[];
@@ -66,14 +68,51 @@ export function ConversationView({
     onDeleteSession,
 }: ConversationViewProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
+    const autoScrollEnabledRef = useRef(true);
+    const [isDetachedFromBottom, setIsDetachedFromBottom] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
 
-    useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, generatingChatbot, status]);
+    useLayoutEffect(() => {
+        if (!autoScrollEnabledRef.current) {
+            return;
+        }
+        bottomRef.current?.scrollIntoView();
+    }, [messages, generatingChatbot, status, doneReason, error, emptyMessageError]);
 
-    const showControls = (status === "running" || status === "paused") && (onPause || onResume);
+    useEffect(() => {
+        const target = getScrollTarget(bottomRef.current);
+        const handleScroll = () => {
+            const isAtBottom = isScrolledToBottom(target);
+            autoScrollEnabledRef.current = isAtBottom;
+            setIsDetachedFromBottom(!isAtBottom);
+        };
+
+        handleScroll();
+
+        if (target === window) {
+            window.addEventListener("scroll", handleScroll, { passive: true });
+            return () => window.removeEventListener("scroll", handleScroll);
+        }
+
+        target.addEventListener("scroll", handleScroll, { passive: true });
+        return () => target.removeEventListener("scroll", handleScroll);
+    }, [messages.length, generatingChatbot, status, doneReason, error, emptyMessageError]);
+
+    const showJumpToNewest = messages.length > 0 && isDetachedFromBottom;
+    const showPauseButton = status === "running" && Boolean(onPause);
+    const showResumeButton = status === "paused" && !emptyMessageError && Boolean(onResume);
+    const showRetryButton = status === "paused" && Boolean(emptyMessageError) && Boolean(onRetry);
+    const showTransportControls = showPauseButton || showResumeButton || showRetryButton;
+    const showNewConversation = !showJumpToNewest && status === "done" && Boolean(onNewConversation);
+    const showPrimaryControls = showTransportControls || showNewConversation;
+    const showFloatingControls = showJumpToNewest || showPrimaryControls;
     const hasSessionActions = Boolean(onRenameSession || onDeleteSession);
+
+    const handleJumpToNewest = () => {
+        autoScrollEnabledRef.current = true;
+        setIsDetachedFromBottom(false);
+        bottomRef.current?.scrollIntoView();
+    };
 
     return (
         <div className="conversation-container">
@@ -157,23 +196,31 @@ export function ConversationView({
                 <div ref={bottomRef} />
             </div>
 
-            {showControls && (
+            {showFloatingControls && (
                 <div className="floating-controls">
-                    {status === "running" && onPause && (
-                        <button className="control-btn" onClick={onPause} type="button">Pause</button>
+                    {showJumpToNewest && (
+                        <div className="floating-controls-row">
+                            <button className="control-btn control-btn-jump" onClick={handleJumpToNewest} type="button">
+                                Jump to latest
+                            </button>
+                        </div>
                     )}
-                    {status === "paused" && !emptyMessageError && onResume && (
-                        <button className="control-btn" onClick={onResume} type="button">Resume</button>
+                    {showPrimaryControls && (
+                        <div className="floating-controls-row">
+                            {showPauseButton && onPause && (
+                                <button className="control-btn" onClick={onPause} type="button">Pause</button>
+                            )}
+                            {showResumeButton && onResume && (
+                                <button className="control-btn" onClick={onResume} type="button">Resume</button>
+                            )}
+                            {showRetryButton && onRetry && (
+                                <button className="control-btn control-btn-retry" onClick={onRetry} type="button">Retry</button>
+                            )}
+                            {showNewConversation && onNewConversation && (
+                                <button className="control-btn" onClick={onNewConversation} type="button">New conversation</button>
+                            )}
+                        </div>
                     )}
-                    {status === "paused" && emptyMessageError && onRetry && (
-                        <button className="control-btn control-btn-retry" onClick={onRetry} type="button">Retry</button>
-                    )}
-                </div>
-            )}
-
-            {status === "done" && onNewConversation && (
-                <div className="floating-controls">
-                    <button className="control-btn" onClick={onNewConversation} type="button">New conversation</button>
                 </div>
             )}
         </div>
@@ -236,6 +283,39 @@ function AvatarGlyph({ avatar }: { avatar: string }) {
             }}
         />
     );
+}
+
+function getScrollTarget(node: HTMLElement | null): HTMLElement | Window {
+    let current = node?.parentElement ?? null;
+
+    while (current) {
+        const overflowY = window.getComputedStyle(current).overflowY;
+        if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") {
+            return current;
+        }
+        current = current.parentElement;
+    }
+
+    return window;
+}
+
+function isWindowTarget(target: HTMLElement | Window): target is Window {
+    return target === window;
+}
+
+function isScrolledToBottom(target: HTMLElement | Window): boolean {
+    if (isWindowTarget(target)) {
+        const viewportHeight = window.innerHeight;
+        const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+        const scrollHeight = Math.max(
+            document.documentElement.scrollHeight,
+            document.body.scrollHeight,
+        );
+
+        return scrollTop + viewportHeight >= scrollHeight - SCROLL_FOLLOW_THRESHOLD_PX;
+    }
+
+    return target.scrollTop + target.clientHeight >= target.scrollHeight - SCROLL_FOLLOW_THRESHOLD_PX;
 }
 
 function getGeneratingName(messages: ChatMessage[], chatbot: "a" | "b"): string {

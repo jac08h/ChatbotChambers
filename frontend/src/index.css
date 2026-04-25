@@ -345,6 +345,37 @@ button {
     font-style: italic;
 }
 
+.session-status-icon {
+    display: inline-block;
+    flex-shrink: 0;
+    margin-right: 0.4em;
+    vertical-align: middle;
+    position: relative;
+    top: -0.05em;
+}
+
+.session-status-running {
+    color: #7dd3a8;
+    animation: status-pulse 1.4s ease-in-out infinite;
+}
+
+.session-status-paused {
+    color: #a89b7d;
+}
+
+.session-status-done {
+    color: #7a8fa6;
+}
+
+.session-status-error {
+    color: #e07070;
+}
+
+@keyframes status-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
 .sidebar-delete-all {
     width: 100%;
     margin-top: auto;
@@ -1555,10 +1586,17 @@ html[data-theme="light"] .chatbot-b .message-bubble {
     position: sticky;
     bottom: 1.25rem;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 0;
     pointer-events: none;
+}
+
+.floating-controls-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
 }
 
 .control-btn {
@@ -1577,6 +1615,16 @@ html[data-theme="light"] .chatbot-b .message-bubble {
 .control-btn:hover {
     background: var(--bg);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.control-btn-jump {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg-secondary));
+}
+
+.control-btn-jump:hover {
+    background: color-mix(in srgb, var(--accent) 16%, var(--bg));
 }
 
 .control-btn-stop {
@@ -1687,6 +1735,10 @@ html[data-theme="light"] .control-btn {
 
 html[data-theme="light"] .control-btn:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme="light"] .control-btn-jump {
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
 }
 
 html[data-theme="light"] .chatbot-config {

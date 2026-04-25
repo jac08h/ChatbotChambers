@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getSessionDisplayTitle } from "../hooks/useConversation";
-import type { ArchivedSession } from "../lib/types";
+import type { ArchivedSession, Status } from "../lib/types";
 
 interface SessionSummary {
     id: string;
@@ -9,6 +9,7 @@ interface SessionSummary {
 
 interface SidebarProps {
     currentSession: SessionSummary | null;
+    currentStatus: Status;
     history: ArchivedSession[];
     currentLabel: string | null;
     onHome: () => void;
@@ -29,14 +30,58 @@ interface SidebarProps {
 
 interface SidebarHistoryItemProps {
     session: SessionSummary;
+    status: Status;
     isActive: boolean;
     onSelect: () => void;
     onRename: () => void;
     onDelete: () => void;
 }
 
+function SessionStatusIcon({ status }: { status: Status }) {
+    if (status === "running") {
+        return (
+            <svg className="session-status-icon session-status-running" aria-label="Running" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">
+                <circle cx="5" cy="5" r="4" fill="currentColor" />
+            </svg>
+        );
+    }
+    if (status === "paused") {
+        return (
+            <svg className="session-status-icon session-status-paused" aria-label="Paused" xmlns="http://www.w3.org/2000/svg" width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
+                <rect x="0" y="0" width="3.5" height="12" rx="1" />
+                <rect x="6.5" y="0" width="3.5" height="12" rx="1" />
+            </svg>
+        );
+    }
+    if (status === "done") {
+        return (
+            <svg className="session-status-icon session-status-done" aria-label="Done" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+            </svg>
+        );
+    }
+    if (status === "error") {
+        return (
+            <svg className="session-status-icon session-status-error" aria-label="Error" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+        );
+    }
+    return null;
+}
+
+function archivedSessionStatus(session: ArchivedSession): Status {
+    if (session.error) {
+        return "error";
+    }
+    return "done";
+}
+
 export function Sidebar({
     currentSession,
+    currentStatus,
     history,
     currentLabel,
     onHome,
@@ -96,6 +141,7 @@ export function Sidebar({
                         {hasCurrentConversation && currentSession && (
                             <SidebarHistoryItem
                                 session={currentSession}
+                                status={currentStatus}
                                 isActive={isCurrentConversationSelected}
                                 onSelect={onSelectCurrentConversation}
                                 onRename={() => onRenameSession(currentSession)}
@@ -106,6 +152,7 @@ export function Sidebar({
                             <SidebarHistoryItem
                                 key={session.id}
                                 session={session}
+                                status={archivedSessionStatus(session)}
                                 isActive={selectedSessionId === session.id}
                                 onSelect={() => onSelectSession(session)}
                                 onRename={() => onRenameSession(session)}
@@ -137,6 +184,7 @@ export function Sidebar({
 
 function SidebarHistoryItem({
     session,
+    status,
     isActive,
     onSelect,
     onRename,
@@ -152,6 +200,7 @@ function SidebarHistoryItem({
                 type="button"
                 title={getSessionDisplayTitle(session)}
             >
+                <SessionStatusIcon status={status} />
                 {getSessionDisplayTitle(session)}
             </button>
             <div className="sidebar-item-actions">

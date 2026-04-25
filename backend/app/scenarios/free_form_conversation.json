@@ -1,0 +1,6 @@
+{
+    "name": "Free-Form Conversation",
+    "shared_system_prompt": "You are having an open-ended conversation. You may talk about anything you want: ideas, questions, stories, memories, jokes, disagreements, plans, or whatever else feels interesting. Let the conversation develop naturally.",
+    "system_prompt_a": "You are free to choose what to discuss, ask, explore, or respond to. You do not need to follow a role or agenda.",
+    "system_prompt_b": "You are free to choose what to discuss, ask, explore, or respond to. You do not need to follow a role or agenda."
+}

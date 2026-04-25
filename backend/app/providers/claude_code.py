@@ -1,8 +1,11 @@
 import asyncio
 import logging
+import os
 from typing import List
 
 logger = logging.getLogger(__name__)
+
+_CLAUDE_CWD = os.environ.get("SESSIONS_DIR", "/tmp/ChatbotChambers/sessions")
 
 
 async def call_claude_code(model: str, system_prompt: str, messages: List[dict]) -> str:
@@ -18,16 +21,30 @@ async def call_claude_code(model: str, system_prompt: str, messages: List[dict])
         "--strict-mcp-config",
         "--mcp-config",
         '{"mcpServers": {}}',
+        "--exclude-dynamic-system-prompt-sections",
     ]
     if system_prompt:
         args += ["--system-prompt", system_prompt]
     args.append(prompt)
 
-    logger.info("Calling claude CLI: model=%s", model)
+    os.makedirs(_CLAUDE_CWD, exist_ok=True)
+    sep = "=" * 80
+    sub = "-" * 80
+    logger.info(
+        "\n%s\nCalling claude CLI: model=%s\n%s\n[SYSTEM PROMPT]\n%s\n%s\n[PROMPT]\n%s\n%s",
+        sep,
+        model,
+        sub,
+        system_prompt,
+        sub,
+        prompt,
+        sep,
+    )
     process = await asyncio.create_subprocess_exec(
         *args,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
+        cwd=_CLAUDE_CWD,
     )
     try:
         stdout, stderr = await process.communicate()
