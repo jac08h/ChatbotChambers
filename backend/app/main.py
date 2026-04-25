@@ -11,9 +11,15 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+_LOG_DIR = os.environ.get("LOG_DIR", "/tmp/ChatbotChambers/logs")
+os.makedirs(_LOG_DIR, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(os.path.join(_LOG_DIR, "backend.log")),
+    ],
 )
 
 from app.engine import EmptyMessage, Generating, run_conversation

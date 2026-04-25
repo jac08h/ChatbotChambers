@@ -13,8 +13,8 @@ from app.models import (
 )
 from app.providers.claude_code import call_claude_code
 from app.providers.codex_cli import call_codex
-from app.providers.mock import MOCK_MODELS, call_mock
 from app.providers.litellm_provider import call_litellm
+from app.providers.mock import MOCK_MODELS, call_mock
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +25,7 @@ PREAMBLE_A = (PROMPTS_DIR / "preamble_a.md").read_text().strip()
 PREAMBLE_B = (PROMPTS_DIR / "preamble_b.md").read_text().strip()
 
 _LITELLM_MODELS = [
-    model
-    for provider in LITELLM_PROVIDERS.values()
-    for model in provider["models"]
+    model for provider in LITELLM_PROVIDERS.values() for model in provider["models"]
 ]
 
 ALL_MODELS = dict(_LITELLM_MODELS + CLAUDE_CODE_MODELS + CODEX_MODELS + MOCK_MODELS)
@@ -58,7 +56,7 @@ async def run_conversation(
 
     history: List[Tuple[str, str]] = []
     turn = 0
-    labels = {"a": config.chatbot_a.name, "b": config.chatbot_b.name}
+    labels = {"a": "A", "b": "B"}
 
     chatbots = [
         ("a", config.chatbot_a, PREAMBLE_A),
@@ -207,12 +205,19 @@ async def _call_llm(
 
 
 def _build_system_prompt(individual_preamble: str, shared: str, individual: str) -> str:
-    parts = [
-        p
-        for p in [PREAMBLE, individual_preamble, shared.strip(), individual.strip()]
-        if p
-    ]
-    return "\n\n".join(parts)
+    sections = [("[Setup]", PREAMBLE), ("[Your role]", individual_preamble)]
+    if shared.strip():
+        sections.append(
+            ("[Shared system prompt (visible to both LMs)]", shared.strip())
+        )
+    if individual.strip():
+        sections.append(
+            (
+                "[Your individual system prompt (not visible to the other participant)]",
+                individual.strip(),
+            )
+        )
+    return "\n\n".join("%s\n%s" % (header, body) for header, body in sections)
 
 
 def _build_messages(
