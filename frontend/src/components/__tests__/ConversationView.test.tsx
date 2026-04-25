@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ConversationView } from "../ConversationView"
 import type { ChatMessage, SessionConfig } from "../../hooks/useWebSocket"
 
@@ -31,7 +31,36 @@ const defaultProps = {
     config: sampleConfig,
 }
 
+const scrollIntoViewMock = vi.fn()
+
+function setWindowScrollState(scrollY: number, scrollHeight: number, innerHeight = 600): void {
+    Object.defineProperty(window, "scrollY", {
+        configurable: true,
+        value: scrollY,
+        writable: true,
+    })
+    Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: innerHeight,
+        writable: true,
+    })
+    Object.defineProperty(document.documentElement, "scrollHeight", {
+        configurable: true,
+        value: scrollHeight,
+    })
+    Object.defineProperty(document.body, "scrollHeight", {
+        configurable: true,
+        value: scrollHeight,
+    })
+}
+
 describe("ConversationView", () => {
+    beforeEach(() => {
+        scrollIntoViewMock.mockClear()
+        window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock as typeof window.HTMLElement.prototype.scrollIntoView
+        setWindowScrollState(0, 0)
+    })
+
     it("renders message bubbles for each message", () => {
         render(
             <ConversationView
@@ -221,5 +250,132 @@ describe("ConversationView", () => {
         await userEvent.click(screen.getByRole("button", { name: "Conversation options" }))
         await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }))
         expect(onRenameSession).toHaveBeenCalledOnce()
+    })
+
+    it("auto-scrolls when a new message arrives and the user is at the bottom", () => {
+        setWindowScrollState(600, 1200)
+
+        const { rerender } = render(
+            <ConversationView
+                {...defaultProps}
+                messages={[makeMessage("a", "Hello")]}
+            />
+        )
+
+        scrollIntoViewMock.mockClear()
+        fireEvent.scroll(window)
+
+        rerender(
+            <ConversationView
+                {...defaultProps}
+                messages={[makeMessage("a", "Hello"), makeMessage("b", "Hi there")]}
+            />
+        )
+
+        expect(scrollIntoViewMock).toHaveBeenCalledTimes(1)
+    })
+
+    it("does not auto-scroll when a new message arrives and the user is not at the bottom", () => {
+        setWindowScrollState(600, 1200)
+
+        const { rerender } = render(
+            <ConversationView
+                {...defaultProps}
+                messages={[makeMessage("a", "Hello")]}
+            />
+        )
+
+        scrollIntoViewMock.mockClear()
+        setWindowScrollState(300, 1200)
+        fireEvent.scroll(window)
+
+        rerender(
+            <ConversationView
+                {...defaultProps}
+                messages={[makeMessage("a", "Hello"), makeMessage("b", "Hi there")]}
+            />
+        )
+
+        expect(scrollIntoViewMock).not.toHaveBeenCalled()
+    })
+
+    it("shows a jump-to-newest control when the user scrolls away from the bottom", () => {
+        setWindowScrollState(600, 1200)
+
+        render(
+            <ConversationView
+                {...defaultProps}
+                messages={[makeMessage("a", "Hello"), makeMessage("b", "Hi there")]}
+            />
+        )
+
+        setWindowScrollState(300, 1200)
+        fireEvent.scroll(window)
+
+        expect(screen.getByRole("button", { name: "Jump to latest" })).toBeInTheDocument()
+    })
+
+    it("shows jump-to-newest above pause while detached from the bottom", () => {
+        setWindowScrollState(600, 1200)
+
+        render(
+            <ConversationView
+                {...defaultProps}
+                messages={[makeMessage("a", "Hello"), makeMessage("b", "Hi there")]}
+                status="running"
+                onPause={vi.fn()}
+            />
+        )
+
+        setWindowScrollState(300, 1200)
+        fireEvent.scroll(window)
+
+        const controlRows = document.querySelectorAll(".floating-controls-row")
+
+        expect(controlRows).toHaveLength(2)
+        expect(controlRows[0]).toHaveTextContent("Jump to latest")
+        expect(controlRows[1]).toHaveTextContent("Pause")
+        expect(screen.getByRole("button", { name: "Jump to latest" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument()
+    })
+
+    it("hides new conversation while detached from the bottom", () => {
+        setWindowScrollState(600, 1200)
+
+        render(
+            <ConversationView
+                {...defaultProps}
+                messages={[makeMessage("a", "Hello"), makeMessage("b", "Hi there")]}
+                status="done"
+                doneReason="stopped"
+                onNewConversation={vi.fn()}
+            />
+        )
+
+        setWindowScrollState(300, 1200)
+        fireEvent.scroll(window)
+
+        expect(screen.getByRole("button", { name: "Jump to latest" })).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "New conversation" })).not.toBeInTheDocument()
+    })
+
+    it("jump-to-newest scrolls to the bottom and resumes auto-follow", async () => {
+        setWindowScrollState(600, 1200)
+
+        render(
+            <ConversationView
+                {...defaultProps}
+                messages={[makeMessage("a", "Hello"), makeMessage("b", "Hi there")]}
+            />
+        )
+
+        setWindowScrollState(300, 1200)
+        fireEvent.scroll(window)
+        scrollIntoViewMock.mockClear()
+
+        await userEvent.click(screen.getByRole("button", { name: "Jump to latest" }))
+
+        expect(scrollIntoViewMock).toHaveBeenCalledTimes(1)
+        expect(screen.queryByRole("button", { name: "Jump to latest" })).not.toBeInTheDocument()
     })
 })
