@@ -3,7 +3,7 @@ import logging
 import os
 import time
 from collections import defaultdict, deque
-from typing import AsyncIterator, Literal
+from typing import AsyncIterator
 from urllib.parse import urlparse
 
 import litellm
@@ -11,7 +11,10 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from backend.app.providers.litellm_provider import build_litellm_messages
+from backend.app.providers.litellm_provider import (
+    build_litellm_extra_params,
+    build_litellm_messages,
+)
 
 logger = logging.getLogger(__name__)
 app = FastAPI()
@@ -22,7 +25,7 @@ _rate_limit_state: dict[str, deque[float]] = defaultdict(deque)
 
 
 class TurnMessage(BaseModel):
-    speaker: Literal["a", "b"]
+    speaker: str = Field(min_length=1)
     content: str = Field(min_length=1)
 
 
@@ -55,7 +58,7 @@ async def create_turn(request: Request, payload: TurnRequest) -> StreamingRespon
                         for message in payload.messages
                     ],
                 ),
-                reasoning_effort="none",
+                **build_litellm_extra_params("openrouter"),
                 stream=True,
             )
             async for chunk in response:

@@ -22,9 +22,8 @@ function writeJson(key: string, value: unknown): void {
     window.localStorage.setItem(key, JSON.stringify(value));
 }
 
-function slugifyScenarioName(name: string): string {
+function slugifyScenarioName(name: string, scenarios: Scenario[]): string {
     const baseSlug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "scenario";
-    const scenarios = loadStoredScenarios();
     const existingIds = new Set(scenarios.map((scenario) => scenario.id));
     let candidate = baseSlug;
     let suffix = 2;
@@ -45,15 +44,16 @@ export function loadStoredScenarios(): Scenario[] {
 }
 
 export function createStoredScenario(name: string, config: SessionConfig): Scenario {
+    const existingScenarios = loadStoredScenarios();
     const scenario: Scenario = {
-        id: slugifyScenarioName(name),
+        id: slugifyScenarioName(name, existingScenarios),
         name,
         shared_system_prompt: config.shared_system_prompt,
         system_prompt_a: config.chatbot_a.system_prompt,
         system_prompt_b: config.chatbot_b.system_prompt,
         config,
     };
-    const scenarios = [scenario, ...loadStoredScenarios()];
+    const scenarios = [scenario, ...existingScenarios];
     writeJson(SCENARIOS_KEY, scenarios);
     return scenario;
 }

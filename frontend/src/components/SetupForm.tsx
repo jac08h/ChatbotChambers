@@ -397,13 +397,15 @@ export function SetupForm({
         if (!isInitialized) {
             return;
         }
-        const finalModelA = providerA === "openrouter" ? (openRouterModelA || DEFAULT_OPENROUTER_MODEL) : modelA;
-        const finalModelB = providerB === "openrouter" ? (openRouterModelB || DEFAULT_OPENROUTER_MODEL) : modelB;
+        const openRouterModelIdA = openRouterModelA || DEFAULT_OPENROUTER_MODEL;
+        const openRouterModelIdB = openRouterModelB || DEFAULT_OPENROUTER_MODEL;
+        const finalModelA = providerA === "openrouter" ? openRouterModelIdA : modelA;
+        const finalModelB = providerB === "openrouter" ? openRouterModelIdB : modelB;
         const computedDefaultNameA = providerA === "openrouter"
-            ? shortModelName({ id: openRouterModelA || DEFAULT_OPENROUTER_MODEL, name: openRouterModelA || DEFAULT_OPENROUTER_MODEL })
+            ? shortModelName({ id: openRouterModelIdA, name: openRouterModelIdA })
             : shortModelName(modelsA.find((model) => model.id === modelA) ?? { id: modelA, name: modelA });
         const computedDefaultNameB = providerB === "openrouter"
-            ? shortModelName({ id: openRouterModelB || DEFAULT_OPENROUTER_MODEL, name: openRouterModelB || DEFAULT_OPENROUTER_MODEL })
+            ? shortModelName({ id: openRouterModelIdB, name: openRouterModelIdB })
             : shortModelName(modelsB.find((model) => model.id === modelB) ?? { id: modelB, name: modelB });
         const config: SessionConfig = {
             chatbot_a: { name: nameA || computedDefaultNameA, model: finalModelA, system_prompt: promptA, provider: providerA },

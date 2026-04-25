@@ -6,7 +6,7 @@ const PREAMBLE_A = `You are participant A.`;
 const PREAMBLE_B = `You are participant B.`;
 
 export interface ConversationTurnMessage {
-    speaker: "a" | "b";
+    speaker: string;
     content: string;
 }
 
@@ -88,7 +88,7 @@ export async function* runConversationEngine(
                     continue;
                 }
 
-                history.push({ speaker: chatbot.id, content: result.content });
+                history.push({ speaker: chatbot.config.name, content: result.content });
                 yield {
                     type: "message",
                     data: {
