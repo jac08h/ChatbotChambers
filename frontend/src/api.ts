@@ -1,8 +1,13 @@
+import { isHostedMode } from "./lib/deployment";
+
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
 function buildBaseUrl(): URL {
     if (configuredApiBaseUrl) {
         return new URL(configuredApiBaseUrl);
+    }
+    if (isHostedMode && typeof window !== "undefined") {
+        return new URL(window.location.origin);
     }
     return new URL("http://localhost:8001");
 }

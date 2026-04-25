@@ -38,8 +38,6 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
-                theme="dark"
-                onToggleTheme={vi.fn()}
                 isCollapsed={false}
                 onToggleCollapse={vi.fn()}
             />
@@ -65,8 +63,6 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
-                theme="dark"
-                onToggleTheme={vi.fn()}
                 isCollapsed={false}
                 onToggleCollapse={vi.fn()}
             />
@@ -98,8 +94,6 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
-                theme="dark"
-                onToggleTheme={vi.fn()}
                 isCollapsed={false}
                 onToggleCollapse={onToggleCollapse}
             />
@@ -124,8 +118,6 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
-                theme="dark"
-                onToggleTheme={vi.fn()}
                 isCollapsed={true}
                 onToggleCollapse={vi.fn()}
             />
@@ -150,8 +142,6 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
-                theme="dark"
-                onToggleTheme={vi.fn()}
                 isCollapsed={false}
                 onToggleCollapse={vi.fn()}
             />
@@ -176,8 +166,6 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
-                theme="dark"
-                onToggleTheme={vi.fn()}
                 isCollapsed={false}
                 onToggleCollapse={vi.fn()}
             />

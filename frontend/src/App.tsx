@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
+import { ApiKeyDialog } from "./components/ApiKeyDialog";
 import { ConfirmationDialog } from "./components/ConfirmationDialog";
 import { RenameDialog } from "./components/RenameDialog";
 import { ConversationView } from "./components/ConversationView";
 import { SetupForm } from "./components/SetupForm";
 import { Sidebar } from "./components/Sidebar";
+import { isHostedMode } from "./lib/deployment";
+import { getStoredOpenRouterKey, setStoredOpenRouterKey } from "./lib/storage";
+import type { ArchivedSession, SessionConfig } from "./lib/types";
 import {
     getSessionDisplayTitle,
     getSessionIdFromPath,
     getSessionPath,
-    type ArchivedSession,
-    type SessionConfig,
-    useWebSocket,
-} from "./hooks/useWebSocket";
+    useConversation,
+} from "./hooks/useConversation";
 
 const AVATAR_A = "/avatars/avatar_01.svg";
 const AVATAR_B = "/avatars/avatar_01r.svg";
@@ -37,7 +39,7 @@ function initialTheme(): Theme {
 }
 
 export default function App() {
-    const ws = useWebSocket();
+    const ws = useConversation();
     const [routeSessionId, setRouteSessionId] = useState<string | null>(() => getSessionIdFromPath(window.location.pathname));
     const [showSetup, setShowSetup] = useState(() => routeSessionId === null);
     const [theme, setTheme] = useState<Theme>(() => initialTheme());
@@ -48,6 +50,8 @@ export default function App() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.innerWidth < COLLAPSE_BREAKPOINT);
     const [pendingDeleteAll, setPendingDeleteAll] = useState(false);
     const [isDeletingAll, setIsDeletingAll] = useState(false);
+    const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
+    const [openRouterKey, setOpenRouterKeyState] = useState(() => getStoredOpenRouterKey());
 
     const handleStart = (config: SessionConfig, initialTitle: string) => {
         setRouteSessionId(null);
@@ -223,6 +227,8 @@ export default function App() {
                 selectedSessionId={activeRouteSessionId}
                 hasCurrentConversation={hasCurrentConversation}
                 isCurrentConversationSelected={showCurrentConversation}
+                hasOpenRouterKey={!isHostedMode || Boolean(openRouterKey)}
+                onManageApiKey={isHostedMode ? () => setIsApiKeyDialogOpen(true) : undefined}
                 isCollapsed={isSidebarCollapsed}
                 onToggleCollapse={handleToggleCollapse}
             />
@@ -262,6 +268,8 @@ export default function App() {
                     <SetupForm
                         onStart={handleStart}
                         error={ws.error}
+                        hasOpenRouterKey={!isHostedMode || Boolean(openRouterKey)}
+                        onOpenApiKeyDialog={isHostedMode ? () => setIsApiKeyDialogOpen(true) : undefined}
                         theme={theme}
                         onToggleTheme={() => setTheme((currentTheme) => currentTheme === "dark" ? "light" : "dark")}
                     />
@@ -312,6 +320,18 @@ export default function App() {
                         if (!isDeletingAll) {
                             setPendingDeleteAll(false);
                         }
+                    }}
+                />
+                <ApiKeyDialog
+                    key={`${isApiKeyDialogOpen ? "open" : "closed"}-${openRouterKey}`}
+                    isOpen={isApiKeyDialogOpen}
+                    initialValue={openRouterKey}
+                    onCancel={() => setIsApiKeyDialogOpen(false)}
+                    onConfirm={(value) => {
+                        setStoredOpenRouterKey(value);
+                        setOpenRouterKeyState(value);
+                        setIsApiKeyDialogOpen(false);
+                        return true;
                     }}
                 />
             </div>

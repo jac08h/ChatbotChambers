@@ -1,28 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { apiUrl } from "../api";
-import { type Provider, type SessionConfig } from "../hooks/useWebSocket";
-import { loadSettings, saveSettings } from "../settings";
+import { isHostedMode } from "../lib/deployment";
+import { type ModelInfo, type Provider, type ProviderInfo, type Scenario, type SessionConfig } from "../lib/types";
+import { listModels } from "../services/models";
+import { listProviders } from "../services/providers";
+import { createScenario, listScenarios, removeScenario, renameScenario } from "../services/scenarios";
+import { loadSettings, saveSettings } from "../services/settings";
 import { ConfirmationDialog } from "./ConfirmationDialog";
 import { RenameDialog } from "./RenameDialog";
-
-interface Model {
-    id: string;
-    name: string;
-}
-
-interface Scenario {
-    id: string;
-    name: string;
-    shared_system_prompt: string;
-    system_prompt_a: string;
-    system_prompt_b: string;
-    config?: SessionConfig;
-}
-
-interface ProviderInfo {
-    available: boolean;
-    docs_url?: string;
-}
 
 interface Providers {
     [key: string]: ProviderInfo;
@@ -31,6 +15,8 @@ interface Providers {
 interface SetupFormProps {
     onStart: (config: SessionConfig, initialTitle: string) => void;
     error: string | null;
+    hasOpenRouterKey?: boolean;
+    onOpenApiKeyDialog?: () => void;
     theme?: "dark" | "light";
     onToggleTheme?: () => void;
 }
@@ -44,7 +30,9 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 };
 
 const PROVIDER_INFO: Partial<Record<Provider, React.ReactNode>> = {
-    openrouter: <>Requires an <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">OpenRouter API key</a> set as the <code>OPENROUTER_API_KEY</code> environment variable.</>,
+    openrouter: isHostedMode
+        ? <>Requires your own <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">OpenRouter API key</a>, stored only in this browser.</>
+        : <>Requires an <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">OpenRouter API key</a> set as the <code>OPENROUTER_API_KEY</code> environment variable.</>,
     github_copilot: <>Requires a <a href="https://docs.github.com/en/copilot" target="_blank" rel="noopener noreferrer">GitHub Copilot subscription</a> and authentication via the <a href="https://cli.github.com" target="_blank" rel="noopener noreferrer">GitHub CLI</a> (<code>gh auth login</code>).</>,
     claude_code: <>Requires a <a href="https://docs.anthropic.com/en/docs/claude-code" target="_blank" rel="noopener noreferrer">Claude Code</a> subscription and the <code>claude</code> CLI installed and authenticated.</>,
     codex: <>Requires the <a href="https://github.com/openai/codex" target="_blank" rel="noopener noreferrer">Codex CLI</a> installed and an OpenAI API key.</>,
@@ -79,7 +67,7 @@ function ProviderInfoPopup({ provider, onClose }: { provider: Provider; onClose:
         </div>
     );
 }
-const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-flash-lite-preview";
+const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.5-flash-preview";
 const DEFAULT_PROVIDERS: Providers = {
     openrouter: { available: false },
     github_copilot: { available: true },
@@ -87,7 +75,7 @@ const DEFAULT_PROVIDERS: Providers = {
     codex: { available: false },
 };
 
-function defaultModelId(models: Model[], provider: Provider): string {
+function defaultModelId(models: ModelInfo[], provider: Provider): string {
     if (models.length === 0) {
         return "";
     }
@@ -98,31 +86,24 @@ function defaultModelId(models: Model[], provider: Provider): string {
     return models[0].id;
 }
 
-function preferredModelId(models: Model[], provider: Provider, currentModel: string): string {
+function preferredModelId(models: ModelInfo[], provider: Provider, currentModel: string): string {
     if (models.some((model) => model.id === currentModel)) {
         return currentModel;
     }
     return defaultModelId(models, provider);
 }
 
-function shortModelName(model: Model): string {
+function shortModelName(model: ModelInfo): string {
     const name = model.name || model.id;
     const slashIndex = name.indexOf("/");
     return slashIndex !== -1 ? name.slice(slashIndex + 1) : name;
-}
-
-async function fetchModels(provider: Provider): Promise<Model[]> {
-    const searchParams = new URLSearchParams({ provider });
-    return fetch(apiUrl(`/models?${searchParams.toString()}`))
-        .then((r) => r.json())
-        .catch(() => []);
 }
 
 interface ChatbotConfigProps {
     side: "a" | "b";
     label: string;
     providers: Provider[];
-    models: Model[];
+    models: ModelInfo[];
     provider: Provider;
     model: string;
     openRouterModel: string;
@@ -253,15 +234,22 @@ function ChatbotConfig({
     );
 }
 
-export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormProps) {
+export function SetupForm({
+    onStart,
+    error,
+    hasOpenRouterKey = true,
+    onOpenApiKeyDialog,
+    theme,
+    onToggleTheme,
+}: SetupFormProps) {
     const [providers, setProviders] = useState<Providers>(DEFAULT_PROVIDERS);
     const [scenarios, setScenarios] = useState<Scenario[]>([]);
     const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
 
     const [providerA, setProviderA] = useState<Provider>("openrouter");
     const [providerB, setProviderB] = useState<Provider>("openrouter");
-    const [modelsA, setModelsA] = useState<Model[]>([]);
-    const [modelsB, setModelsB] = useState<Model[]>([]);
+    const [modelsA, setModelsA] = useState<ModelInfo[]>([]);
+    const [modelsB, setModelsB] = useState<ModelInfo[]>([]);
     const [modelA, setModelA] = useState("");
     const [modelB, setModelB] = useState("");
     const [openRouterModelA, setOpenRouterModelA] = useState("");
@@ -307,11 +295,9 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
 
         async function initialize(): Promise<void> {
             const [providersData, scenariosData, settings] = await Promise.all([
-                fetch(apiUrl("/providers"))
-                    .then((response) => response.json())
+                listProviders()
                     .catch(() => DEFAULT_PROVIDERS),
-                fetch(apiUrl("/scenarios"))
-                    .then((response) => response.json())
+                listScenarios()
                     .catch(() => []),
                 loadSettings().catch(() => null),
             ]);
@@ -333,8 +319,8 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
                 : fallbackProvider;
 
             const [initialModelsA, initialModelsB] = await Promise.all([
-                fetchModels(initialProviderA),
-                fetchModels(initialProviderB),
+                listModels(initialProviderA).catch(() => []),
+                listModels(initialProviderB).catch(() => []),
             ]);
 
             if (cancelled) {
@@ -379,7 +365,7 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
         if (!isInitialized) {
             return;
         }
-        fetchModels(providerA).then((data) => {
+        void listModels(providerA).catch(() => []).then((data) => {
             setModelsA(data);
             setModelA((current) => preferredModelId(data, providerA, current));
         });
@@ -389,7 +375,7 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
         if (!isInitialized) {
             return;
         }
-        fetchModels(providerB).then((data) => {
+        void listModels(providerB).catch(() => []).then((data) => {
             setModelsB(data);
             setModelB((current) => preferredModelId(data, providerB, current));
         });
@@ -411,10 +397,37 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
         if (!isInitialized) {
             return;
         }
-        const config = buildConfig();
+        const finalModelA = providerA === "openrouter" ? (openRouterModelA || DEFAULT_OPENROUTER_MODEL) : modelA;
+        const finalModelB = providerB === "openrouter" ? (openRouterModelB || DEFAULT_OPENROUTER_MODEL) : modelB;
+        const computedDefaultNameA = providerA === "openrouter"
+            ? shortModelName({ id: openRouterModelA || DEFAULT_OPENROUTER_MODEL, name: openRouterModelA || DEFAULT_OPENROUTER_MODEL })
+            : shortModelName(modelsA.find((model) => model.id === modelA) ?? { id: modelA, name: modelA });
+        const computedDefaultNameB = providerB === "openrouter"
+            ? shortModelName({ id: openRouterModelB || DEFAULT_OPENROUTER_MODEL, name: openRouterModelB || DEFAULT_OPENROUTER_MODEL })
+            : shortModelName(modelsB.find((model) => model.id === modelB) ?? { id: modelB, name: modelB });
+        const config: SessionConfig = {
+            chatbot_a: { name: nameA || computedDefaultNameA, model: finalModelA, system_prompt: promptA, provider: providerA },
+            chatbot_b: { name: nameB || computedDefaultNameB, model: finalModelB, system_prompt: promptB, provider: providerB },
+            shared_system_prompt: sharedPrompt,
+        };
         const timer = setTimeout(() => { saveSettings(config).catch(() => {}); }, 500);
         return () => clearTimeout(timer);
-    }, [isInitialized, providerA, providerB, modelA, modelB, openRouterModelA, openRouterModelB, nameA, nameB, promptA, promptB, sharedPrompt]);
+    }, [
+        isInitialized,
+        modelA,
+        modelB,
+        modelsA,
+        modelsB,
+        nameA,
+        nameB,
+        openRouterModelA,
+        openRouterModelB,
+        promptA,
+        promptB,
+        providerA,
+        providerB,
+        sharedPrompt,
+    ]);
 
     useEffect(() => {
         if (!isSaveScenarioOpen) {
@@ -473,7 +486,7 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
         return model ? shortModelName(model) : modelB;
     })();
 
-    const buildConfig = (): SessionConfig => {
+    const buildConfig = useCallback((): SessionConfig => {
         const finalModelA = providerA === "openrouter" ? (openRouterModelA || DEFAULT_OPENROUTER_MODEL) : modelA;
         const finalModelB = providerB === "openrouter" ? (openRouterModelB || DEFAULT_OPENROUTER_MODEL) : modelB;
         return {
@@ -481,7 +494,21 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
             chatbot_b: { name: nameB || defaultNameB, model: finalModelB, system_prompt: promptB, provider: providerB },
             shared_system_prompt: sharedPrompt,
         };
-    };
+    }, [
+        defaultNameA,
+        defaultNameB,
+        modelA,
+        modelB,
+        nameA,
+        nameB,
+        openRouterModelA,
+        openRouterModelB,
+        promptA,
+        promptB,
+        providerA,
+        providerB,
+        sharedPrompt,
+    ]);
 
     const loadScenario = async (id: string) => {
         setScenarioActionError(null);
@@ -492,8 +519,8 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
         setSelectedScenarioId(id);
         if (scenario.config) {
             const [scenarioModelsA, scenarioModelsB] = await Promise.all([
-                fetchModels(scenario.config.chatbot_a.provider),
-                fetchModels(scenario.config.chatbot_b.provider),
+                listModels(scenario.config.chatbot_a.provider).catch(() => []),
+                listModels(scenario.config.chatbot_b.provider).catch(() => []),
             ]);
             setProviderA(scenario.config.chatbot_a.provider);
             setProviderB(scenario.config.chatbot_b.provider);
@@ -535,20 +562,7 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
         setSaveScenarioError(null);
         setScenarioActionError(null);
         try {
-            const response = await fetch(apiUrl("/scenarios"), {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    name: trimmedScenarioName,
-                    config: buildConfig(),
-                }),
-            });
-            if (!response.ok) {
-                throw new Error("Failed to save scenario");
-            }
-            const savedScenario: Scenario = await response.json();
+            const savedScenario = await createScenario(trimmedScenarioName, buildConfig());
             setScenarios((currentScenarios) => [savedScenario, ...currentScenarios]);
             setSelectedScenarioId(null);
             closeSaveScenarioDialog(true);
@@ -563,17 +577,7 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
         setActiveScenarioMutationId(scenarioId);
         setScenarioActionError(null);
         try {
-            const response = await fetch(apiUrl(`/scenarios/${scenarioId}`), {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ name: nextName }),
-            });
-            if (!response.ok) {
-                throw new Error("Failed to rename scenario");
-            }
-            const renamedScenario: Scenario = await response.json();
+            const renamedScenario = await renameScenario(scenarioId, nextName);
             setScenarios((currentScenarios) => currentScenarios.map((scenario) => (
                 scenario.id === scenarioId ? renamedScenario : scenario
             )));
@@ -594,12 +598,7 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
         setActiveScenarioMutationId(scenarioPendingDelete.id);
         setScenarioActionError(null);
         try {
-            const response = await fetch(apiUrl(`/scenarios/${scenarioPendingDelete.id}`), {
-                method: "DELETE",
-            });
-            if (!response.ok) {
-                throw new Error("Failed to delete scenario");
-            }
+            await removeScenario(scenarioPendingDelete.id);
             setScenarios((currentScenarios) => currentScenarios.filter((item) => item.id !== scenarioPendingDelete.id));
             if (selectedScenarioId === scenarioPendingDelete.id) {
                 setSelectedScenarioId(null);
@@ -631,7 +630,11 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
         onStart(config, conversationTitle.trim());
     };
 
-    const canStart = Boolean((modelA || providerA === "openrouter") && (modelB || providerB === "openrouter"));
+    const canStart = Boolean(
+        (modelA || providerA === "openrouter")
+        && (modelB || providerB === "openrouter")
+        && (!isHostedMode || hasOpenRouterKey),
+    );
 
     return (
         <div className="setup-page">
@@ -658,6 +661,20 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
                 <h1 className="setup-title">Who&rsquo;s talking today?</h1>
 
                 {error && <div className="error-banner">{error}</div>}
+                {isHostedMode && !hasOpenRouterKey && (
+                    <div className="error-banner api-key-inline-banner">
+                        <span>Set an OpenRouter API key to start hosted conversations.</span>
+                        {onOpenApiKeyDialog && (
+                            <button
+                                type="button"
+                                className="scenario-save-link api-key-inline-button"
+                                onClick={onOpenApiKeyDialog}
+                            >
+                                Set API key
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="setup-form">
                     <div className="field">
@@ -670,7 +687,7 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
                                     onClick={openSaveScenarioDialog}
                                     disabled={!canStart || isSavingScenario}
                                 >
-                                    Save config
+                                    Save as scenario
                                 </button>
                                 <div className="scenario-manage" ref={scenarioManageRef}>
                                     <button
@@ -899,7 +916,7 @@ export function SetupForm({ onStart, error, theme, onToggleTheme }: SetupFormPro
 
                         <div className="setup-actions">
                             <button type="submit" className="start-btn" disabled={!canStart}>
-                                Start
+                                Start conversation
                             </button>
                         </div>
                     </div>

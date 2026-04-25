@@ -2,7 +2,8 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import App from "./App"
-import { generateSlug, type ArchivedSession, type SessionConfig, type WebSocketState } from "./hooks/useWebSocket"
+import { generateSlug } from "./hooks/useConversation"
+import type { ArchivedSession, ConversationState, SessionConfig } from "./lib/types"
 
 const sampleConfig: SessionConfig = {
     chatbot_a: { name: "Alice", model: "model-a", system_prompt: "", provider: "openrouter" },
@@ -21,17 +22,17 @@ const archivedSession: ArchivedSession = {
 
 const archivedSlug = generateSlug(archivedSession.id)
 
-let mockWebSocketState: WebSocketState
+let mockWebSocketState: ConversationState
 
-vi.mock("./hooks/useWebSocket", async () => {
-    const actual = await vi.importActual<typeof import("./hooks/useWebSocket")>("./hooks/useWebSocket")
+vi.mock("./hooks/useConversation", async () => {
+    const actual = await vi.importActual<typeof import("./hooks/useConversation")>("./hooks/useConversation")
     return {
         ...actual,
-        useWebSocket: () => mockWebSocketState,
+        useConversation: () => mockWebSocketState,
     }
 })
 
-function createWebSocketState(overrides: Partial<WebSocketState> = {}): WebSocketState {
+function createWebSocketState(overrides: Partial<ConversationState> = {}): ConversationState {
     return {
         messages: [],
         status: "idle",

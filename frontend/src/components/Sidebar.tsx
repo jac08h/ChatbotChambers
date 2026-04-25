@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { getSessionDisplayTitle, type ArchivedSession } from "../hooks/useWebSocket";
+import { getSessionDisplayTitle } from "../hooks/useConversation";
+import type { ArchivedSession } from "../lib/types";
 
 interface SessionSummary {
     id: string;
@@ -20,6 +21,8 @@ interface SidebarProps {
     selectedSessionId: string | null;
     hasCurrentConversation: boolean;
     isCurrentConversationSelected: boolean;
+    hasOpenRouterKey?: boolean;
+    onManageApiKey?: () => void;
     isCollapsed: boolean;
     onToggleCollapse: () => void;
 }
@@ -46,6 +49,8 @@ export function Sidebar({
     selectedSessionId,
     hasCurrentConversation,
     isCurrentConversationSelected,
+    hasOpenRouterKey = true,
+    onManageApiKey,
     isCollapsed,
     onToggleCollapse,
 }: SidebarProps) {
@@ -81,6 +86,11 @@ export function Sidebar({
                     <button className="sidebar-new-chat" onClick={onNewChat} type="button">
                         + New chat
                     </button>
+                    {onManageApiKey && (
+                        <button className="sidebar-api-key" onClick={onManageApiKey} type="button">
+                            {hasOpenRouterKey ? "Update API key" : "Set API key"}
+                        </button>
+                    )}
 
                     <div className="sidebar-history">
                         {hasCurrentConversation && currentSession && (
