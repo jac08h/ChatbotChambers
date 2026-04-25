@@ -2,7 +2,9 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { Sidebar } from "../Sidebar"
-import { generateSlug, type ArchivedSession } from "../../hooks/useWebSocket"
+import { generateSlug, type ArchivedSession, type Status } from "../../hooks/useWebSocket"
+
+const currentStatus: Status = "idle"
 
 const sessionSlug = generateSlug("12345678-1234-1234-1234-123456789abc")
 
@@ -38,6 +40,7 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
+                currentStatus={currentStatus}
                 isCollapsed={false}
                 onToggleCollapse={vi.fn()}
             />
@@ -63,6 +66,7 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
+                currentStatus={currentStatus}
                 isCollapsed={false}
                 onToggleCollapse={vi.fn()}
             />
@@ -94,6 +98,7 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
+                currentStatus={currentStatus}
                 isCollapsed={false}
                 onToggleCollapse={onToggleCollapse}
             />
@@ -118,6 +123,7 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
+                currentStatus={currentStatus}
                 isCollapsed={true}
                 onToggleCollapse={vi.fn()}
             />
@@ -142,6 +148,7 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
+                currentStatus={currentStatus}
                 isCollapsed={false}
                 onToggleCollapse={vi.fn()}
             />
@@ -166,6 +173,7 @@ describe("Sidebar", () => {
                 selectedSessionId={null}
                 hasCurrentConversation={false}
                 isCurrentConversationSelected={false}
+                currentStatus={currentStatus}
                 isCollapsed={false}
                 onToggleCollapse={vi.fn()}
             />

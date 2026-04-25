@@ -591,7 +591,6 @@ export function SetupForm({
         setNameB("");
         setNameAManual(false);
         setNameBManual(false);
-        setConversationTitle("");
     };
 
     const handleSubmit = async (event: React.FormEvent) => {
