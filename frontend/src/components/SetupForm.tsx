@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { DEFAULT_HOSTED_SCENARIOS } from "../lib/defaultScenarios";
 import { isHostedMode } from "../lib/deployment";
 import { type ModelInfo, type Provider, type ProviderInfo, type Scenario, type SessionConfig } from "../lib/types";
 import { listModels } from "../services/models";
 import { listProviders } from "../services/providers";
-import { createScenario, listScenarios, removeScenario, renameScenario } from "../services/scenarios";
+import { listScenarios } from "../services/scenarios";
 import { loadSettings, saveSettings } from "../services/settings";
-import { ConfirmationDialog } from "./ConfirmationDialog";
-import { RenameDialog } from "./RenameDialog";
 
 interface Providers {
     [key: string]: ProviderInfo;
@@ -214,8 +213,8 @@ export function SetupForm({
     onToggleTheme,
 }: SetupFormProps) {
     const [providers, setProviders] = useState<Providers>(DEFAULT_PROVIDERS);
-    const [scenarios, setScenarios] = useState<Scenario[]>([]);
-    const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
+    const [presets, setPresets] = useState<Scenario[]>([]);
+    const lastPickedPresetId = useRef<string | null>(null);
 
     const [providerA, setProviderA] = useState<Provider>("openrouter");
     const [providerB, setProviderB] = useState<Provider>("openrouter");
@@ -233,41 +232,15 @@ export function SetupForm({
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");
     const [isInitialized, setIsInitialized] = useState(false);
-    const [isSaveScenarioOpen, setIsSaveScenarioOpen] = useState(false);
-    const [scenarioName, setScenarioName] = useState("");
-    const [saveScenarioError, setSaveScenarioError] = useState<string | null>(null);
-    const [scenarioActionError, setScenarioActionError] = useState<string | null>(null);
-    const [isSavingScenario, setIsSavingScenario] = useState(false);
-    const [activeScenarioMutationId, setActiveScenarioMutationId] = useState<string | null>(null);
-    const [scenarioPendingDelete, setScenarioPendingDelete] = useState<Scenario | null>(null);
-    const [scenarioPendingRename, setScenarioPendingRename] = useState<Scenario | null>(null);
-    const [isManageScenariosOpen, setIsManageScenariosOpen] = useState(false);
-    const [openScenarioRowMenuId, setOpenScenarioRowMenuId] = useState<string | null>(null);
-    const scenarioManageRef = useRef<HTMLDivElement | null>(null);
-
-    const closeSaveScenarioDialog = useCallback((forceClose = false) => {
-        if (!forceClose && isSavingScenario) {
-            return;
-        }
-        setIsSaveScenarioOpen(false);
-        setScenarioName("");
-        setSaveScenarioError(null);
-    }, [isSavingScenario]);
-
-    const openSaveScenarioDialog = () => {
-        setSaveScenarioError(null);
-        setIsSaveScenarioOpen(true);
-    };
 
     useEffect(() => {
         let cancelled = false;
 
         async function initialize(): Promise<void> {
-            const [providersData, scenariosData, settings] = await Promise.all([
+            const [providersData, presetsData, settings] = await Promise.all([
                 listProviders()
                     .catch(() => DEFAULT_PROVIDERS),
-                listScenarios()
-                    .catch(() => []),
+                isHostedMode ? Promise.resolve(DEFAULT_HOSTED_SCENARIOS) : listScenarios().catch(() => []),
                 loadSettings().catch(() => null),
             ]);
 
@@ -276,7 +249,7 @@ export function SetupForm({
             }
 
             setProviders(providersData);
-            setScenarios(scenariosData);
+            setPresets(presetsData);
 
             const availableProviders = (Object.keys(providersData) as Provider[]).filter((provider) => providersData[provider]?.available);
             const fallbackProvider = availableProviders[0] ?? "openrouter";
@@ -400,43 +373,6 @@ export function SetupForm({
         sharedPrompt,
     ]);
 
-    useEffect(() => {
-        if (!isSaveScenarioOpen) {
-            return;
-        }
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                closeSaveScenarioDialog();
-            }
-        };
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [closeSaveScenarioDialog, isSaveScenarioOpen]);
-
-    useEffect(() => {
-        if (!isManageScenariosOpen) {
-            return;
-        }
-        const handlePointerDown = (event: PointerEvent) => {
-            const target = event.target as Node | null;
-            if (target && scenarioManageRef.current && !scenarioManageRef.current.contains(target)) {
-                setIsManageScenariosOpen(false);
-                setOpenScenarioRowMenuId(null);
-            }
-        };
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                setIsManageScenariosOpen(false);
-                setOpenScenarioRowMenuId(null);
-            }
-        };
-        window.addEventListener("pointerdown", handlePointerDown);
-        window.addEventListener("keydown", handleKeyDown);
-        return () => {
-            window.removeEventListener("pointerdown", handlePointerDown);
-            window.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [isManageScenariosOpen]);
 
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]?.available);
 
@@ -481,109 +417,50 @@ export function SetupForm({
         sharedPrompt,
     ]);
 
-    const loadScenario = async (id: string) => {
-        setScenarioActionError(null);
-        const scenario = scenarios.find((item) => item.id === id);
-        if (!scenario) {
+    const loadRandomPreset = async () => {
+        if (presets.length === 0) {
             return;
         }
-        setSelectedScenarioId(id);
-        if (scenario.config) {
+        const candidates = presets.length > 1
+            ? presets.filter((p) => p.id !== lastPickedPresetId.current)
+            : presets;
+        const preset = candidates[Math.floor(Math.random() * candidates.length)];
+        lastPickedPresetId.current = preset.id;
+
+        if (preset.config) {
             const [scenarioModelsA, scenarioModelsB] = await Promise.all([
-                listModels(scenario.config.chatbot_a.provider).catch(() => []),
-                listModels(scenario.config.chatbot_b.provider).catch(() => []),
+                listModels(preset.config.chatbot_a.provider).catch(() => []),
+                listModels(preset.config.chatbot_b.provider).catch(() => []),
             ]);
-            setProviderA(scenario.config.chatbot_a.provider);
-            setProviderB(scenario.config.chatbot_b.provider);
+            setProviderA(preset.config.chatbot_a.provider);
+            setProviderB(preset.config.chatbot_b.provider);
             setModelsA(scenarioModelsA);
             setModelsB(scenarioModelsB);
-            const scenarioModelA = preferredModelId(scenarioModelsA, scenario.config.chatbot_a.provider, scenario.config.chatbot_a.model);
-            const scenarioModelB = preferredModelId(scenarioModelsB, scenario.config.chatbot_b.provider, scenario.config.chatbot_b.model);
-            setModelA(scenarioModelA);
-            setModelB(scenarioModelB);
-            setOpenRouterModelA(scenario.config.chatbot_a.provider === "openrouter" ? scenario.config.chatbot_a.model : "");
-            setOpenRouterModelB(scenario.config.chatbot_b.provider === "openrouter" ? scenario.config.chatbot_b.model : "");
-            const scenarioDerivedNameA = shortModelName(scenarioModelsA.find((m) => m.id === scenarioModelA) ?? { id: scenarioModelA, name: scenarioModelA });
-            const scenarioDerivedNameB = shortModelName(scenarioModelsB.find((m) => m.id === scenarioModelB) ?? { id: scenarioModelB, name: scenarioModelB });
-            const scenarioNameA = scenario.config.chatbot_a.name;
-            const scenarioNameB = scenario.config.chatbot_b.name;
-            const isScenarioManualA = scenarioNameA !== "" && scenarioNameA !== scenarioDerivedNameA;
-            const isScenarioManualB = scenarioNameB !== "" && scenarioNameB !== scenarioDerivedNameB;
-            setNameA(isScenarioManualA ? scenarioNameA : "");
-            setNameB(isScenarioManualB ? scenarioNameB : "");
-            setNameAManual(isScenarioManualA);
-            setNameBManual(isScenarioManualB);
-            setSharedPrompt(scenario.config.shared_system_prompt);
-            setPromptA(scenario.config.chatbot_a.system_prompt);
-            setPromptB(scenario.config.chatbot_b.system_prompt);
+            const presetModelA = preferredModelId(scenarioModelsA, preset.config.chatbot_a.provider, preset.config.chatbot_a.model);
+            const presetModelB = preferredModelId(scenarioModelsB, preset.config.chatbot_b.provider, preset.config.chatbot_b.model);
+            setModelA(presetModelA);
+            setModelB(presetModelB);
+            setOpenRouterModelA(preset.config.chatbot_a.provider === "openrouter" ? preset.config.chatbot_a.model : "");
+            setOpenRouterModelB(preset.config.chatbot_b.provider === "openrouter" ? preset.config.chatbot_b.model : "");
+            const derivedNameA = shortModelName(scenarioModelsA.find((m) => m.id === presetModelA) ?? { id: presetModelA, name: presetModelA });
+            const derivedNameB = shortModelName(scenarioModelsB.find((m) => m.id === presetModelB) ?? { id: presetModelB, name: presetModelB });
+            const isManualA = preset.config.chatbot_a.name !== "" && preset.config.chatbot_a.name !== derivedNameA;
+            const isManualB = preset.config.chatbot_b.name !== "" && preset.config.chatbot_b.name !== derivedNameB;
+            setNameA(isManualA ? preset.config.chatbot_a.name : "");
+            setNameB(isManualB ? preset.config.chatbot_b.name : "");
+            setNameAManual(isManualA);
+            setNameBManual(isManualB);
+            setSharedPrompt(preset.config.shared_system_prompt);
+            setPromptA(preset.config.chatbot_a.system_prompt);
+            setPromptB(preset.config.chatbot_b.system_prompt);
             return;
         }
-        setSharedPrompt(scenario.shared_system_prompt);
-        setPromptA(scenario.system_prompt_a);
-        setPromptB(scenario.system_prompt_b);
-    };
-
-    const handleSaveScenario = async () => {
-        const trimmedScenarioName = scenarioName.trim();
-        if (!trimmedScenarioName) {
-            setSaveScenarioError("Enter a scenario name.");
-            return;
-        }
-        setIsSavingScenario(true);
-        setSaveScenarioError(null);
-        setScenarioActionError(null);
-        try {
-            const savedScenario = await createScenario(trimmedScenarioName, buildConfig());
-            setScenarios((currentScenarios) => [savedScenario, ...currentScenarios]);
-            setSelectedScenarioId(null);
-            closeSaveScenarioDialog(true);
-        } catch {
-            setSaveScenarioError("Failed to save scenario.");
-        } finally {
-            setIsSavingScenario(false);
-        }
-    };
-
-    const handleRenameScenario = async (scenarioId: string, nextName: string): Promise<boolean> => {
-        setActiveScenarioMutationId(scenarioId);
-        setScenarioActionError(null);
-        try {
-            const renamedScenario = await renameScenario(scenarioId, nextName);
-            setScenarios((currentScenarios) => currentScenarios.map((scenario) => (
-                scenario.id === scenarioId ? renamedScenario : scenario
-            )));
-            setScenarioPendingRename(null);
-            return true;
-        } catch {
-            setScenarioActionError("Failed to rename scenario.");
-            return false;
-        } finally {
-            setActiveScenarioMutationId(null);
-        }
-    };
-
-    const handleDeleteScenario = async (): Promise<void> => {
-        if (!scenarioPendingDelete) {
-            return;
-        }
-        setActiveScenarioMutationId(scenarioPendingDelete.id);
-        setScenarioActionError(null);
-        try {
-            await removeScenario(scenarioPendingDelete.id);
-            setScenarios((currentScenarios) => currentScenarios.filter((item) => item.id !== scenarioPendingDelete.id));
-            if (selectedScenarioId === scenarioPendingDelete.id) {
-                setSelectedScenarioId(null);
-            }
-            setScenarioPendingDelete(null);
-        } catch {
-            setScenarioActionError("Failed to delete scenario.");
-        } finally {
-            setActiveScenarioMutationId(null);
-        }
+        setSharedPrompt(preset.shared_system_prompt);
+        setPromptA(preset.system_prompt_a);
+        setPromptB(preset.system_prompt_b);
     };
 
     const handleClearAll = () => {
-        setSelectedScenarioId(null);
         setSharedPrompt("");
         setPromptA("");
         setPromptB("");
@@ -646,168 +523,29 @@ export function SetupForm({
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="setup-form">
-                    <div className="field">
-                        <div className="scenario-header">
-                            <span className="field-label">Scenario</span>
-                            <div className="scenario-header-actions">
-                                <button
-                                    type="button"
-                                    className="scenario-save-link"
-                                    onClick={openSaveScenarioDialog}
-                                    disabled={!canStart || isSavingScenario}
-                                >
-                                    Save as scenario
-                                </button>
-                                <div className="scenario-manage" ref={scenarioManageRef}>
-                                    <button
-                                        type="button"
-                                        className="scenario-action-link"
-                                        onClick={() => {
-                                            setIsManageScenariosOpen((open) => !open);
-                                            setOpenScenarioRowMenuId(null);
-                                        }}
-                                        disabled={scenarios.length === 0}
-                                        aria-haspopup="menu"
-                                        aria-expanded={isManageScenariosOpen}
-                                        title="Manage scenarios"
-                                    >
-                                        Manage
-                                    </button>
-                                    {isManageScenariosOpen && scenarios.length > 0 && (
-                                        <div className="scenario-menu scenario-manage-list" role="menu">
-                                            {scenarios.map((scenario) => (
-                                                <div key={scenario.id} className="scenario-manage-row">
-                                                    <span className="scenario-manage-name" title={scenario.name}>{scenario.name}</span>
-                                                    <div className="scenario-manage-row-actions">
-                                                        <button
-                                                            type="button"
-                                                            className="scenario-manage-row-btn"
-                                                            onClick={() => setOpenScenarioRowMenuId((id) => (id === scenario.id ? null : scenario.id))}
-                                                            aria-haspopup="menu"
-                                                            aria-expanded={openScenarioRowMenuId === scenario.id}
-                                                            aria-label={`Scenario options for ${scenario.name}`}
-                                                            title="Preset options"
-                                                            disabled={activeScenarioMutationId !== null}
-                                                        >
-                                                            ⋯
-                                                        </button>
-                                                        {openScenarioRowMenuId === scenario.id && (
-                                                            <div className="scenario-menu scenario-row-menu" role="menu">
-                                                                <button
-                                                                    type="button"
-                                                                    className="scenario-menu-item"
-                                                                    role="menuitem"
-                                                                    onClick={() => {
-                                                                        setOpenScenarioRowMenuId(null);
-                                                                        setIsManageScenariosOpen(false);
-                                                                        setScenarioPendingRename(scenario);
-                                                                    }}
-                                                                >
-                                                                    Rename
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    className="scenario-menu-item scenario-menu-item-danger"
-                                                                    role="menuitem"
-                                                                    onClick={() => {
-                                                                        setOpenScenarioRowMenuId(null);
-                                                                        setIsManageScenariosOpen(false);
-                                                                        setScenarioPendingDelete(scenario);
-                                                                    }}
-                                                                >
-                                                                    Delete
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                                <button
-                                    type="button"
-                                    className="scenario-action-link preset-action-link-clear"
-                                    onClick={handleClearAll}
-                                    title="Clear all prompts and names"
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                                        <path d="M2 4h12M5.33 4V2.67a1.33 1.33 0 011.34-1.34h2.66a1.33 1.33 0 011.34 1.34V4M12.67 4v9.33a1.33 1.33 0 01-1.34 1.34H4.67a1.33 1.33 0 01-1.34-1.34V4" />
-                                    </svg>
-                                    Clear all
-                                </button>
-                            </div>
-                        </div>
-                        <select
-                            value={selectedScenarioId ?? ""}
-                            onChange={(event) => {
-                                const id = event.target.value;
-                                if (id) {
-                                    loadScenario(id).catch(() => setScenarioActionError("Failed to load preset."));
-                                } else {
-                                    setSelectedScenarioId(null);
-                                }
-                            }}
-                        >
-                            <option value="" disabled>Select a scenario...</option>
-                            {scenarios.map((scenario) => (
-                                <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
-                            ))}
-                        </select>
-                        {scenarioActionError && <div className="scenario-save-error">{scenarioActionError}</div>}
-                        {isSaveScenarioOpen && (
-                            <div
-                                className="rename-dialog-backdrop"
-                                role="presentation"
-                                onClick={() => {
-                                    if (!isSavingScenario) {
-                                        closeSaveScenarioDialog();
-                                    }
-                                }}
-                            >
-                                <div
-                                    className="rename-dialog"
-                                    role="dialog"
-                                    aria-modal="true"
-                                    aria-labelledby="save-preset-title"
-                                    onClick={(event) => event.stopPropagation()}
-                                >
-                                    <div className="rename-dialog-header">
-                                        <h2 id="save-preset-title" className="rename-dialog-title">Save scenario</h2>
-                                    </div>
-                                    <input
-                                        type="text"
-                                        className="rename-dialog-input"
-                                        aria-label="Preset name"
-                                        value={scenarioName}
-                                        onChange={(event) => setScenarioName(event.target.value)}
-                                        placeholder="Enter a name"
-                                    />
-                                    {saveScenarioError && <div className="scenario-save-error">{saveScenarioError}</div>}
-                                    <div className="rename-dialog-actions">
-                                        <button
-                                            type="button"
-                                            className="rename-dialog-cancel"
-                                            onClick={() => closeSaveScenarioDialog()}
-                                            disabled={isSavingScenario}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="rename-dialog-confirm"
-                                            onClick={handleSaveScenario}
-                                            disabled={isSavingScenario}
-                                        >
-                                            {isSavingScenario ? "Saving…" : "Save"}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                <div className="setup-random-scenario">
+                    <button
+                        type="button"
+                        className="random-scenario-btn"
+                        onClick={() => { void loadRandomPreset(); }}
+                        disabled={presets.length === 0}
+                    >
+                        🎲 Random scenario
+                    </button>
+                    <button
+                        type="button"
+                        className="scenario-action-link preset-action-link-clear"
+                        onClick={handleClearAll}
+                        title="Clear all prompts and names"
+                    >
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                            <path d="M2 4h12M5.33 4V2.67a1.33 1.33 0 011.34-1.34h2.66a1.33 1.33 0 011.34 1.34V4M12.67 4v9.33a1.33 1.33 0 01-1.34 1.34H4.67a1.33 1.33 0 01-1.34-1.34V4" />
+                        </svg>
+                        Clear all
+                    </button>
+                </div>
 
+                <form onSubmit={handleSubmit} className="setup-form">
                     <label className="field">
                         <span>Shared instructions</span>
                         <textarea
@@ -857,36 +595,6 @@ export function SetupForm({
                         </div>
                     </div>
                 </form>
-                <ConfirmationDialog
-                    isOpen={scenarioPendingDelete !== null}
-                    title="Delete scenario"
-                    message={scenarioPendingDelete ? `Delete scenario "${scenarioPendingDelete.name}"?` : ""}
-                    confirmLabel="Delete"
-                    isConfirming={activeScenarioMutationId !== null}
-                    onConfirm={() => { void handleDeleteScenario(); }}
-                    onCancel={() => {
-                        if (activeScenarioMutationId === null) {
-                            setScenarioPendingDelete(null);
-                        }
-                    }}
-                />
-                <RenameDialog
-                    key={scenarioPendingRename?.id ?? "scenario-rename-closed"}
-                    isOpen={scenarioPendingRename !== null}
-                    title="Rename scenario"
-                    initialValue={scenarioPendingRename?.name ?? ""}
-                    isSaving={activeScenarioMutationId !== null}
-                    onConfirm={(value) => {
-                        if (scenarioPendingRename) {
-                            void handleRenameScenario(scenarioPendingRename.id, value);
-                        }
-                    }}
-                    onCancel={() => {
-                        if (activeScenarioMutationId === null) {
-                            setScenarioPendingRename(null);
-                        }
-                    }}
-                />
             </div>
         </div>
     );

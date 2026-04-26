@@ -29,7 +29,7 @@ backend/
 
 frontend/
     src/
-        components/             Setup form, conversation view, sidebar, dialogs
+        components/             Setup form (with 🎲 random scenario button), conversation view, sidebar, dialogs
         hooks/
             useConversation.ts  Transport-agnostic conversation/session hook
             useWebSocket.ts     Compatibility re-export

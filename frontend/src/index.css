@@ -507,6 +507,34 @@ button {
     color: var(--text-dim);
 }
 
+.setup-random-scenario {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+
+.random-scenario-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.45rem 1rem;
+    color: var(--text-dim);
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: color 150ms ease, border-color 150ms ease;
+}
+
+.random-scenario-btn:hover:not(:disabled) {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.random-scenario-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .setup-form {
     display: flex;
     flex-direction: column;
