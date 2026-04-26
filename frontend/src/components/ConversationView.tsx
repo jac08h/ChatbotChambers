@@ -115,6 +115,18 @@ export function ConversationView({
         bottomRef.current?.scrollIntoView();
     };
 
+    const handleExport = () => {
+        setMenuOpen(false);
+        const payload = { config, messages };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${label ?? "conversation"}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <div className="conversation-container">
             <div className="conversation-header">
@@ -144,6 +156,16 @@ export function ConversationView({
                                         role="menuitem"
                                     >
                                         View prompts
+                                    </button>
+                                )}
+                                {config && messages.length > 0 && (
+                                    <button
+                                        className="conversation-menu-item"
+                                        onClick={handleExport}
+                                        type="button"
+                                        role="menuitem"
+                                    >
+                                        Export JSON
                                     </button>
                                 )}
                                 {onRenameSession && (

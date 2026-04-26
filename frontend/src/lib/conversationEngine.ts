@@ -1,9 +1,9 @@
 import { getHostedModelName } from "./hostedProviders";
 import type { ChatMessage, SessionConfig } from "./types";
 
-const PREAMBLE = `You are in a room with another participant. You are chatting directly with them, not with the user. You are one of the participants in the conversation, not a facilitator. Respond as yourself, speaking to the other participant in first person. Keep the conversation going naturally unless instructed otherwise.`;
-const PREAMBLE_A = `You are participant A.`;
-const PREAMBLE_B = `You are participant B.`;
+export const PREAMBLE = `You are in a room with another participant. You are chatting directly with them, not with the user. You are one of the participants in the conversation, not a facilitator. Respond as yourself, speaking to the other participant in first person. Keep the conversation going naturally unless instructed otherwise.`;
+export const PREAMBLE_A = `You are participant A.`;
+export const PREAMBLE_B = `You are participant B.`;
 
 export interface ConversationTurnMessage {
     speaker: string;

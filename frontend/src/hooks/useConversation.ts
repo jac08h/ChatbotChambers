@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createConversationTransport, type ConversationTransport, type TransportEvent } from "../lib/transport";
+import { PREAMBLE, PREAMBLE_A, PREAMBLE_B } from "../lib/conversationEngine";
 import type { ArchivedSession, ChatMessage, ConversationState, SessionConfig, Status } from "../lib/types";
 import {
     deleteAllSessions,
@@ -312,10 +313,16 @@ export function useConversation(): ConversationState {
 
     const start = useCallback((newConfig: SessionConfig, initialTitle?: string | null) => {
         const trimmedInitialTitle = initialTitle?.trim() || null;
+        const configWithPreambles: SessionConfig = {
+            ...newConfig,
+            preamble: PREAMBLE,
+            chatbot_a: { ...newConfig.chatbot_a, preamble: PREAMBLE_A },
+            chatbot_b: { ...newConfig.chatbot_b, preamble: PREAMBLE_B },
+        };
         archive("stopped", null);
         transportRef.current?.dispose();
         messagesRef.current = [];
-        configRef.current = newConfig;
+        configRef.current = configWithPreambles;
         currentIdRef.current = null;
         currentTitleRef.current = trimmedInitialTitle;
         pendingInitialTitleRef.current = trimmedInitialTitle;
@@ -327,11 +334,11 @@ export function useConversation(): ConversationState {
         setError(null);
         setStartupError(null);
         setEmptyMessageError(null);
-        setConfig(newConfig);
+        setConfig(configWithPreambles);
         setCurrentSessionId(null);
         setCurrentTitle(trimmedInitialTitle);
         setStatus("running");
-        transportRef.current?.start(newConfig);
+        transportRef.current?.start(configWithPreambles);
     }, [archive]);
 
     const pause = useCallback(() => {

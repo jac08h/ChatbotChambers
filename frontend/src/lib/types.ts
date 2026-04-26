@@ -20,12 +20,14 @@ export interface ChatbotConfig {
     model: string;
     system_prompt: string;
     provider: Provider;
+    preamble?: string;
 }
 
 export interface SessionConfig {
     chatbot_a: ChatbotConfig;
     chatbot_b: ChatbotConfig;
     shared_system_prompt: string;
+    preamble?: string;
 }
 
 export type Status = "idle" | "running" | "paused" | "done" | "error";
