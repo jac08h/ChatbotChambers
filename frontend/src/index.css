@@ -149,6 +149,7 @@ button {
     background: var(--bg-secondary);
 }
 
+
 .sidebar {
     display: flex;
     flex-direction: column;
@@ -476,6 +477,30 @@ button {
 }
 
 .setup-page-theme-toggle:hover {
+    color: var(--text);
+    background: var(--bg);
+    border-color: var(--accent);
+}
+
+.setup-page-github-link {
+    position: fixed;
+    bottom: 1.5rem;
+    right: calc(1.5rem + 3.25rem + 0.75rem);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    padding: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+    z-index: 5;
+    width: 3.25rem;
+    height: 3.25rem;
+}
+
+.setup-page-github-link:hover {
     color: var(--text);
     background: var(--bg);
     border-color: var(--accent);
