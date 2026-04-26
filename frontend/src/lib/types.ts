@@ -11,8 +11,8 @@ export interface ChatMessage {
 export type Provider = "openrouter" | "github_copilot" | "claude_code" | "codex" | "mock";
 
 export const DEFAULT_CHATBOT_NAMES = {
-    a: "",
-    b: "",
+    a: "Chatbot A",
+    b: "Chatbot B",
 } as const;
 
 export interface ChatbotConfig {

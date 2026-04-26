@@ -106,10 +106,12 @@ interface ChatbotConfigProps {
     provider: Provider;
     model: string;
     openRouterModel: string;
+    name: string;
     prompt: string;
     onProviderChange: (p: Provider) => void;
     onModelChange: (m: string) => void;
     onOpenRouterModelChange: (m: string) => void;
+    onNameChange: (n: string) => void;
     onPromptChange: (p: string) => void;
 }
 
@@ -121,10 +123,12 @@ function ChatbotConfig({
     provider,
     model,
     openRouterModel,
+    name,
     prompt,
     onProviderChange,
     onModelChange,
     onOpenRouterModelChange,
+    onNameChange,
     onPromptChange,
 }: ChatbotConfigProps) {
     const [infoOpen, setInfoOpen] = useState(false);
@@ -137,6 +141,16 @@ function ChatbotConfig({
             <div className="chatbot-config-header">
                 <h3>{label}</h3>
             </div>
+
+            <label className="field">
+                <span>Name</span>
+                <input
+                    type="text"
+                    value={name}
+                    onChange={(event) => onNameChange(event.target.value)}
+                    placeholder={label}
+                />
+            </label>
 
             <div className="field">
                 <div className="provider-label-row">
@@ -226,8 +240,6 @@ export function SetupForm({
     const [openRouterModelB, setOpenRouterModelB] = useState("");
     const [nameA, setNameA] = useState<string>("");
     const [nameB, setNameB] = useState<string>("");
-    const [nameAManual, setNameAManual] = useState(false);
-    const [nameBManual, setNameBManual] = useState(false);
     const [sharedPrompt, setSharedPrompt] = useState("");
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");
@@ -324,18 +336,6 @@ export function SetupForm({
     }, [isInitialized, providerB]);
 
     useEffect(() => {
-        if (!nameAManual) {
-            setNameA("");
-        }
-    }, [modelA, modelsA, nameAManual]);
-
-    useEffect(() => {
-        if (!nameBManual) {
-            setNameB("");
-        }
-    }, [modelB, modelsB, nameBManual]);
-
-    useEffect(() => {
         if (!isInitialized) {
             return;
         }
@@ -343,15 +343,9 @@ export function SetupForm({
         const openRouterModelIdB = openRouterModelB || DEFAULT_OPENROUTER_MODEL;
         const finalModelA = providerA === "openrouter" ? openRouterModelIdA : modelA;
         const finalModelB = providerB === "openrouter" ? openRouterModelIdB : modelB;
-        const computedDefaultNameA = providerA === "openrouter"
-            ? shortModelName({ id: openRouterModelIdA, name: openRouterModelIdA })
-            : shortModelName(modelsA.find((model) => model.id === modelA) ?? { id: modelA, name: modelA });
-        const computedDefaultNameB = providerB === "openrouter"
-            ? shortModelName({ id: openRouterModelIdB, name: openRouterModelIdB })
-            : shortModelName(modelsB.find((model) => model.id === modelB) ?? { id: modelB, name: modelB });
         const config: SessionConfig = {
-            chatbot_a: { name: nameA || computedDefaultNameA, model: finalModelA, system_prompt: promptA, provider: providerA },
-            chatbot_b: { name: nameB || computedDefaultNameB, model: finalModelB, system_prompt: promptB, provider: providerB },
+            chatbot_a: { name: nameA, model: finalModelA, system_prompt: promptA, provider: providerA },
+            chatbot_b: { name: nameB, model: finalModelB, system_prompt: promptB, provider: providerB },
             shared_system_prompt: sharedPrompt,
         };
         const timer = setTimeout(() => { saveSettings(config).catch(() => {}); }, 500);
@@ -360,8 +354,6 @@ export function SetupForm({
         isInitialized,
         modelA,
         modelB,
-        modelsA,
-        modelsB,
         nameA,
         nameB,
         openRouterModelA,
@@ -376,34 +368,15 @@ export function SetupForm({
 
     const availableProviders = (Object.keys(providers) as Provider[]).filter((p) => providers[p]?.available);
 
-    const defaultNameA = (() => {
-        if (providerA === "openrouter") {
-            const id = openRouterModelA || DEFAULT_OPENROUTER_MODEL;
-            return shortModelName({ id, name: id });
-        }
-        const model = modelsA.find((m) => m.id === modelA);
-        return model ? shortModelName(model) : modelA;
-    })();
-    const defaultNameB = (() => {
-        if (providerB === "openrouter") {
-            const id = openRouterModelB || DEFAULT_OPENROUTER_MODEL;
-            return shortModelName({ id, name: id });
-        }
-        const model = modelsB.find((m) => m.id === modelB);
-        return model ? shortModelName(model) : modelB;
-    })();
-
     const buildConfig = useCallback((): SessionConfig => {
         const finalModelA = providerA === "openrouter" ? (openRouterModelA || DEFAULT_OPENROUTER_MODEL) : modelA;
         const finalModelB = providerB === "openrouter" ? (openRouterModelB || DEFAULT_OPENROUTER_MODEL) : modelB;
         return {
-            chatbot_a: { name: nameA || defaultNameA, model: finalModelA, system_prompt: promptA, provider: providerA },
-            chatbot_b: { name: nameB || defaultNameB, model: finalModelB, system_prompt: promptB, provider: providerB },
+            chatbot_a: { name: nameA, model: finalModelA, system_prompt: promptA, provider: providerA },
+            chatbot_b: { name: nameB, model: finalModelB, system_prompt: promptB, provider: providerB },
             shared_system_prompt: sharedPrompt,
         };
     }, [
-        defaultNameA,
-        defaultNameB,
         modelA,
         modelB,
         nameA,
@@ -442,14 +415,8 @@ export function SetupForm({
             setModelB(presetModelB);
             setOpenRouterModelA(preset.config.chatbot_a.provider === "openrouter" ? preset.config.chatbot_a.model : "");
             setOpenRouterModelB(preset.config.chatbot_b.provider === "openrouter" ? preset.config.chatbot_b.model : "");
-            const derivedNameA = shortModelName(scenarioModelsA.find((m) => m.id === presetModelA) ?? { id: presetModelA, name: presetModelA });
-            const derivedNameB = shortModelName(scenarioModelsB.find((m) => m.id === presetModelB) ?? { id: presetModelB, name: presetModelB });
-            const isManualA = preset.config.chatbot_a.name !== "" && preset.config.chatbot_a.name !== derivedNameA;
-            const isManualB = preset.config.chatbot_b.name !== "" && preset.config.chatbot_b.name !== derivedNameB;
-            setNameA(isManualA ? preset.config.chatbot_a.name : "");
-            setNameB(isManualB ? preset.config.chatbot_b.name : "");
-            setNameAManual(isManualA);
-            setNameBManual(isManualB);
+            setNameA(preset.config.chatbot_a.name);
+            setNameB(preset.config.chatbot_b.name);
             setSharedPrompt(preset.config.shared_system_prompt);
             setPromptA(preset.config.chatbot_a.system_prompt);
             setPromptB(preset.config.chatbot_b.system_prompt);
@@ -466,8 +433,6 @@ export function SetupForm({
         setPromptB("");
         setNameA("");
         setNameB("");
-        setNameAManual(false);
-        setNameBManual(false);
     };
 
     const handleSubmit = async (event: React.FormEvent) => {
@@ -565,10 +530,12 @@ export function SetupForm({
                             provider={providerA}
                             model={modelA}
                             openRouterModel={openRouterModelA}
+                            name={nameA}
                             prompt={promptA}
                             onProviderChange={setProviderA}
                             onModelChange={setModelA}
                             onOpenRouterModelChange={setOpenRouterModelA}
+                            onNameChange={setNameA}
                             onPromptChange={setPromptA}
                         />
                         <ChatbotConfig
@@ -579,10 +546,12 @@ export function SetupForm({
                             provider={providerB}
                             model={modelB}
                             openRouterModel={openRouterModelB}
+                            name={nameB}
                             prompt={promptB}
                             onProviderChange={setProviderB}
                             onModelChange={setModelB}
                             onOpenRouterModelChange={setOpenRouterModelB}
+                            onNameChange={setNameB}
                             onPromptChange={setPromptB}
                         />
                     </div>
