@@ -300,8 +300,6 @@ export function SetupForm({
             const isManualB = savedNameB !== "" && savedNameB !== derivedNameB && !legacyNames.has(savedNameB);
             setNameA(isManualA ? savedNameA : "");
             setNameB(isManualB ? savedNameB : "");
-            setNameAManual(isManualA);
-            setNameBManual(isManualB);
             setSharedPrompt(settings?.shared_system_prompt ?? "");
             setPromptA(settings?.chatbot_a.system_prompt ?? "");
             setPromptB(settings?.chatbot_b.system_prompt ?? "");
