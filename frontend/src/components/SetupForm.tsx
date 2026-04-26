@@ -344,8 +344,8 @@ export function SetupForm({
         const finalModelA = providerA === "openrouter" ? openRouterModelIdA : modelA;
         const finalModelB = providerB === "openrouter" ? openRouterModelIdB : modelB;
         const config: SessionConfig = {
-            chatbot_a: { name: nameA, model: finalModelA, system_prompt: promptA, provider: providerA },
-            chatbot_b: { name: nameB, model: finalModelB, system_prompt: promptB, provider: providerB },
+            chatbot_a: { name: nameA || "Chatbot A", model: finalModelA, system_prompt: promptA, provider: providerA },
+            chatbot_b: { name: nameB || "Chatbot B", model: finalModelB, system_prompt: promptB, provider: providerB },
             shared_system_prompt: sharedPrompt,
         };
         const timer = setTimeout(() => { saveSettings(config).catch(() => {}); }, 500);
@@ -372,8 +372,8 @@ export function SetupForm({
         const finalModelA = providerA === "openrouter" ? (openRouterModelA || DEFAULT_OPENROUTER_MODEL) : modelA;
         const finalModelB = providerB === "openrouter" ? (openRouterModelB || DEFAULT_OPENROUTER_MODEL) : modelB;
         return {
-            chatbot_a: { name: nameA, model: finalModelA, system_prompt: promptA, provider: providerA },
-            chatbot_b: { name: nameB, model: finalModelB, system_prompt: promptB, provider: providerB },
+            chatbot_a: { name: nameA || "Chatbot A", model: finalModelA, system_prompt: promptA, provider: providerA },
+            chatbot_b: { name: nameB || "Chatbot B", model: finalModelB, system_prompt: promptB, provider: providerB },
             shared_system_prompt: sharedPrompt,
         };
     }, [
