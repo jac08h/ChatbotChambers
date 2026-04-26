@@ -1232,6 +1232,95 @@ input::placeholder {
     cursor: not-allowed;
 }
 
+.prompts-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    z-index: 30;
+}
+
+.prompts-dialog {
+    width: min(100%, 600px);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 14px;
+    border: 1px solid var(--dialog-border);
+    background: var(--dialog-bg);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.prompts-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.prompts-dialog-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--dialog-text);
+}
+
+.prompts-dialog-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    line-height: 1;
+}
+
+.prompts-dialog-close:hover {
+    color: var(--dialog-text);
+    background: var(--accent-glow);
+}
+
+.prompts-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.prompts-dialog-section-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 0.35rem;
+}
+
+.prompts-dialog-section-content {
+    margin: 0;
+    padding: 0.65rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--dialog-text);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: inherit;
+}
+
+.prompts-dialog-empty {
+    color: var(--text-dim);
+    font-style: italic;
+}
+
 .scenario-save-error {
     color: var(--danger);
     font-size: 0.82rem;

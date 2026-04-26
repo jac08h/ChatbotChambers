@@ -71,6 +71,7 @@ export function ConversationView({
     const autoScrollEnabledRef = useRef(true);
     const [isDetachedFromBottom, setIsDetachedFromBottom] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+    const [promptsOpen, setPromptsOpen] = useState(false);
 
     useLayoutEffect(() => {
         if (!autoScrollEnabledRef.current) {
@@ -132,6 +133,19 @@ export function ConversationView({
                         </button>
                         {menuOpen && (
                             <div className="conversation-menu" role="menu">
+                                {config && (
+                                    <button
+                                        className="conversation-menu-item"
+                                        onClick={() => {
+                                            setMenuOpen(false);
+                                            setPromptsOpen(true);
+                                        }}
+                                        type="button"
+                                        role="menuitem"
+                                    >
+                                        View prompts
+                                    </button>
+                                )}
                                 {onRenameSession && (
                                     <button
                                         className="conversation-menu-item"
@@ -222,6 +236,9 @@ export function ConversationView({
                         </div>
                     )}
                 </div>
+            )}
+            {promptsOpen && config && (
+                <PromptsDialog config={config} onClose={() => setPromptsOpen(false)} />
             )}
         </div>
     );
@@ -321,4 +338,51 @@ function isScrolledToBottom(target: HTMLElement | Window): boolean {
 function getGeneratingName(messages: ChatMessage[], chatbot: "a" | "b"): string {
     const latest = [...messages].reverse().find((message) => message.chatbot === chatbot);
     return latest?.name || DEFAULT_CHATBOT_NAMES[chatbot];
+}
+
+function PromptsDialog({ config, onClose }: { config: SessionConfig; onClose: () => void }) {
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                onClose();
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [onClose]);
+
+    const sections: Array<{ label: string; content: string }> = [
+        { label: "Shared system prompt", content: config.shared_system_prompt },
+        { label: `${config.chatbot_a.name || "Chatbot A"} system prompt`, content: config.chatbot_a.system_prompt },
+        { label: `${config.chatbot_b.name || "Chatbot B"} system prompt`, content: config.chatbot_b.system_prompt },
+    ];
+
+    return (
+        <div
+            className="prompts-dialog-backdrop"
+            role="presentation"
+            onClick={onClose}
+        >
+            <div
+                className="prompts-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="prompts-dialog-title"
+                onClick={(event) => event.stopPropagation()}
+            >
+                <div className="prompts-dialog-header">
+                    <h2 id="prompts-dialog-title" className="prompts-dialog-title">Prompts</h2>
+                    <button className="prompts-dialog-close" type="button" onClick={onClose} aria-label="Close">✕</button>
+                </div>
+                <div className="prompts-dialog-body">
+                    {sections.map(({ label, content }) => (
+                        <div key={label} className="prompts-dialog-section">
+                            <div className="prompts-dialog-section-label">{label}</div>
+                            <pre className="prompts-dialog-section-content">{content || <span className="prompts-dialog-empty">(empty)</span>}</pre>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
 }
