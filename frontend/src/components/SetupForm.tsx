@@ -66,7 +66,7 @@ function ProviderInfoPopup({ provider, onClose }: { provider: Provider; onClose:
         </div>
     );
 }
-const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.5-flash-preview";
+const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-flash-lite-preview";
 const DEFAULT_PROVIDERS: Providers = {
     openrouter: { available: false },
     github_copilot: { available: true },
