@@ -186,7 +186,7 @@ describe("SetupForm", () => {
         render(<SetupForm onStart={vi.fn()} error={null} />)
         await waitFor(() => expect(screen.getByRole("button", { name: "Start conversation" })).not.toBeDisabled())
 
-        await userEvent.type(screen.getByLabelText("Shared prompt"), "Shared scenario prompt")
+        await userEvent.type(screen.getByLabelText("Shared instructions"), "Shared scenario prompt")
         await userEvent.click(screen.getByRole("button", { name: "Save as scenario" }))
         expect(screen.getByRole("dialog", { name: "Save scenario" })).toBeInTheDocument()
         await userEvent.type(screen.getByLabelText("Preset name"), "My saved scenario")

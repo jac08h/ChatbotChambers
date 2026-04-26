@@ -196,7 +196,7 @@ function ChatbotConfig({
                 <textarea
                     value={prompt}
                     onChange={(event) => onPromptChange(event.target.value)}
-                    placeholder={`System prompt for ${label}`}
+                    placeholder={`Instructions for ${label}, not visible to the other chatbot`}
                     rows={3}
                 />
             </label>
@@ -809,11 +809,11 @@ export function SetupForm({
                     </div>
 
                     <label className="field">
-                        <span>Shared prompt</span>
+                        <span>Shared instructions</span>
                         <textarea
                             value={sharedPrompt}
                             onChange={(event) => setSharedPrompt(event.target.value)}
-                            placeholder="Instructions for both chatbots"
+                            placeholder="Instructions visible to both chatbots"
                             rows={3}
                         />
                     </label>

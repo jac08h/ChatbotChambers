@@ -63,7 +63,7 @@ export function ApiKeyDialog({
                     <h2 id="api-key-dialog-title" className="rename-dialog-title">Set OpenRouter API key</h2>
                 </div>
                 <p className="api-key-dialog-copy">
-                    Hosted ChatbotChambers sends your key only to the same-origin <code>/api/turn</code> proxy and never stores it server-side.
+                    Your key is stored only in this browser.
                 </p>
                 <input
                     ref={inputRef}
