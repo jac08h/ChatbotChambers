@@ -228,8 +228,6 @@ export default function App() {
                 selectedSessionId={activeRouteSessionId}
                 hasCurrentConversation={hasCurrentConversation}
                 isCurrentConversationSelected={showCurrentConversation}
-                hasOpenRouterKey={!isHostedMode || Boolean(openRouterKey)}
-                onManageApiKey={isHostedMode ? () => setIsApiKeyDialogOpen(true) : undefined}
                 isCollapsed={isSidebarCollapsed}
                 onToggleCollapse={handleToggleCollapse}
             />

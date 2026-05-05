@@ -483,12 +483,12 @@ export function SetupForm({
 
                 {error && <div className="error-banner">{error}</div>}
                 {isHostedMode && !hasOpenRouterKey && (
-                    <div className="error-banner api-key-inline-banner">
-                        <span>Set an OpenRouter API key to start hosted conversations.</span>
+                    <div className="api-key-setup-notice">
+                        <span>An OpenRouter API key is needed to start hosted conversations. It&rsquo;s stored only in this browser.</span>
                         {onOpenApiKeyDialog && (
                             <button
                                 type="button"
-                                className="scenario-save-link api-key-inline-button"
+                                className="api-key-setup-notice-button"
                                 onClick={onOpenApiKeyDialog}
                             >
                                 Set API key
@@ -500,22 +500,20 @@ export function SetupForm({
                 <div className="setup-random-scenario">
                     <button
                         type="button"
-                        className="random-scenario-btn"
+                        className="icon-action-btn"
                         onClick={() => { void loadRandomPreset(); }}
                         disabled={presets.length === 0}
+                        title="Random scenario"
+                        aria-label="Random scenario"
                     >
-                        🎲 Random scenario
-                    </button>
-                    <button
-                        type="button"
-                        className="scenario-action-link preset-action-link-clear"
-                        onClick={handleClearAll}
-                        title="Clear all prompts and names"
-                    >
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                            <path d="M2 4h12M5.33 4V2.67a1.33 1.33 0 011.34-1.34h2.66a1.33 1.33 0 011.34 1.34V4M12.67 4v9.33a1.33 1.33 0 01-1.34 1.34H4.67a1.33 1.33 0 01-1.34-1.34V4" />
+                        <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <rect x="2" y="2" width="12" height="12" rx="2.5" />
+                            <circle cx="5.25" cy="5.25" r="1" fill="currentColor" stroke="none" />
+                            <circle cx="10.75" cy="5.25" r="1" fill="currentColor" stroke="none" />
+                            <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
+                            <circle cx="5.25" cy="10.75" r="1" fill="currentColor" stroke="none" />
+                            <circle cx="10.75" cy="10.75" r="1" fill="currentColor" stroke="none" />
                         </svg>
-                        Clear all
                     </button>
                 </div>
 
@@ -569,6 +567,20 @@ export function SetupForm({
                         <div className="setup-actions">
                             <button type="submit" className="start-btn" disabled={!canStart}>
                                 Start conversation
+                            </button>
+                            <button
+                                type="button"
+                                className="icon-action-btn"
+                                onClick={handleClearAll}
+                                title="Clear all prompts and names"
+                                aria-label="Clear all prompts and names"
+                            >
+                                <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <path d="M2.5 4.5h11" />
+                                    <path d="M6 4.5V3a1 1 0 011-1h2a1 1 0 011 1v1.5" />
+                                    <path d="M4 4.5l.7 9.1a1 1 0 001 .9h4.6a1 1 0 001-.9l.7-9.1" />
+                                    <path d="M6.75 7.5v4.5M9.25 7.5v4.5" />
+                                </svg>
                             </button>
                         </div>
                     </div>
