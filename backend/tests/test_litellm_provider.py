@@ -109,10 +109,10 @@ async def test_prompt_logged_to_file(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert entry["model"] == "my-model"
 
 
-async def test_openrouter_sets_reasoning_effort_to_none(
+async def test_openrouter_opts_out_of_reasoning_and_drops_unsupported_params(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """OpenRouter requests opt out of thinking when supported."""
+    """OpenRouter requests opt out of thinking and tolerate unsupported params."""
     monkeypatch.setattr("app.providers.litellm_provider.LOGS_DIR", tmp_path)
     mock_response = make_mock_response("Hi")
     with patch("app.providers.litellm_provider.litellm") as mock_litellm:
@@ -123,6 +123,7 @@ async def test_openrouter_sets_reasoning_effort_to_none(
 
     call_kwargs = mock_litellm.acompletion.call_args
     assert call_kwargs.kwargs.get("reasoning_effort") == "none"
+    assert call_kwargs.kwargs.get("drop_params") is True
 
 
 async def test_other_litellm_providers_omit_reasoning_effort(

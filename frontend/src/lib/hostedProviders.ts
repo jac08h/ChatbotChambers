@@ -27,6 +27,7 @@ export const HOSTED_PROVIDERS: Record<Provider, ProviderInfo> = {
 };
 
 export const HOSTED_MODELS: ModelInfo[] = [
+    { id: "google/gemini-3.1-flash-lite-preview", name: "Gemini 3.1 Flash Lite Preview" },
     { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini" },
     { id: "openai/gpt-4.1", name: "GPT-4.1" },
     { id: "anthropic/claude-3.7-sonnet", name: "Claude 3.7 Sonnet" },

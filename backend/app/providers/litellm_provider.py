@@ -17,7 +17,7 @@ def build_litellm_messages(system_prompt: str, messages: List[dict]) -> List[dic
 
 def build_litellm_extra_params(provider: str) -> dict:
     if provider == "openrouter":
-        return {"reasoning_effort": "none"}
+        return {"reasoning_effort": "none", "drop_params": True}
     return {}
 
 
