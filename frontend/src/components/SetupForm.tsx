@@ -509,8 +509,8 @@ export function SetupForm({
                         className="icon-action-btn"
                         onClick={handleRandomPresetClick}
                         disabled={presets.length === 0}
-                        aria-label="Random scenario"
-                        data-tooltip="Random scenario"
+                        aria-label="Open a random chamber"
+                        data-tooltip="Open a random chamber"
                     >
                         <svg key={diceRollKey} className={`dice-icon${diceRollKey > 0 ? " dice-icon-rolling" : ""}`} width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <rect x="2" y="2" width="12" height="12" rx="2.5" />
