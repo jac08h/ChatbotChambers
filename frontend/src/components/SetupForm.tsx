@@ -244,6 +244,7 @@ export function SetupForm({
     const [promptA, setPromptA] = useState("");
     const [promptB, setPromptB] = useState("");
     const [isInitialized, setIsInitialized] = useState(false);
+    const [diceRollKey, setDiceRollKey] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
@@ -425,6 +426,11 @@ export function SetupForm({
         setPromptB(preset.system_prompt_b);
     };
 
+    const handleRandomPresetClick = () => {
+        setDiceRollKey((current) => current + 1);
+        void loadRandomPreset();
+    };
+
     const handleClearAll = () => {
         setSharedPrompt("");
         setPromptA("");
@@ -501,12 +507,12 @@ export function SetupForm({
                     <button
                         type="button"
                         className="icon-action-btn"
-                        onClick={() => { void loadRandomPreset(); }}
+                        onClick={handleRandomPresetClick}
                         disabled={presets.length === 0}
-                        title="Random scenario"
                         aria-label="Random scenario"
+                        data-tooltip="Random scenario"
                     >
-                        <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <svg key={diceRollKey} className={`dice-icon${diceRollKey > 0 ? " dice-icon-rolling" : ""}`} width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <rect x="2" y="2" width="12" height="12" rx="2.5" />
                             <circle cx="5.25" cy="5.25" r="1" fill="currentColor" stroke="none" />
                             <circle cx="10.75" cy="5.25" r="1" fill="currentColor" stroke="none" />
@@ -572,8 +578,8 @@ export function SetupForm({
                                 type="button"
                                 className="icon-action-btn"
                                 onClick={handleClearAll}
-                                title="Clear all prompts and names"
                                 aria-label="Clear all prompts and names"
+                                data-tooltip="Clear all prompts and names"
                             >
                                 <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                     <path d="M2.5 4.5h11" />
